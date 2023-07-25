@@ -1,0 +1,19 @@
+import * as iconv from 'iconv-lite';
+import * as StrUtil from 'str-util';
+import * as wanakana from 'wanakana';
+
+export function sjis(val: string): string {
+  return iconv.encode(val, 'SHIFT_JIS').toString();
+}
+
+export function sjisSize(val: string): number {
+  return sjis(val).length;
+}
+
+export function isHan(val: string): boolean {
+  return sjisSize(val) === val.length;
+}
+
+export function halfWidthRomaji(str: string): string {
+  return StrUtil.toHalfWidth(wanakana.toRomaji(str));
+}

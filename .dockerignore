@@ -1,0 +1,11 @@
+node_modules/
+dist/
+logs/
+.git/
+.next/
+out/
+.vscode/
+.husky/
+.dockerignore
+docker-compose.yml
+*Dockerfile

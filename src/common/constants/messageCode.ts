@@ -1,0 +1,17 @@
+export enum MessageCode {
+  notFound = 'NOT_FOUND',
+  badRequest = 'BAD_REQUEST',
+  invalidInput = 'INVALID_INPUT',
+  wrongPassword = 'WRONG_PASSWORD',
+  generalError = 'ERROR',
+  expiredToken = 'EXPIRED_TOKEN',
+  badToken = 'BAD_TOKEN',
+  wrongMailOrPassword = 'WRONG_MAIL_OR_PASSWORD',
+  invalidRefreshToken = 'INVALID_REFRESH_TOKEN',
+  invalidResetPasswordCode = 'INVALID_RESET_PASSWORD_CODE',
+  userIsDisabled = 'USER_IS_DISABLED',
+  invalidAuthSession = 'INVALID_AUTH_SESSION',
+  userNotFound = 'USER_NOT_FOUND',
+  sendMailError = 'SEND_MAIL_ERROR',
+  permissionDenied = 'PERMISSION_DENIED',
+}
