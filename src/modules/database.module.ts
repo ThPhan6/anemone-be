@@ -10,7 +10,7 @@ import { DataSource } from 'typeorm';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      dataSourceFactory: async opts => {
+      dataSourceFactory: async (opts) => {
         const options: any = opts;
         const replication = options.replication;
         const master = options.replication.master;

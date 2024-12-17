@@ -5,7 +5,10 @@ import { kebabCase } from 'lodash';
 
 import { AuthRequired } from './authRequired.decorator';
 
-type ApiControllerOptions = { authRequired?: boolean } & ({ name: string } | { route: string; tags: string });
+type ApiControllerOptions = { authRequired?: boolean } & (
+  | { name: string }
+  | { route: string; tags: string }
+);
 
 export function ApiController(options: ApiControllerOptions): ClassDecorator {
   const decorators: ClassDecorator[] = [];
@@ -15,9 +18,10 @@ export function ApiController(options: ApiControllerOptions): ClassDecorator {
   }
 
   const name: string = options['name'];
+  const version = options['version'] || 'v1';
   if (name) {
     decorators.push(ApiTags(name));
-    decorators.push(Controller(`api/v1/${kebabCase(name).toLowerCase()}`));
+    decorators.push(Controller(`api/${version}/${kebabCase(name).toLowerCase()}`));
   } else {
     decorators.push(ApiTags(options['tags']));
     decorators.push(Controller(options['route']));

@@ -25,20 +25,26 @@ export class ExceptionFilter extends BaseExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<any>();
     if (!error) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send(buildResponse(this.httpResponse(null)));
+      return response
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .send(buildResponse(this.httpResponse(null)));
     }
 
     try {
       const res = this.httpResponse(error);
       if (error instanceof TypeError) {
-        logger.error(`StatusCode : ${res.statusCode}, Message : ${error.message}, detail : ${error.stack}`);
+        logger.error(
+          `StatusCode : ${res.statusCode}, Message : ${error.message}, detail : ${error.stack}`,
+        );
       } else {
         logger.error(`StatusCode : ${res.statusCode}, Message : ${res.message}`);
       }
 
       return response.status(res.statusCode).send(buildResponse(res));
     } catch (ex) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send(buildResponse(this.httpResponse(null)));
+      return response
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .send(buildResponse(this.httpResponse(null)));
     }
   }
 
@@ -79,7 +85,8 @@ export class ExceptionFilter extends BaseExceptionFilter {
       return res;
     }
 
-    res.message = error.statusCode === HttpStatus.BAD_REQUEST ? Message.invalidInput : Message.generalError;
+    res.message =
+      error.statusCode === HttpStatus.BAD_REQUEST ? Message.invalidInput : Message.generalError;
     if (error.message instanceof ApiErrorDescription) {
       res.error = error.message;
     }

@@ -73,7 +73,9 @@ export function ApiBaseOkResponse<T extends Type>(options: {
               type: 'string',
               description: options.messageCodeRemark,
             },
-            data: !options.type ? undefined : okResponseDataDescription(options.type, options.wrapType),
+            data: !options.type
+              ? undefined
+              : okResponseDataDescription(options.type, options.wrapType),
             success: {
               type: 'boolean',
             },
@@ -100,7 +102,10 @@ export function ApiBaseOkResponse<T extends Type>(options: {
   );
 }
 
-export function ApiBaseRequestBody<T extends Type>(options: { type: T; isArray?: boolean }): MethodDecorator {
+export function ApiBaseRequestBody<T extends Type>(options: {
+  type: T;
+  isArray?: boolean;
+}): MethodDecorator {
   return applyDecorators(
     ApiExtraModels(options.type),
     ApiBody({
@@ -121,7 +126,10 @@ export function ApiDoc<T extends Type, V extends Type>(options: {
   requestBody: { type: T; isArray?: boolean };
   response: { type?: V | string; description?: string; wrapType?: ApiDataWrapType };
 }): MethodDecorator {
-  return applyDecorators(ApiBaseRequestBody(options.requestBody), ApiBaseOkResponse(options.response));
+  return applyDecorators(
+    ApiBaseRequestBody(options.requestBody),
+    ApiBaseOkResponse(options.response),
+  );
 }
 
 export function ApiFileResponse(options: { description: string; type: string }): MethodDecorator {

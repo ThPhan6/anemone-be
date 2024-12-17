@@ -44,7 +44,11 @@ const hashString = (str: string): string => {
 };
 
 export const getNewAccessPassword = (): string => {
-  return randString(8, [RandomSource.number, RandomSource.alphaUpper, RandomSource.alphaLower], '01IOlo');
+  return randString(
+    8,
+    [RandomSource.number, RandomSource.alphaUpper, RandomSource.alphaLower],
+    '01IOlo',
+  );
 };
 
 export const encryptedPassword = (stringOrig: string, key = process.env.CRYPTO_KEY): string => {

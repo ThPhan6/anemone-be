@@ -88,7 +88,7 @@ export class StorageService {
             CopySource: `/${this.bucket}/${tempKey}`,
           }),
         )
-        .then(output => {
+        .then((output) => {
           if (output.$metadata.httpStatusCode === HttpStatus.OK) {
             return this.s3Client.send(
               new DeleteObjectCommand({
@@ -99,7 +99,10 @@ export class StorageService {
           }
 
           if (result.$metadata.httpStatusCode != HttpStatus.OK) {
-            throw new HttpException('', result.$metadata.httpStatusCode ?? HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new HttpException(
+              '',
+              result.$metadata.httpStatusCode ?? HttpStatus.INTERNAL_SERVER_ERROR,
+            );
           }
         });
     } catch (err) {
@@ -124,7 +127,10 @@ export class StorageService {
         }),
       );
       if (result.$metadata.httpStatusCode != HttpStatus.OK) {
-        throw new HttpException('', result.$metadata.httpStatusCode ?? HttpStatus.INTERNAL_SERVER_ERROR);
+        throw new HttpException(
+          '',
+          result.$metadata.httpStatusCode ?? HttpStatus.INTERNAL_SERVER_ERROR,
+        );
       }
     } catch (err) {
       logger.error(`uploadFile: ${key} - error: ${err}`);

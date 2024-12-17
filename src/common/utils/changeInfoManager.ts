@@ -74,7 +74,10 @@ export class ChangedInfo {
 
     return data.prev.reduce(
       (r, v, i) =>
-        r + `\n      変更前：${this.defaultValueIfEmpty(v)}  →  変更後：${this.defaultValueIfEmpty(data.current[i])}`,
+        r +
+        `\n      変更前：${this.defaultValueIfEmpty(v)}  →  変更後：${this.defaultValueIfEmpty(
+          data.current[i],
+        )}`,
       `    [${this.name}] 変更`,
     );
   }
@@ -116,12 +119,13 @@ export class ChangeInfoManager {
     }
 
     if (group === '') {
-      this.isChangedResult[group] = this.infoList.findIndex(v => v.isChanged) > -1;
+      this.isChangedResult[group] = this.infoList.findIndex((v) => v.isChanged) > -1;
 
       return this.isChangedResult[group];
     }
 
-    this.isChangedResult[group] = this.infoList.findIndex(v => v.group === group && v.isChanged) > -1;
+    this.isChangedResult[group] =
+      this.infoList.findIndex((v) => v.group === group && v.isChanged) > -1;
 
     return this.isChangedResult[group];
   }

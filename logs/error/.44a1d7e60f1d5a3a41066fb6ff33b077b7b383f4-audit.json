@@ -1,15 +1,15 @@
 {
-    "keep": {
-        "days": false,
-        "amount": 30
-    },
-    "auditLog": "/home/es-02/Code/Projects/Base-code/nest-base-be/logs/error/.44a1d7e60f1d5a3a41066fb6ff33b077b7b383f4-audit.json",
-    "files": [
-        {
-            "date": 1690260705748,
-            "name": "/home/es-02/Code/Projects/Base-code/nest-base-be/logs/error/2023-07-25.error.log",
-            "hash": "f4a84cbf2dcff3659f7f48d680cd391e88e0e2a83985205ad60e3f749e6dfdf7"
-        }
-    ],
-    "hashType": "sha256"
+  "keep": {
+    "days": false,
+    "amount": 30
+  },
+  "auditLog": "/home/es-02/Code/Projects/Base-code/nest-base-be/logs/error/.44a1d7e60f1d5a3a41066fb6ff33b077b7b383f4-audit.json",
+  "files": [
+    {
+      "date": 1690260705748,
+      "name": "/home/es-02/Code/Projects/Base-code/nest-base-be/logs/error/2023-07-25.error.log",
+      "hash": "f4a84cbf2dcff3659f7f48d680cd391e88e0e2a83985205ad60e3f749e6dfdf7"
+    }
+  ],
+  "hashType": "sha256"
 }

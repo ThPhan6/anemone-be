@@ -16,6 +16,7 @@ import {
   UpdateResult,
 } from 'typeorm';
 import { EntityTarget } from 'typeorm/common/EntityTarget';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 type DeleteCriteria<T> =
   | string
@@ -28,9 +29,18 @@ type DeleteCriteria<T> =
   | ObjectId[]
   | FindOptionsWhere<T>;
 
-type SoftDeleteCriteria = string | string[] | number | number[] | Date | Date[] | ObjectId | ObjectId[] | any;
+export type SoftDeleteCriteria =
+  | string
+  | string[]
+  | number
+  | number[]
+  | Date
+  | Date[]
+  | ObjectId
+  | ObjectId[]
+  | any;
 
-export class BaseRepository<T> {
+export class BaseRepository<T extends { id: string }> {
   constructor(
     private readonly target: EntityTarget<T>,
     private readonly dataSource: DataSource,
@@ -84,11 +94,29 @@ export class BaseRepository<T> {
     return this.getRepository().save(entities, options);
   }
 
+  update(
+    criteria: string | number | FindOptionsWhere<T>,
+    partialEntity: QueryDeepPartialEntity<T>,
+  ): Promise<UpdateResult> {
+    return this.getRepository().update(criteria, partialEntity);
+  }
+
+  updateMany(
+    criteria: FindOptionsWhere<T>,
+    partialEntity: QueryDeepPartialEntity<T>,
+  ): Promise<UpdateResult> {
+    return this.getRepository().update(criteria, partialEntity);
+  }
+
   delete(criteria: DeleteCriteria<T>): Promise<DeleteResult> {
     return this.getRepository().delete(criteria);
   }
 
   softDelete(criteria: SoftDeleteCriteria): Promise<UpdateResult> {
+    return this.getRepository().softDelete(criteria);
+  }
+
+  softDeleteMany(criteria: SoftDeleteCriteria): Promise<UpdateResult> {
     return this.getRepository().softDelete(criteria);
   }
 

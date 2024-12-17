@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 export function AutoIdColumn(options: 'number' | 'uuid'): PropertyDecorator {
   if (options === 'uuid') {
@@ -28,9 +34,18 @@ export function UserIdColumn(options: { name: string; nullable?: boolean }): Pro
 }
 
 export function MenuCodeColumn(
-  options: { name?: string; nullable?: boolean; unique?: boolean } = { name: null, nullable: null, unique: null },
+  options: { name?: string; nullable?: boolean; unique?: boolean } = {
+    name: null,
+    nullable: null,
+    unique: null,
+  },
 ): PropertyDecorator {
-  return Column({ name: options.name ?? 'menu_code', length: 4, nullable: options.nullable, unique: options.unique });
+  return Column({
+    name: options.name ?? 'menu_code',
+    length: 4,
+    nullable: options.nullable,
+    unique: options.unique,
+  });
 }
 
 export function CreatedTimeColumn(): PropertyDecorator {
@@ -57,14 +72,28 @@ export function NowColumn(name?: string): PropertyDecorator {
   return Column({ name: name, type: 'timestamptz', default: 'now()' });
 }
 
-export function GeoComponentColumn(options: { name: string; nullable?: boolean }): PropertyDecorator {
-  return Column({ name: options.name, type: 'numeric', precision: 13, scale: 10, nullable: options.nullable });
+export function GeoComponentColumn(options: {
+  name: string;
+  nullable?: boolean;
+}): PropertyDecorator {
+  return Column({
+    name: options.name,
+    type: 'numeric',
+    precision: 13,
+    scale: 10,
+    nullable: options.nullable,
+  });
 }
 
 export function TripCodeColumn(
   options: { name?: string; nullable?: boolean; unique?: boolean } = {},
 ): PropertyDecorator {
-  return Column({ name: options.name ?? 'trip_code', length: 30, nullable: options.nullable, unique: options.unique });
+  return Column({
+    name: options.name ?? 'trip_code',
+    length: 30,
+    nullable: options.nullable,
+    unique: options.unique,
+  });
 }
 
 export function HistoryNoColumn(): PropertyDecorator {

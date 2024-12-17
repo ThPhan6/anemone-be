@@ -1,3 +1,5 @@
+import { PrimaryGeneratedColumn } from 'typeorm';
+
 import { AutoIdColumn } from './../decorators/column.decorator';
 
 export abstract class AutoIdEntity {
@@ -6,6 +8,6 @@ export abstract class AutoIdEntity {
 }
 
 export abstract class AutoUUIDEntity {
-  @AutoIdColumn('uuid')
+  @PrimaryGeneratedColumn('uuid')
   public id: string;
 }

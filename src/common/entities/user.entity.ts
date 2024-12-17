@@ -1,56 +1,30 @@
-import { Exclude } from 'class-transformer';
-import { Column, Entity } from 'typeorm';
+import { UserRole } from 'common/enums/user.enum';
+import { Column, Entity, OneToOne } from 'typeorm';
 
-import { FlagColumn, NoteColumn, NowColumn } from './../decorators/column.decorator';
-import { ModifiedInfoColumn } from './../decorators/modifiedInfo.decorator';
-import { AutoUUIDEntity } from './entity';
-import { ModifiedInfo } from './modifiedInfo';
+import { BaseEntity } from './base.entity';
+import { UserProfile } from './user-profile.entity';
 
-@Entity('user')
-export class UserEntity extends AutoUUIDEntity {
+// Entities
+@Entity('users')
+export class User extends BaseEntity {
   @Column({
-    name: 'user_name',
+    name: 'cog_id',
     length: 64,
-  })
-  public userName: string;
-
-  @Column({
-    length: 100,
-  })
-  @Exclude({ toPlainOnly: true })
-  public password: string;
-
-  @Column({
-    name: 'mail_address',
-    length: 128,
     unique: true,
   })
-  public mailAddress: string;
+  public cogId: string;
+
+  @Column({ unique: true })
+  public email: string;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.MEMBER })
+  public role: UserRole;
 
   @Column({
-    name: 'login_name',
-    length: 64,
-    nullable: true,
-    unique: true,
+    name: 'is_active',
   })
-  public loginName: string;
+  public isActive: boolean;
 
-  @NowColumn('password_update_time')
-  public passwordUpdateTime: Date;
-
-  @Column({
-    name: 'last_login_time',
-    type: 'timestamptz',
-    nullable: true,
-  })
-  public lastLoginTime: Date;
-
-  @FlagColumn('invalid_flg')
-  public invalidFlg: boolean;
-
-  @NoteColumn()
-  public note: string;
-
-  @ModifiedInfoColumn()
-  public modifiedInfo: ModifiedInfo;
+  @OneToOne(() => UserProfile, (profile) => profile.user)
+  profile: UserProfile;
 }

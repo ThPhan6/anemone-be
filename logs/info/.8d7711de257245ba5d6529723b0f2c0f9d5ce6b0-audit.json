@@ -1,0 +1,15 @@
+{
+  "keep": {
+    "days": false,
+    "amount": 30
+  },
+  "auditLog": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/info/.8d7711de257245ba5d6529723b0f2c0f9d5ce6b0-audit.json",
+  "files": [
+    {
+      "date": 1734411550971,
+      "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/info/2024-12-17.log",
+      "hash": "a4bb8952b006d63d73cd3e5950c5363495edc8f0a8adf2b0757792ca776fbc14"
+    }
+  ],
+  "hashType": "sha256"
+}

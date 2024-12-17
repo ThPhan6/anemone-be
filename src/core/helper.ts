@@ -4,7 +4,8 @@ import { HttpResponse } from './types/response.type';
 
 export const buildResponse = <T>(response: HttpResponse<T>): any => {
   if (response instanceof HttpResponse) {
-    response.statusCode = response.statusCode || (response.success ? HttpStatus.OK : HttpStatus.INTERNAL_SERVER_ERROR);
+    response.statusCode =
+      response.statusCode || (response.success ? HttpStatus.OK : HttpStatus.INTERNAL_SERVER_ERROR);
 
     return response;
   }
@@ -18,14 +19,14 @@ export const buildResponse = <T>(response: HttpResponse<T>): any => {
 
 export function assignDataToInstance<T>(data: T, instance: T) {
   const keys = Object.keys(data || {});
-  keys.forEach(key => {
+  keys.forEach((key) => {
     instance[key] = data[key];
   });
 }
 
 export function assignDataToOther<T, U>(data: T, instance: U) {
   const keys = Object.keys(data || {});
-  keys.forEach(key => {
+  keys.forEach((key) => {
     if (data[key] !== undefined) {
       instance[key] = data[key];
     }
@@ -34,7 +35,7 @@ export function assignDataToOther<T, U>(data: T, instance: U) {
 
 export function assignNonNullDataToOther<T, U>(data: T, instance: U) {
   const keys = Object.keys(data || {});
-  keys.forEach(key => {
+  keys.forEach((key) => {
     if (data[key] !== undefined && data[key] != null) {
       instance[key] = data[key];
     }

@@ -20,7 +20,7 @@ export class BaseController {
     });
   }
 
-  public ok(success: boolean, options?: Partial<HttpResponse<unknown>>) {
+  public ok(success = true, options?: Partial<HttpResponse<unknown>>) {
     return new HttpResponse({ ...options, success, statusCode: HttpStatus.OK });
   }
 }

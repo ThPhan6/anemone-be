@@ -16,7 +16,9 @@ export interface IFCMItem {
 export class FCMService {
   constructor() {
     admin.initializeApp({
-      credential: admin.credential.cert(path.resolve(__dirname, '../../../configs/firebase-adminsdk.json')),
+      credential: admin.credential.cert(
+        path.resolve(__dirname, '../../../configs/firebase-adminsdk.json'),
+      ),
     });
   }
 

@@ -1,0 +1,22 @@
+{
+  "bracketSpacing": true,
+  "singleQuote": true,
+  "printWidth": 100,
+  "trailingComma": "all",
+  "tabWidth": 2,
+  "semi": true,
+  "plugins": [],
+  "importOrderParserPlugins": ["typescript", "decorators-legacy"],
+  "importOrder": [
+    "@nestjs",
+    "assets",
+    "(constant|type|dto|enum)",
+    "model",
+    "service",
+    "modules",
+    "^(lodash|helper|date-fns|moment|common)",
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
+}

@@ -16,7 +16,9 @@ export class AuthenticateUser implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest() as any;
-    let token: string = (request.headers['x-access-token'] || request.headers.authorization || '') as string;
+    let token: string = (request.headers['x-access-token'] ||
+      request.headers.authorization ||
+      '') as string;
     const bearerPrefix = 'Bearer ';
     if (token.startsWith(bearerPrefix)) {
       token = token.slice(bearerPrefix.length, token.length);

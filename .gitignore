@@ -48,3 +48,10 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Environment files
+.env
+.env.*
+docker/.env
+docker/.env.*
+
+

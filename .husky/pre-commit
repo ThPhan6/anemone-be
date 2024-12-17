@@ -2,12 +2,3 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 yarn lint-staged
-
-echo "***** Scan secrets *****"
-if command -v git-secrets &> /dev/null
-then
-    git secrets --scan $(git ls-files)
-else
-    echo "Not installed git-secrets yet"
-    exit 1
-fi

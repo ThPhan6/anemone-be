@@ -44,7 +44,8 @@ class App {
           enableImplicitConversion: true,
         },
         stopAtFirstError: stopAtFirstError,
-        exceptionFactory: e => new BadRequestException({ errors: !stopAtFirstError ? e : undefined }),
+        exceptionFactory: (e) =>
+          new BadRequestException({ errors: !stopAtFirstError ? e : undefined }),
       }),
     );
   }
