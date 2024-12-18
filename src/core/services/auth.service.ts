@@ -15,12 +15,14 @@ import {
   ForgotPasswordCommand,
   ForgotPasswordCommandInput,
   ForgotPasswordCommandOutput,
+  GlobalSignOutCommand,
   InitiateAuthCommand,
   InitiateAuthCommandInput,
   InitiateAuthCommandOutput,
   RespondToAuthChallengeCommand,
   RespondToAuthChallengeCommandInput,
   RespondToAuthChallengeCommandOutput,
+  RevokeTokenCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { Injectable } from '@nestjs/common';
 import { AwsConfigService } from 'common/config/aws.config';
@@ -147,5 +149,26 @@ export class AuthService {
     const command = new AdminInitiateAuthCommand(params);
 
     return this.cognitoClient.send(command);
+  }
+
+  async signOut(token: { accessToken: string; refreshToken: string }) {
+    const { accessToken, refreshToken } = token;
+    const commandRevokeAccessToken = new GlobalSignOutCommand({ AccessToken: accessToken });
+
+    const commandRevokeRefreshToken = new RevokeTokenCommand({
+      Token: refreshToken,
+      ClientId: this.awsConfigService.userPoolClientId,
+    });
+
+    try {
+      await Promise.all([
+        this.cognitoClient.send(commandRevokeAccessToken),
+        this.cognitoClient.send(commandRevokeRefreshToken),
+      ]);
+
+      return null;
+    } catch (error) {
+      return error;
+    }
   }
 }

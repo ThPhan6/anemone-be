@@ -9,6 +9,11 @@
       "date": 1734411550973,
       "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-17.error.log",
       "hash": "ded8eb4a6c9a626910340ed1e804f94d9787c6edf2eea5bb29f0c4955ab2b17c"
+    },
+    {
+      "date": 1734496129458,
+      "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-18.error.log",
+      "hash": "7f1591e5c86849f9b61ebd58c57f5a391aa3bc23b047ce8d7a64131879c612ab"
     }
   ],
   "hashType": "sha256"

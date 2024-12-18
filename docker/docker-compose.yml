@@ -10,3 +10,19 @@ services:
       - POSTGRES_DB=$POSTGRES_DB
     ports:
       - '$POSTGRES_PORT:5432'
+    networks:
+      - tangent-network
+  app:
+    container_name: tangent-app
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    ports:
+      - 4000:3000
+    depends_on:
+      - pg-write
+    networks:
+      - tangent-network
+
+networks:
+  tangent-network: {}

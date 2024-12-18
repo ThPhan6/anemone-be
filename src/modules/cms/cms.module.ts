@@ -23,10 +23,14 @@ import { UserController } from './v1/user/user.controller';
   providers: [
     SettingService,
     SettingRepository,
-    UserRepository,
+
+    // AWS
     AwsConfigService,
     AuthService,
+
+    // User
     UserService,
+    UserRepository,
     UserProfileService,
     UserProfileRepository,
   ],
