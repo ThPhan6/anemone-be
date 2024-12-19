@@ -19,12 +19,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `https://${process.env.AWS_COGNITO_USER_POOL_ISSUER}/.well-known/jwks.json`,
+        jwksUri: `${process.env.AWS_COGNITO_USER_POOL_ISSUER}/.well-known/jwks.json`,
       }),
 
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      issuer: `https://${process.env.AWS_COGNITO_USER_POOL_ISSUER}/`,
+      issuer: process.env.AWS_COGNITO_USER_POOL_ISSUER,
       algorithms: ['RS256'],
+    });
+  }
+
+  static secretOrKeyProvider() {
+    return passportJwtSecret({
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+      jwksUri: `${process.env.AWS_COGNITO_USER_POOL_ISSUER}/.well-known/jwks.json`,
     });
   }
 

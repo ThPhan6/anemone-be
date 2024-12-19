@@ -21,7 +21,7 @@ import {
 
 @ApiController({
   name: 'masterdata',
-  // authRequired: true,
+  authRequired: true,
 })
 export class MasterDataController extends BaseController {
   constructor(private readonly service: SettingService) {

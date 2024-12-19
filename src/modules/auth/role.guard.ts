@@ -31,7 +31,7 @@ export class RoleGuard implements CanActivate {
         return true;
       }
 
-      const role = (context.getArgs()[0]?.user as UserDto)?.role;
+      const role = context.getArgs()[0]?.user as UserDto;
 
       const hasPermission = roles.includes(role);
 

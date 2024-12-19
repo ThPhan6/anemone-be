@@ -5,17 +5,9 @@ import { AuthModule } from './auth/auth.module';
 import { CSMModule } from './cms/cms.module';
 import { DatabaseModule } from './database.module';
 import { MobileModule } from './mobile/mobile.module';
-import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot(),
-    DatabaseModule,
-    UserModule,
-    CSMModule,
-    MobileModule,
-    AuthModule,
-  ],
+  imports: [ConfigModule.forRoot(), DatabaseModule, CSMModule, MobileModule, AuthModule],
   controllers: [],
   providers: [],
 })

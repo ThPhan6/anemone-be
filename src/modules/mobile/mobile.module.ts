@@ -7,8 +7,8 @@ import { UserProfile } from 'common/entities/user-profile.entity';
 import { UserRepository } from 'common/repositories/user.repository';
 import { UserProfileRepository } from 'common/repositories/user-profile.repository';
 import { AuthService } from 'core/services/auth.service';
+import { UserService } from 'core/services/user.service';
 import { UserProfileService } from 'core/services/user-profile.service';
-import { UserService } from 'modules/user/user.service';
 
 import { AuthController } from './v1/auth/auth.controller';
 

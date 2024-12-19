@@ -5,8 +5,8 @@ import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse, ApiDataWrapType } from 'core/decorator/apiDoc.decorator';
 import { AuthService } from 'core/services/auth.service';
+import { UserService } from 'core/services/user.service';
 import { UserProfileService } from 'core/services/user-profile.service';
-import { UserService } from 'modules/user/user.service';
 
 import { CreateUserDto, UpdateUserDto, UserGetListQueries } from './dto/user.request';
 import {
@@ -20,7 +20,7 @@ import {
 
 @ApiController({
   name: 'users',
-  // authRequired: true,
+  authRequired: true,
 })
 export class UserController extends BaseController {
   constructor(

@@ -1,15 +1,12 @@
-import { Body, Get, Post } from '@nestjs/common';
+import { Body, Post } from '@nestjs/common';
 import { MessageCode } from 'common/constants/messageCode';
 import { ApiBadRequestException } from 'common/types/apiException.type';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from 'core/decorator/apiDoc.decorator';
-import { logger } from 'core/logger/index.logger';
 import { AuthService } from 'core/services/auth.service';
+import { UserService } from 'core/services/user.service';
 import { UserProfileService } from 'core/services/user-profile.service';
-import { AuthUser } from 'modules/auth/auth-user.decorator';
-import { UserDto } from 'modules/auth/auth-user.dto';
-import { UserService } from 'modules/user/user.service';
 
 import {
   ChangePasswordDto,
@@ -139,12 +136,5 @@ export class AuthController extends BaseController {
     }
 
     return this.dataType(AuthResponseDto, result.AuthenticationResult);
-  }
-
-  @Get('me')
-  async me(@AuthUser() user: UserDto) {
-    logger.info('user', user);
-
-    return this.ok();
   }
 }

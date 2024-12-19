@@ -10,16 +10,17 @@ import { UserRepository } from 'common/repositories/user.repository';
 import { UserProfileRepository } from 'common/repositories/user-profile.repository';
 import { AuthService } from 'core/services/auth.service';
 import { SettingService } from 'core/services/setting.service';
+import { UserService } from 'core/services/user.service';
 import { UserProfileService } from 'core/services/user-profile.service';
-import { UserService } from 'modules/user/user.service';
 
 import { AuthController } from './v1/auth/auth.controller';
 import { MasterDataController } from './v1/masterdata/masterdata.controller';
-import { UserController } from './v1/user/user.controller';
+import { UserController } from './v1/user-management/user.controller';
+import { UserProfileController } from './v1/user-profile/user-profile.controller';
 
 @Module({
   imports: [ConfigModule.forRoot(), TypeOrmModule.forFeature([Setting, User, UserProfile])],
-  controllers: [MasterDataController, UserController, AuthController],
+  controllers: [MasterDataController, UserController, UserProfileController, AuthController],
   providers: [
     SettingService,
     SettingRepository,

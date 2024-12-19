@@ -2,32 +2,30 @@ import { Type } from 'class-transformer';
 import { ExposeApi } from 'core/decorator/property.decorator';
 import { Pagination, StringIdResponse } from 'core/types/response.type';
 
+export class UserProfileDto {
+  @ExposeApi()
+  name: string;
+}
+
 export class UserDetailResDto extends StringIdResponse {
   @ExposeApi()
-  userName: string;
+  email: string;
 
   @ExposeApi()
-  password: string;
+  role: string;
 
   @ExposeApi()
-  mailAddress: string;
-
-  @ExposeApi()
-  loginName: string;
-
-  @ExposeApi()
-  note: string;
-
-  @ExposeApi()
-  invalidFlg: boolean;
+  @Type(() => UserProfileDto)
+  profile: UserProfileDto;
 }
 
 export class UserListItemDto extends StringIdResponse {
   @ExposeApi()
-  public userName: string;
+  public email: string;
 
   @ExposeApi()
-  public mailAddress: string;
+  @Type(() => UserProfileDto)
+  profile: UserProfileDto;
 }
 
 export class UserCreateResDto extends StringIdResponse {}
