@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
+import { SentryExceptionCaptured } from '@sentry/nestjs';
 import { Message } from 'common/constants/app.constants';
 import { MessageCode } from 'common/constants/messageCode';
 import { ApiErrorDescription, ApiException } from 'common/types/apiException.type';
@@ -21,6 +22,7 @@ export class ExceptionFilter extends BaseExceptionFilter {
     return [NotFoundException, UnauthorizedException];
   }
 
+  @SentryExceptionCaptured()
   catch(error: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<any>();
