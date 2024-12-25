@@ -14,9 +14,8 @@ export function ApiController(options: ApiControllerOptions): ClassDecorator {
   const version = options['version'] || 'v1';
   if (name) {
     decorators.push(ApiTags(name));
-    decorators.push(
-      Controller(`api/${version}/${isMobile ? 'app/' : ''}${kebabCase(name).toLowerCase()}`),
-    );
+    const prefix = isMobile ? `${version}/app/` : '';
+    decorators.push(Controller(`api/${prefix}${kebabCase(name).toLowerCase()}`));
   } else {
     decorators.push(ApiTags(options['tags']));
     decorators.push(Controller(options['route']));

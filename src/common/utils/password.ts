@@ -7,6 +7,7 @@ enum RandomSource {
   number = '0123456789',
   alphaLower = 'abcdefghijklmnopqrstuvwxyz',
   alphaUpper = 'ABCDEFGHIJKLMNOPQRSTUXWXYZ',
+  special = '!@#$%^&*()_+{}:"<>?|[]\\;\',./`~',
 }
 
 const randString = (length: number, sources: RandomSource[], prohibitionChars: string): string => {
@@ -23,6 +24,48 @@ const randString = (length: number, sources: RandomSource[], prohibitionChars: s
   }
 
   return result;
+};
+
+export const randomPassword = (length = 8, prohibitionChars: string = ''): string => {
+  // Ensure minimum length is 8 characters
+  const adjustedLength = Math.max(8, length);
+
+  // First, get one character from each required type
+  let password = '';
+  const requiredChars = [
+    RandomSource.number,
+    RandomSource.special,
+    RandomSource.alphaUpper,
+    RandomSource.alphaLower,
+  ].map((source) => {
+    let chars: any = source;
+    // Remove prohibited characters
+    for (const c of prohibitionChars) {
+      chars = (chars as string).replace(c, '');
+    }
+
+    return chars.charAt(randomInt(0, chars.length - 1));
+  });
+
+  // Add required characters in random positions
+  password = requiredChars.join('');
+
+  // Fill the rest with random characters from all sources
+  let allCharacters = Object.values(RandomSource).join('');
+  for (const c of prohibitionChars) {
+    allCharacters = allCharacters.replace(c, '');
+  }
+
+  // Add remaining random characters
+  while (password.length < adjustedLength) {
+    password += allCharacters.charAt(randomInt(0, allCharacters.length - 1));
+  }
+
+  // Shuffle the password
+  return password
+    .split('')
+    .sort(() => Math.random() - 0.5)
+    .join('');
 };
 
 export const hashedPassword = (password: string): Promise<string> => {

@@ -1,20 +1,30 @@
 {
-  "keep": {
-    "days": false,
-    "amount": 30
-  },
-  "auditLog": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/.a06b98578bc5e5a43a17e07c07af31a7fe969fb2-audit.json",
-  "files": [
-    {
-      "date": 1734411550973,
-      "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-17.error.log",
-      "hash": "ded8eb4a6c9a626910340ed1e804f94d9787c6edf2eea5bb29f0c4955ab2b17c"
+    "keep": {
+        "days": false,
+        "amount": 30
     },
-    {
-      "date": 1734496129458,
-      "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-18.error.log",
-      "hash": "7f1591e5c86849f9b61ebd58c57f5a391aa3bc23b047ce8d7a64131879c612ab"
-    }
-  ],
-  "hashType": "sha256"
+    "auditLog": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/.a06b98578bc5e5a43a17e07c07af31a7fe969fb2-audit.json",
+    "files": [
+        {
+            "date": 1734411550973,
+            "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-17.error.log",
+            "hash": "ded8eb4a6c9a626910340ed1e804f94d9787c6edf2eea5bb29f0c4955ab2b17c"
+        },
+        {
+            "date": 1734496129458,
+            "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-18.error.log",
+            "hash": "7f1591e5c86849f9b61ebd58c57f5a391aa3bc23b047ce8d7a64131879c612ab"
+        },
+        {
+            "date": 1735033400237,
+            "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-24.error.log",
+            "hash": "5922100b96a11eaec0212f6a74fbacadfd994615256021cc95c7c2d8e93483b4"
+        },
+        {
+            "date": 1735096362058,
+            "name": "/home/ninjacoder-69/works/iot/nestjs-postgres-base/logs/error/2024-12-25.error.log",
+            "hash": "b6095b383454344d5f53967d332e74d296b732bcdc3883970e9bcac69516e17b"
+        }
+    ],
+    "hashType": "sha256"
 }

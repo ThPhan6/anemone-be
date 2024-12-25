@@ -41,7 +41,7 @@ class App {
         transformOptions: {
           excludeExtraneousValues: true,
           exposeDefaultValues: true,
-          enableImplicitConversion: true,
+          enableImplicitConversion: false,
         },
         stopAtFirstError: stopAtFirstError,
         exceptionFactory: (e) =>

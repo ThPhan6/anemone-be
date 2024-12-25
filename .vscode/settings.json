@@ -3,7 +3,9 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.tabSize": 2,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "explicit"
-  }
+    "source.fixAll.eslint": "always",
+    "source.organizeImports": "never"
+  },
+  "eslint.validate": ["javascript", "typescript"],
+  "typescript.preferences.importModuleSpecifier": "relative"
 }

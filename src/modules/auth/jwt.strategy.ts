@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { UserRole } from 'common/enums/user.enum';
 import { logger } from 'core/logger/index.logger';
 import * as dotenv from 'dotenv';
 import { passportJwtSecret } from 'jwks-rsa';
@@ -28,16 +29,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  static secretOrKeyProvider() {
-    return passportJwtSecret({
-      cache: true,
-      rateLimit: true,
-      jwksRequestsPerMinute: 5,
-      jwksUri: `${process.env.AWS_COGNITO_USER_POOL_ISSUER}/.well-known/jwks.json`,
-    });
-  }
+  validate(payload: any): any {
+    const role = payload['custom:role'] || UserRole.ADMIN;
 
-  validate(payload: unknown): unknown {
-    return payload;
+    return {
+      ...payload,
+      role,
+      isAmin: role === UserRole.ADMIN,
+    };
   }
 }

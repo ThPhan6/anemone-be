@@ -1,5 +1,13 @@
+import { Type } from 'class-transformer';
 import { ExposeApiOptional } from 'core/decorator/property.decorator';
 
+export class OrderSortDto {
+  @ExposeApiOptional()
+  name: string;
+
+  @ExposeApiOptional()
+  isDesc: boolean;
+}
 export class ApiBaseGetListQueries {
   @ExposeApiOptional()
   page?: number;
@@ -8,15 +16,16 @@ export class ApiBaseGetListQueries {
   perPage?: number;
 
   @ExposeApiOptional({
-    apiOption: { description: 'Includes soft-deleted items in result if deleted=true' },
+    apiOption: { description: 'Order by field', type: [OrderSortDto] },
   })
-  deleted?: boolean;
-}
+  @Type(() => OrderSortDto)
+  orders?: OrderSortDto[];
 
-export class ApiGetListQueries extends ApiBaseGetListQueries {
   @ExposeApiOptional()
   search?: string;
 }
+
+export class ApiGetListQueries extends ApiBaseGetListQueries {}
 
 export class ApiDeleteQueries {
   @ExposeApiOptional({
