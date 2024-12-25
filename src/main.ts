@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { BadRequestException, INestApplication, ValidationPipe } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as Sentry from '@sentry/nestjs';
 import { AppModule } from 'modules/app.module';
 
 import { ExceptionFilter } from './core/filters/exception.filter';
@@ -21,6 +22,16 @@ class App {
   }
 
   private async initApp() {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+
+      // Add Tracing by setting tracesSampleRate
+      // We recommend adjusting this value in production
+      tracesSampleRate: 1.0,
+    });
+
+    Sentry.setTag('project', 'oms');
+
     this.app = await NestFactory.create(AppModule);
     this.configApp();
 
