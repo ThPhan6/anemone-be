@@ -30,7 +30,7 @@ class App {
       tracesSampleRate: 1.0,
     });
 
-    Sentry.setTag('project', 'oms');
+    Sentry.setTag('project', 'tangent');
 
     this.app = await NestFactory.create(AppModule);
     this.configApp();
