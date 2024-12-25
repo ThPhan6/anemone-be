@@ -1,0 +1,74 @@
+#  Template NodeJS build
+
+#  This template allows you to validate your NodeJS code.
+#  The workflow allows running tests and code linting on the default branch.
+definitions:
+  services:
+    docker:
+      memory: 2048
+
+image: node:20
+
+pipelines:
+  branches:
+    develop:
+      # - step:
+      #     image: maven:3.3.9
+      #     name: SonarQube analysis
+      #     script:
+      #       - pipe: sonarsource/sonarqube-scan:1.1.0
+      #         variables:
+      #           SONAR_SCANNER_OPTS: '-Xmx512m'
+      #           SONAR_HOST_URL: ${SONAR_HOST_URL}
+      #           SONAR_TOKEN: ${SONAR_TOKEN}
+      - step:
+          image: node:20
+          name: Build docker image
+          script:
+            - if (($BITBUCKET_BUILD_NUMBER < 100 )); then TAG="0.0.${BITBUCKET_BUILD_NUMBER}-dev"; else DIV=$(($BITBUCKET_BUILD_NUMBER / 100)); MOD=$(($BITBUCKET_BUILD_NUMBER % 100)); TAG="1.${DIV}.${MOD}-dev"; fi;
+            - CONTAINER_FULL_IMAGE_NAME_WITH_TAG=$DOCKER_USER/tangent-api:$TAG
+            - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+            - docker build -f Dockerfile -t $CONTAINER_FULL_IMAGE_NAME_WITH_TAG .
+            - docker push $CONTAINER_FULL_IMAGE_NAME_WITH_TAG
+            - echo $CONTAINER_FULL_IMAGE_NAME_WITH_TAG
+          services:
+            - docker
+          size: 2x
+      - step:
+          name: Deploy to DEV server
+          script:
+            - if (($BITBUCKET_BUILD_NUMBER < 100 )); then TAG="0.0.${BITBUCKET_BUILD_NUMBER}-dev"; else DIV=$(($BITBUCKET_BUILD_NUMBER / 100)); MOD=$(($BITBUCKET_BUILD_NUMBER % 100)); TAG="1.${DIV}.${MOD}-dev"; fi;
+            - pipe: atlassian/ssh-run:0.2.2
+              variables:
+                SSH_USER: $SSH_USER
+                SERVER: $SSH_HOST
+                MODE: 'command'
+                ENV_VARS: >-
+                  TAG=${TAG}
+                COMMAND: "printf '/OPEN_API_VERSION=/s/=.*/=${TAG}/\nw\n' | ed /var/www/tangent/.env && cd /var/www/tangent && /usr/local/bin/docker-compose up -d"
+    staging:
+      - step:
+          image: node:20
+          name: Build docker image
+          script:
+            - if (($BITBUCKET_BUILD_NUMBER < 100 )); then TAG="0.0.${BITBUCKET_BUILD_NUMBER}-stag"; else DIV=$(($BITBUCKET_BUILD_NUMBER / 100)); MOD=$(($BITBUCKET_BUILD_NUMBER % 100)); TAG="1.${DIV}.${MOD}-stag"; fi;
+            - CONTAINER_FULL_IMAGE_NAME_WITH_TAG=$DOCKER_USER/tangent-api:$TAG
+            - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+            - docker build -f Dockerfile -t $CONTAINER_FULL_IMAGE_NAME_WITH_TAG .
+            - docker push $CONTAINER_FULL_IMAGE_NAME_WITH_TAG
+            - echo $CONTAINER_FULL_IMAGE_NAME_WITH_TAG
+          services:
+            - docker
+          size: 2x
+      - step:
+          name: Deploy to Staging server
+          script:
+            - if (($BITBUCKET_BUILD_NUMBER < 100 )); then TAG="0.0.${BITBUCKET_BUILD_NUMBER}-stag"; else DIV=$(($BITBUCKET_BUILD_NUMBER / 100)); MOD=$(($BITBUCKET_BUILD_NUMBER % 100)); TAG="1.${DIV}.${MOD}-stag"; fi;
+            - pipe: atlassian/ssh-run:0.2.2
+              variables:
+                SSH_USER: $SSH_STAG_USER
+                SERVER: $SSH_STAG_HOST
+                MODE: 'command'
+                ENV_VARS: >-
+                  TAG=${TAG}
+                COMMAND: "printf '/OPEN_API_VERSION=/s/=.*/=${TAG}/\nw\n' | ed /var/www/tangent/.env && cd /var/www/tangent && /usr/local/bin/docker-compose up -d"
