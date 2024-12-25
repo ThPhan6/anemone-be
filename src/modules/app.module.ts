@@ -1,13 +1,23 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { CSMModule } from './cms/cms.module';
+import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database.module';
-import { MobileModule } from './mobile/mobile.module';
+import { DeviceModule } from './device/device.module';
+import { MasterDataModule } from './masterdata/masterdata.module';
+import { ScentModule } from './scent/scent.module';
 import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), DatabaseModule, UserModule, CSMModule, MobileModule],
+  imports: [
+    ConfigModule.forRoot(),
+    DatabaseModule,
+    UserModule,
+    MasterDataModule,
+    AuthModule,
+    DeviceModule,
+    ScentModule,
+  ],
   controllers: [],
   providers: [],
 })

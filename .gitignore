@@ -54,4 +54,7 @@ Thumbs.db
 docker/.env
 docker/.env.*
 
+# Logs
+
+logs/
 

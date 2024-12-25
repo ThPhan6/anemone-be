@@ -1,27 +1,21 @@
-import { applyDecorators, Controller, UseGuards } from '@nestjs/common';
+import { applyDecorators, Controller } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PermissionGuard } from 'core/guards/permission.guard';
 import { kebabCase } from 'lodash';
 
-import { AuthRequired } from './authRequired.decorator';
-
 type ApiControllerOptions = { authRequired?: boolean } & (
-  | { name: string }
+  | { name: string; isMobile?: boolean }
   | { route: string; tags: string }
 );
 
 export function ApiController(options: ApiControllerOptions): ClassDecorator {
   const decorators: ClassDecorator[] = [];
-  if (options.authRequired) {
-    decorators.push(AuthRequired());
-    decorators.push(UseGuards(PermissionGuard));
-  }
-
   const name: string = options['name'];
+  const isMobile: boolean = options['isMobile'];
   const version = options['version'] || 'v1';
   if (name) {
     decorators.push(ApiTags(name));
-    decorators.push(Controller(`api/${version}/${kebabCase(name).toLowerCase()}`));
+    const prefix = isMobile ? `${version}/app/` : '';
+    decorators.push(Controller(`api/${prefix}${kebabCase(name).toLowerCase()}`));
   } else {
     decorators.push(ApiTags(options['tags']));
     decorators.push(Controller(options['route']));
