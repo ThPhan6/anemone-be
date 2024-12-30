@@ -45,7 +45,7 @@ pipelines:
                 MODE: 'command'
                 ENV_VARS: >-
                   TAG=${TAG}
-                COMMAND: "printf '/OPEN_API_VERSION=/s/=.*/=${TAG}/\nw\n' | ed /var/www/tangent/.env && cd /var/www/tangent && /usr/local/bin/docker-compose up -d"
+                COMMAND: "printf '/API_VERSION=/s/=.*/=${TAG}/\nw\n' | ed /var/www/tangent/.env && cd /var/www/tangent && /usr/local/bin/docker-compose up -d"
     staging:
       - step:
           image: node:20
@@ -71,4 +71,4 @@ pipelines:
                 MODE: 'command'
                 ENV_VARS: >-
                   TAG=${TAG}
-                COMMAND: "printf '/OPEN_API_VERSION=/s/=.*/=${TAG}/\nw\n' | ed /var/www/tangent/.env && cd /var/www/tangent && /usr/local/bin/docker-compose up -d"
+                COMMAND: "printf '/API_VERSION=/s/=.*/=${TAG}/\nw\n' | ed /var/www/tangent/.env && cd /var/www/tangent && /usr/local/bin/docker-compose up -d"
