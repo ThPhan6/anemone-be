@@ -42,7 +42,7 @@ export class ChangePasswordDto {
 
 export class UserGetListQueries extends ApiBaseGetListQueries {
   @ExposeApiOptional()
-  role: UserRole;
+  role: UserRole[];
 
   @ExposeApiOptional()
   isActive: boolean;

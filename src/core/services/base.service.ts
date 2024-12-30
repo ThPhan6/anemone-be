@@ -106,6 +106,12 @@ export class BaseService<T extends { id: string }> {
           return;
         }
 
+        if (Array.isArray(restQuery[key])) {
+          qb.andWhere(`${key} IN (:...${key})`, { [key]: restQuery[key] });
+
+          return;
+        }
+
         qb.andWhere(`entity.${key} = :${key}`, { [key]: restQuery[key] });
       });
     }
