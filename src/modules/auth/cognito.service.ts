@@ -29,6 +29,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { AwsConfigService } from 'common/config/aws.config';
 import { UserRole } from 'common/enums/user.enum';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class CognitoService {
@@ -39,12 +40,15 @@ export class CognitoService {
   }
 
   async signIn(email: string, password: string): Promise<InitiateAuthCommandOutput> {
+    const secretHash = this.calculateSecretHash(email);
+
     const params: InitiateAuthCommandInput = {
       AuthFlow: 'USER_PASSWORD_AUTH',
       ClientId: this.awsConfigService.userPoolClientId,
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,
+        SECRET_HASH: secretHash,
       },
     };
 
@@ -58,12 +62,15 @@ export class CognitoService {
     newPassword: string,
     session: string,
   ): Promise<RespondToAuthChallengeCommandOutput> {
+    const secretHash = this.calculateSecretHash(email);
+
     const params: RespondToAuthChallengeCommandInput = {
       ChallengeName: 'NEW_PASSWORD_REQUIRED',
       ClientId: this.awsConfigService.userPoolClientId,
       ChallengeResponses: {
         USERNAME: email,
         NEW_PASSWORD: newPassword,
+        SECRET_HASH: secretHash,
       },
       Session: session,
     };
@@ -87,9 +94,12 @@ export class CognitoService {
   }
 
   async resetPassword(email: string): Promise<ForgotPasswordCommandOutput> {
+    const secretHash = this.calculateSecretHash(email);
+
     const params: ForgotPasswordCommandInput = {
       ClientId: this.awsConfigService.userPoolClientId,
       Username: email,
+      SecretHash: secretHash,
     };
 
     const command = new ForgotPasswordCommand(params);
@@ -155,12 +165,15 @@ export class CognitoService {
   }
 
   async refreshToken(refreshToken: string): Promise<AdminInitiateAuthCommandOutput> {
+    const secretHash = this.calculateSecretHash(refreshToken);
+
     const params: AdminInitiateAuthCommandInput = {
       AuthFlow: 'REFRESH_TOKEN_AUTH',
       ClientId: this.awsConfigService.userPoolClientId,
       UserPoolId: this.awsConfigService.userPoolId,
       AuthParameters: {
         REFRESH_TOKEN: refreshToken,
+        SECRET_HASH: secretHash,
       },
     };
 
@@ -188,5 +201,15 @@ export class CognitoService {
     } catch (error) {
       return error;
     }
+  }
+
+  private calculateSecretHash(username: string): string {
+    const clientId = this.awsConfigService.userPoolClientId;
+    const clientSecret = this.awsConfigService.userPoolClientSecret;
+
+    return crypto
+      .createHmac('SHA256', clientSecret)
+      .update(username + clientId)
+      .digest('base64');
   }
 }
