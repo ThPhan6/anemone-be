@@ -6,6 +6,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { logger } from 'core/logger/index.logger';
 
+import { UserRole } from '../../common/enums/user.enum';
 import { ApiUnauthorizedException } from '../../common/types/apiException.type';
 import { UserDto } from '../../modules/auth/dto/auth-user.dto';
 import { PermDecoratorOptions } from '../decorator/auth.decorator';
@@ -38,10 +39,10 @@ export class RoleGuard implements CanActivate {
 
       if (!token) {
         throw new ApiUnauthorizedException();
-      } // Check if the token has been revoked
+      }
 
-      const isRevoked = await this.isTokenRevoked(token);
-      if (isRevoked) {
+      const userInfo = await this.getUser(token);
+      if (!userInfo) {
         throw new ApiUnauthorizedException();
       }
 
@@ -56,9 +57,16 @@ export class RoleGuard implements CanActivate {
         return true;
       }
 
-      const user = context.getArgs()[0]?.user as UserDto;
+      const role = userInfo.UserAttributes.find((x) => x.Name === 'custom:role')?.Value as UserRole;
 
-      const hasPermission = roles.includes(user.role);
+      const user = context.getArgs()[0]?.user as UserDto;
+      user.role = role;
+      user.isAdmin = role === UserRole.ADMIN;
+
+      // set user role
+      request.user = user;
+
+      const hasPermission = roles.includes(role);
 
       return hasPermission;
     } catch (error) {
@@ -68,21 +76,19 @@ export class RoleGuard implements CanActivate {
     }
   }
 
-  private async isTokenRevoked(token: string): Promise<boolean> {
+  private async getUser(token: string) {
     try {
       const params = {
         AccessToken: token,
       };
 
-      await this.cognitoClient.send(new GetUserCommand(params));
-
-      return false;
+      return this.cognitoClient.send(new GetUserCommand(params));
     } catch (error) {
       if (
         error.name === 'NotAuthorizedException' &&
         error.message === 'Access Token has been revoked'
       ) {
-        return true;
+        return null;
       }
 
       throw error;

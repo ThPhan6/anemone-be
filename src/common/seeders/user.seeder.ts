@@ -42,6 +42,7 @@ export class UserSeeder extends BaseSeeder {
         UserAttributes: [
           { Name: 'email', Value: user.email },
           { Name: 'name', Value: user.name },
+          { Name: 'custom:role', Value: user.role },
         ],
         TemporaryPassword: user.password,
       };

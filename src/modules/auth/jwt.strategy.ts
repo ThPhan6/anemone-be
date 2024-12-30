@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { UserRole } from 'common/enums/user.enum';
 import { logger } from 'core/logger/index.logger';
 import * as dotenv from 'dotenv';
 import { passportJwtSecret } from 'jwks-rsa';
@@ -30,12 +29,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: any): any {
-    const role = payload['custom:role'] || UserRole.ADMIN;
-
-    return {
-      ...payload,
-      role,
-      isAmin: role === UserRole.ADMIN,
-    };
+    return payload;
   }
 }
