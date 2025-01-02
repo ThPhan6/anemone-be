@@ -91,7 +91,7 @@ export class AuthCMSController extends BaseController {
   })
   @Post('refresh-token')
   async refreshToken(@Body() body: RefreshTokenDto) {
-    const result = await this.cognitoService.refreshToken(body.refreshToken);
+    const result = await this.cognitoService.refreshToken(body.refreshToken, body.email);
 
     if (!result.AuthenticationResult) {
       throw new ApiBadRequestException(MessageCode.badRequest, 'Invalid refresh token');

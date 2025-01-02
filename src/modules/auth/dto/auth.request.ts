@@ -33,6 +33,9 @@ export class ChangePasswordDto {
 export class RefreshTokenDto {
   @CheckAny({ required: true })
   refreshToken: string;
+
+  @CheckAny({ required: true })
+  email: string;
 }
 
 export class SignOutDto {

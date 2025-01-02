@@ -113,14 +113,14 @@ export class CognitoService {
     name: string;
     role: UserRole;
   }): Promise<AdminCreateUserCommandOutput> {
-    const { email, password, name } = data;
+    const { email, password, name, role } = data;
     const params: AdminCreateUserCommandInput = {
       UserPoolId: this.awsConfigService.userPoolId,
       Username: email,
       UserAttributes: [
         { Name: 'email', Value: email },
         { Name: 'name', Value: name },
-        // { Name: 'custom:role', Value: role },
+        { Name: 'custom:role', Value: role },
       ],
       TemporaryPassword: password,
     };
@@ -135,16 +135,16 @@ export class CognitoService {
     name: string;
     role: UserRole;
   }): Promise<AdminUpdateUserAttributesCommandOutput> {
-    const { email, name } = data;
+    const { email, name, role } = data;
     const params: AdminUpdateUserAttributesCommandInput = {
       UserPoolId: this.awsConfigService.userPoolId,
       Username: email,
       UserAttributes: [
         { Name: 'name', Value: name },
-        // {
-        //   Name: 'custom:role',
-        //   Value: role,
-        // },
+        {
+          Name: 'custom:role',
+          Value: role,
+        },
       ],
     };
 
@@ -164,8 +164,11 @@ export class CognitoService {
     return this.cognitoClient.send(command);
   }
 
-  async refreshToken(refreshToken: string): Promise<AdminInitiateAuthCommandOutput> {
-    const secretHash = this.calculateSecretHash(refreshToken);
+  async refreshToken(
+    refreshToken: string,
+    username: string,
+  ): Promise<AdminInitiateAuthCommandOutput> {
+    const secretHash = this.calculateSecretHash(username);
 
     const params: AdminInitiateAuthCommandInput = {
       AuthFlow: 'REFRESH_TOKEN_AUTH',
