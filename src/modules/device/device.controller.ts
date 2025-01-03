@@ -1,4 +1,15 @@
-import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MessageCode } from 'common/constants/messageCode';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
@@ -42,6 +53,14 @@ export class DeviceController extends BaseController {
         type: DeviceType.IOT,
       }),
     );
+  }
+
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file', { dest: './uploads' }))
+  async importDevices(@UploadedFile() file: Express.Multer.File) {
+    await this.service.importDevicesFromCsv(file);
+
+    return this.ok();
   }
 
   @ApiBaseOkResponse({

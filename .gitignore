@@ -58,3 +58,5 @@ docker/.env.*
 
 logs/
 
+# Upload folder
+uploads/

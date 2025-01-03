@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { MulterModule } from '@nestjs/platform-express';
 import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AuthModule } from './auth/auth.module';
@@ -19,6 +20,9 @@ import { UserModule } from './user/user.module';
     AuthModule,
     DeviceModule,
     ScentModule,
+    MulterModule.register({
+      dest: './uploads',
+    }),
   ],
   controllers: [],
   providers: [],
