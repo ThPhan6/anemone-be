@@ -1,12 +1,12 @@
 import { DeviceType } from 'common/enums/device.enum';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-import { BaseEntity } from './base.entity';
+import { BaseEntityNumberId } from './base.entity';
 import { Setting } from './setting.entity';
 import { User } from './user.entity';
 
 @Entity('devices')
-export class Device extends BaseEntity {
+export class Device extends BaseEntityNumberId {
   @Column()
   public name: string;
 

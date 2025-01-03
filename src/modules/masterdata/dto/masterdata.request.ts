@@ -1,5 +1,5 @@
 import { IsEnum } from 'class-validator';
-import { SettingType } from 'common/enums/setting.enum';
+import { SettingDataType, SettingType } from 'common/enums/setting.enum';
 import { ExposeApiOptional } from 'core/decorator/property.decorator';
 import { CheckAny } from 'core/decorator/validators/checkAny.decorator';
 import { ApiBaseGetListQueries } from 'core/types/apiQuery.type';
@@ -10,6 +10,10 @@ export class CreateMasterDataDto {
 
   @CheckAny({ required: false })
   value: string;
+
+  @CheckAny({ required: false })
+  @IsEnum(SettingDataType)
+  dataType: SettingDataType;
 
   @CheckAny({ required: true })
   @IsEnum(SettingType)
@@ -22,6 +26,10 @@ export class UpdateMasterDataDto {
 
   @CheckAny({ required: false })
   value: string;
+
+  @CheckAny({ required: false })
+  @IsEnum(SettingDataType)
+  dataType: SettingDataType;
 }
 
 export class MasterDataGetListQueries extends ApiBaseGetListQueries {
@@ -33,4 +41,7 @@ export class MasterDataGetListQueries extends ApiBaseGetListQueries {
 
   @ExposeApiOptional()
   type: SettingType;
+
+  @ExposeApiOptional()
+  dataType: SettingType;
 }

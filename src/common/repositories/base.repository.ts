@@ -40,7 +40,7 @@ export type SoftDeleteCriteria =
   | ObjectId[]
   | any;
 
-export class BaseRepository<T extends { id: string }> {
+export class BaseRepository<T extends { id: string | number }> {
   constructor(
     private readonly target: EntityTarget<T>,
     private readonly dataSource: DataSource,

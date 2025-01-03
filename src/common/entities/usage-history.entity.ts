@@ -1,11 +1,11 @@
 import { UsageHistoryType } from 'common/enums/device.enum';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-import { BaseEntity } from './base.entity';
+import { BaseEntityNumberId } from './base.entity';
 import { User } from './user.entity';
 
 @Entity('usage_histories')
-export class UsageHistory extends BaseEntity {
+export class UsageHistory extends BaseEntityNumberId {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   public user: User;

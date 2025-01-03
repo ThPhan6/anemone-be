@@ -1,10 +1,10 @@
 import { Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-import { BaseEntity } from './base.entity';
+import { BaseEntityNumberId } from './base.entity';
 import { Device } from './device.entity';
 
 @Entity('device_links')
-export class DeviceLink extends BaseEntity {
+export class DeviceLink extends BaseEntityNumberId {
   @ManyToOne(() => Device)
   @JoinColumn({ name: 'device_id' })
   public device: Device;

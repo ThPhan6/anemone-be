@@ -1,9 +1,9 @@
 import { Column, Entity } from 'typeorm';
 
-import { BaseEntity } from './base.entity';
+import { BaseEntityNumberId } from './base.entity';
 
 @Entity('scents')
-export class Scent extends BaseEntity {
+export class Scent extends BaseEntityNumberId {
   @Column()
   public name: string;
 }

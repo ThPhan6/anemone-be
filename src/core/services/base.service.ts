@@ -14,7 +14,7 @@ import {
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 @Injectable()
-export class BaseService<T extends { id: string }> {
+export class BaseService<T extends { id: string | number }> {
   constructor(public repository: BaseRepository<T>) {}
 
   async exists(options?: FindManyOptions<T>) {
@@ -40,7 +40,7 @@ export class BaseService<T extends { id: string }> {
     return this.repository.updateMany(criteria, partialEntity);
   }
 
-  async delete(id: string) {
+  async delete(id: string | number) {
     return this.repository.softDelete(id);
   }
 
@@ -52,7 +52,7 @@ export class BaseService<T extends { id: string }> {
     return this.repository.findOne(options);
   }
 
-  async findById(id: string) {
+  async findById(id: string | number) {
     return this.repository.findOneBy({ id } as FindOptionsWhere<T>);
   }
 

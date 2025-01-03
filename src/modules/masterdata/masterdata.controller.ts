@@ -5,6 +5,10 @@ import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse, ApiDataWrapType } from 'core/decorator/apiDoc.decorator';
 import { RbacStaff } from 'core/decorator/auth.decorator';
 
+import { SettingType } from '../../common/enums/setting.enum';
+import { ApiNotFoundException } from '../../common/types/apiException.type';
+import { AuthUser } from '../../core/decorator/auth-user.decorator';
+import { UserDto } from '../auth/dto/auth-user.dto';
 import {
   CreateMasterDataDto,
   MasterDataGetListQueries,
@@ -37,8 +41,12 @@ export class MasterDataController extends BaseController {
     `,
   })
   @Post()
-  async create(@Body() body: CreateMasterDataDto) {
-    return this.dataType(MasterDataCreateResDto, await this.service.create(body));
+  async create(@Body() body: CreateMasterDataDto, @AuthUser() { isAdmin }: UserDto) {
+    if (!isAdmin) {
+      body.type = SettingType.CATEGORY;
+    }
+
+    return this.dataType(MasterDataCreateResDto, await this.service.createData(body));
   }
 
   @ApiBaseOkResponse({
@@ -50,11 +58,12 @@ export class MasterDataController extends BaseController {
     `,
   })
   @Get()
-  async list(@Query() queries: MasterDataGetListQueries) {
-    return this.dataType(
-      MasterDataListResDto,
-      await this.service.findAll(queries, undefined, ['name']),
-    );
+  async list(@Query() queries: MasterDataGetListQueries, @AuthUser() { isAdmin }: UserDto) {
+    if (!isAdmin) {
+      queries.type = SettingType.CATEGORY;
+    }
+
+    return this.dataType(MasterDataListResDto, await this.service.getList(queries));
   }
 
   @ApiBaseOkResponse({
@@ -66,8 +75,15 @@ export class MasterDataController extends BaseController {
     `,
   })
   @Get(':id')
-  async detail(@Param('id') id: string) {
-    return this.dataType(MasterDataDetailResDto, await this.service.findById(id));
+  async detail(@Param('id') id: number, @AuthUser() { isAdmin }: UserDto) {
+    const setting = await this.service.getById(id);
+    if (!isAdmin) {
+      if (setting.type !== SettingType.CATEGORY) {
+        throw new ApiNotFoundException();
+      }
+    }
+
+    return this.dataType(MasterDataDetailResDto, setting);
   }
 
   @ApiBaseOkResponse({
@@ -78,10 +94,19 @@ export class MasterDataController extends BaseController {
     `,
   })
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateMasterDataDto) {
-    await this.service.update(id, body);
+  async update(
+    @Param('id') id: number,
+    @Body() body: UpdateMasterDataDto,
+    @AuthUser() { isAdmin }: UserDto,
+  ) {
+    const setting = await this.service.getById(id);
+    if (!isAdmin) {
+      if (setting.type !== SettingType.CATEGORY) {
+        throw new ApiNotFoundException();
+      }
+    }
 
-    return this.dataType(MasterDataUpdateResDto, this.service.findById(id));
+    return this.dataType(MasterDataUpdateResDto, await this.service.updateData(id, body));
   }
 
   @ApiBaseOkResponse({
@@ -92,7 +117,14 @@ export class MasterDataController extends BaseController {
     `,
   })
   @Delete(':id')
-  async delete(@Param('id') id: string) {
+  async delete(@Param('id') id: number, @AuthUser() { isAdmin }: UserDto) {
+    const setting = await this.service.getById(id);
+    if (!isAdmin) {
+      if (setting.type !== SettingType.CATEGORY) {
+        throw new ApiNotFoundException();
+      }
+    }
+
     const result = await this.service.delete(id);
 
     return this.dataType(MasterDataDeleteResDto, result);
