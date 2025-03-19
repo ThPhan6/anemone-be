@@ -16,7 +16,6 @@ import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse, ApiDataWrapType } from 'core/decorator/apiDoc.decorator';
 import { RbacStaff } from 'core/decorator/auth.decorator';
 
-import { DeviceType } from '../../common/enums/device.enum';
 import { DeviceService } from './device.service';
 import { CreateDeviceDto, DeviceGetListQueries, UpdateDeviceDto } from './dto/device.request';
 import {
@@ -50,7 +49,6 @@ export class DeviceController extends BaseController {
       DeviceCreateResDto,
       await this.service.create({
         ...body,
-        type: DeviceType.IOT,
       }),
     );
   }

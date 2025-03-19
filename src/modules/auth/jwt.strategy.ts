@@ -10,7 +10,7 @@ dotenv.config();
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
-    if (!process.env.AWS_COGNITO_USER_POOL_ISSUER) {
+    if (!process.env.AWS_COGNITO_ISSUER) {
       logger.error('JwtStrategy Init failed - missing env.');
     }
 
@@ -19,11 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `${process.env.AWS_COGNITO_USER_POOL_ISSUER}/.well-known/jwks.json`,
+        jwksUri: `${process.env.AWS_COGNITO_ISSUER}/.well-known/jwks.json`,
       }),
 
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      issuer: process.env.AWS_COGNITO_USER_POOL_ISSUER,
+      issuer: process.env.AWS_COGNITO_ISSUER,
       algorithms: ['RS256'],
     });
   }

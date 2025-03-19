@@ -23,8 +23,8 @@ export class StorageService {
   private bucket: string;
 
   constructor(private readonly configService: ConfigService) {
-    const accessKeyId = configService.get('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = configService.get('AWS_SECRET_ACCESS_KEY');
+    const accessKeyId = configService.get('AWS_ACCESS_KEY');
+    const secretAccessKey = configService.get('AWS_SECRET_KEY');
     const region = configService.get('AWS_REGION');
     const fileDir = configService.get('FILE_DIR') ?? 'files';
     this.bucket = configService.get('AWS_BUCKET');

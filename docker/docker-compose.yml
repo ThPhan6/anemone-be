@@ -1,28 +1,33 @@
 version: '3'
 services:
-  pg-write:
-    container_name: tangent-db
-    image: 'bitnami/postgresql:15.2.0'
-    restart: 'always'
+  # Postgres Service
+  postgres:
+    image: postgres:13.3
+    restart: on-failure
+    container_name: anemone_db
+    ports:
+      - 5436:5432
     environment:
-      - POSTGRES_USER=$POSTGRES_USER
-      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-      - POSTGRES_DB=$POSTGRES_DB
-    ports:
-      - '$POSTGRES_PORT:5432'
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     networks:
-      - tangent-network
-  app:
-    container_name: tangent-app
-    build:
-      context: ../
-      dockerfile: Dockerfile
+      - anemone-network
+    volumes:
+      - anemone:/var/lib/postgresql/data
+  # IOT Data
+  dynamo:
+    image: amazon/dynamodb-local:2.5.4
+    container_name: anemone_dynamo
     ports:
-      - 4000:3000
-    depends_on:
-      - pg-write
+      - 8888:8000
+    volumes:
+      - anemone-iot:/data
     networks:
-      - tangent-network
+      - anemone-network
 
 networks:
-  tangent-network: {}
+  anemone-network: {}
+volumes:
+  anemone: {}
+  anemone-iot: {}

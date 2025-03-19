@@ -1,7 +1,7 @@
 {
-  "name": "deves",
+  "name": "anemone-api",
   "version": "0.0.1",
-  "description": "DevES",
+  "description": "Anemone API",
   "author": "",
   "private": true,
   "scripts": {

@@ -21,10 +21,10 @@ export class AwsConfigService {
   }
 
   get userPoolClientId() {
-    return this.configService.get<string>('AWS_COGNITO_USER_POOL_CLIENT_ID');
+    return this.configService.get<string>('AWS_COGNITO_CLIENT_ID');
   }
 
   get userPoolClientSecret() {
-    return this.configService.get<string>('AWS_COGNITO_USER_POOL_CLIENT_SECRET');
+    return this.configService.get<string>('AWS_COGNITO_CLIENT_SECRET');
   }
 }

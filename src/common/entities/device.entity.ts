@@ -1,23 +1,39 @@
-import { DeviceType } from 'common/enums/device.enum';
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 
-import { BaseEntityNumberId } from './base.entity';
-import { Setting } from './setting.entity';
+import { BaseEntity } from './base.entity';
+import { DeviceCartridge } from './device-cartridge.entity';
+import { Family } from './family.entity';
+import { Product } from './product.entity';
+import { Space } from './space.entity';
 import { User } from './user.entity';
 
 @Entity('devices')
-export class Device extends BaseEntityNumberId {
-  @Column()
-  public name: string;
+export class Device extends BaseEntity {
+  @Column({ name: 'name' })
+  name: string;
 
-  @Column({ type: 'enum', enum: DeviceType })
-  public type: DeviceType;
-
-  @ManyToOne(() => Setting)
-  @JoinColumn({ name: 'category_id' })
-  public category: Setting;
+  @Column({ name: 'warranty_expiration_date', nullable: true })
+  warrantyExpirationDate: Date;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'created_by' })
-  public createdBy: User;
+  @JoinColumn({ name: 'registered_by' })
+  registeredBy: User;
+
+  @Column({ name: 'is_connected', default: false })
+  isConnected: boolean;
+
+  @OneToOne(() => Product)
+  @JoinColumn({ name: 'serial_number' })
+  serialNumber: string;
+
+  @ManyToOne(() => Space, (space) => space.devices)
+  @JoinColumn({ name: 'space_id' })
+  space: Space;
+
+  @ManyToOne(() => Family, (family) => family.devices)
+  @JoinColumn({ name: 'family_id' })
+  family: Family;
+
+  @OneToMany(() => DeviceCartridge, (cartridge) => cartridge.device)
+  cartridges: DeviceCartridge[];
 }

@@ -24,13 +24,27 @@ export class UserSeeder extends BaseSeeder {
         password: 'Tan.gent@123!',
         name: 'Admin',
       },
+      {
+        email: 'staff@tangent.com',
+        role: UserRole.STAFF,
+        isActive: true,
+        password: 'Tan.gent@123!',
+        name: 'Staff',
+      },
+      {
+        email: 'member@tangent.com',
+        role: UserRole.MEMBER,
+        isActive: true,
+        password: 'Tan.gent@123!',
+        name: 'Member',
+      },
     ];
 
     const client = new CognitoIdentityProviderClient({
       region: process.env.AWS_REGION,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        accessKeyId: process.env.AWS_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_SECRET_KEY,
       },
     });
 
