@@ -19,8 +19,8 @@ export class Device extends BaseEntity {
   @JoinColumn({ name: 'registered_by' })
   registeredBy: User;
 
-  @Column({ name: 'is_connected', default: false })
-  isConnected: boolean;
+  @Column({ name: 'last_ping_at', nullable: true })
+  lastPingAt: Date;
 
   @OneToOne(() => Product)
   @JoinColumn({ name: 'serial_number' })

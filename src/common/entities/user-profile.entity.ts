@@ -28,8 +28,8 @@ export class UserProfile extends BaseEntity {
   @Column({ name: 'is_public', default: false })
   public isPublic: boolean;
 
-  @Column({ name: 'allow_follower_access', default: false })
-  public allowFollowerAccess: boolean;
+  @Column({ name: 'follower_access', default: false })
+  public followerAccess: boolean;
 
   // Region settings
   @Column({ name: 'locale', nullable: true })

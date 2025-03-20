@@ -1,0 +1,33 @@
+version: '3'
+services:
+  # Postgres Service
+  postgres:
+    image: postgres:13.3
+    restart: on-failure
+    container_name: anemone_db
+    ports:
+      - 5436:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - anemone-network
+    volumes:
+      - anemone:/var/lib/postgresql/data
+  # IOT Data
+  dynamo:
+    image: amazon/dynamodb-local:2.5.4
+    container_name: anemone_dynamo
+    ports:
+      - 8888:8000
+    volumes:
+      - anemone-iot:/data
+    networks:
+      - anemone-network
+
+networks:
+  anemone-network: {}
+volumes:
+  anemone: {}
+  anemone-iot: {}

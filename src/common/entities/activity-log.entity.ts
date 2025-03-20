@@ -3,6 +3,16 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne } from 'typeorm
 import { AutoUUIDEntity } from './entity';
 import { User } from './user.entity';
 
+export enum ActivityAction {
+  LOGIN = 'LOGIN',
+  LOGOUT = 'LOGOUT',
+  PASSWORD_CHANGE = 'PASSWORD_CHANGE',
+  SETTINGS_CHANGE = 'SETTINGS_CHANGE',
+  DEVICE_PAIR = 'DEVICE_PAIR',
+  DEVICE_UNPAIR = 'DEVICE_UNPAIR',
+  PLAYLIST_CREATE = 'PLAYLIST_CREATE',
+}
+
 @Entity('activity_logs')
 export class ActivityLog extends AutoUUIDEntity {
   @ManyToOne(() => User)
@@ -10,19 +20,19 @@ export class ActivityLog extends AutoUUIDEntity {
   public user: User;
 
   @Column({
-    name: 'target_id',
+    name: 'entity_id',
     type: 'uuid',
   })
-  public targetId: string;
+  public entityId: string;
 
   @Column({
-    name: 'target_type',
+    name: 'entity',
     length: 64,
   })
-  public targetType: string;
+  public entity: string;
 
   @Column()
-  public action: string;
+  public action: ActivityAction;
 
   @Column({ type: 'json', name: 'old_data' })
   public oldData: Record<string, any>;

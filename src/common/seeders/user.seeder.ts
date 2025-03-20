@@ -22,21 +22,21 @@ export class UserSeeder extends BaseSeeder {
         role: UserRole.ADMIN,
         isActive: true,
         password: 'Tan.gent@123!',
-        name: 'Admin',
+        name: 'Anemone Admin',
       },
       {
         email: 'staff@tangent.com',
         role: UserRole.STAFF,
         isActive: true,
         password: 'Tan.gent@123!',
-        name: 'Staff',
+        name: 'Anemone Staff',
       },
       {
         email: 'member@tangent.com',
         role: UserRole.MEMBER,
         isActive: true,
         password: 'Tan.gent@123!',
-        name: 'Member',
+        name: 'Anemone Member',
       },
     ];
 
