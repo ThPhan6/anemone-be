@@ -28,8 +28,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { Injectable } from '@nestjs/common';
 import { AwsConfigService } from 'common/config/aws.config';
-import { UserRole } from 'common/enums/user.enum';
 import * as crypto from 'crypto';
+import { UserRole } from 'modules/user/user.type';
 
 @Injectable()
 export class CognitoService {

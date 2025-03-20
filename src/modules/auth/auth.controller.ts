@@ -1,12 +1,12 @@
 import { Body, Post } from '@nestjs/common';
 import { MessageCode } from 'common/constants/messageCode';
-import { UserRole } from 'common/enums/user.enum';
 import { ApiBadRequestException } from 'common/types/apiException.type';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from 'core/decorator/apiDoc.decorator';
 import { UserProfileService } from 'core/services/user-profile.service';
 import { UserService } from 'modules/user/service/user.service';
+import { UserRole } from 'modules/user/user.type';
 
 import { CognitoService } from './cognito.service';
 import {

@@ -6,9 +6,9 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { logger } from 'core/logger/index.logger';
 
-import { UserRole } from '../../common/enums/user.enum';
 import { ApiUnauthorizedException } from '../../common/types/apiException.type';
 import { UserDto } from '../../modules/auth/dto/auth-user.dto';
+import { UserRole } from '../../modules/user/user.type';
 import { PermDecoratorOptions } from '../decorator/auth.decorator';
 
 export const PERM_KEY = 'roles';

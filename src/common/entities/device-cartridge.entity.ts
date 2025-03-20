@@ -14,6 +14,9 @@ export class DeviceCartridge extends BaseEntity {
 
   @OneToOne(() => Product)
   @JoinColumn({ name: 'serial_number' })
+  product: Product;
+
+  @Column({ name: 'serial_number' })
   serialNumber: string;
 
   @Column({ name: 'percentage', type: 'numeric' })

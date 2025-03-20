@@ -24,6 +24,9 @@ export class Device extends BaseEntity {
 
   @OneToOne(() => Product)
   @JoinColumn({ name: 'serial_number' })
+  product: Product;
+
+  @Column({ name: 'serial_number' })
   serialNumber: string;
 
   @ManyToOne(() => Space, (space) => space.devices)

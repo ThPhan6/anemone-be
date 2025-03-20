@@ -1,4 +1,4 @@
-import { UserRole } from 'common/enums/user.enum';
+import { UserRole } from 'modules/user/user.type';
 import { Column, Entity, OneToOne } from 'typeorm';
 
 import { BaseEntity } from './base.entity';

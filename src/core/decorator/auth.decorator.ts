@@ -1,7 +1,7 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { UserRole } from 'common/enums/user.enum';
+import { UserRole } from 'modules/user/user.type';
 
 import { PERM_KEY, PERM_OPTION_KEY, RoleGuard } from '../guards/role.guard';
 

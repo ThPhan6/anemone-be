@@ -4,7 +4,6 @@ import { DeviceRepository } from 'common/repositories/device.repository';
 import * as csv from 'csvtojson';
 import { unlinkSync } from 'fs';
 
-import { DeviceType } from '../../common/enums/device.enum';
 import { BaseService } from '../../core/services/base.service';
 import { ImportDeviceDto } from './dto/device.request';
 
@@ -34,7 +33,6 @@ export class DeviceService extends BaseService<Device> {
           jsonObj.forEach((row) => {
             devices.push({
               name: row.Name,
-              type: DeviceType.IOT,
             });
           });
 

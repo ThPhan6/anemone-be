@@ -5,8 +5,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { User } from 'common/entities/user.entity';
 import { UserProfile } from 'common/entities/user-profile.entity';
-import { UserRole } from 'common/enums/user.enum';
 import { logger } from 'core/logger/index.logger';
+import { UserRole } from 'modules/user/user.type';
 import { DataSource } from 'typeorm';
 
 import { BaseSeeder } from './base.seeder';

@@ -1,9 +1,9 @@
 import { IsEmail, IsEnum } from 'class-validator';
-import { UserRole } from 'common/enums/user.enum';
 import { ExposeApiOptional } from 'core/decorator/property.decorator';
 import { CheckAny } from 'core/decorator/validators/checkAny.decorator';
 import { IsPassword } from 'core/decorator/validators/password.decorator';
 import { ApiBaseGetListQueries } from 'core/types/apiQuery.type';
+import { UserRole } from 'modules/user/user.type';
 
 export class CreateUserDto {
   @CheckAny({ required: true })

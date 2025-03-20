@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { User } from 'common/entities/user.entity';
-import { UserRole } from 'common/enums/user.enum';
 import { UserRepository } from 'common/repositories/user.repository';
 import { UserGetListQueries } from 'modules/user/dto/user.request';
+import { UserRole } from 'modules/user/user.type';
 import { FindOptionsWhere } from 'typeorm';
 
 import { BaseService } from '../../../core/services/base.service';
