@@ -8,8 +8,8 @@ services:
     ports:
       - 5436:5432
     environment:
-      POSTGRES_USER: postgre
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: d67ef7328d21619caf3db00045c7630b
       POSTGRES_DB: anemone
     networks:
       - anemone-network
