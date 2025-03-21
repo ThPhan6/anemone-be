@@ -8,9 +8,9 @@ services:
     ports:
       - 5436:5432
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: d67ef7328d21619caf3db00045c7630b
+      POSTGRES_DB: anemone
     networks:
       - anemone-network
     volumes:
@@ -25,7 +25,19 @@ services:
       - anemone-iot:/data
     networks:
       - anemone-network
-
+  api:
+    container_name: anemone_api
+    image: tuanes/tangent-api:0.0.1
+    restart: unless-stopped
+    env_file:
+      - ./.api.env
+    ports:
+      - 8000:80
+    depends_on:
+      - postgres
+      - dynamo
+    networks:
+      - anemone-network
 networks:
   anemone-network: {}
 volumes:
