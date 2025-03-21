@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-import { BaseEntity } from './base.entity';
+import { BaseEntity } from '../../../common/entities/base.entity';
 import { Device } from './device.entity';
 
 @Entity('device_commands')

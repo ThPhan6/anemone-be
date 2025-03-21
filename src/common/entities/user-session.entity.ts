@@ -1,8 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
+import { Device } from '../../modules/device/entities/device.entity';
 import { Album } from './album.entity';
 import { BaseEntity } from './base.entity';
-import { Device } from './device.entity';
 import { Playlist } from './playlist.entity';
 import { Scent } from './scent.entity';
 import { User } from './user.entity';

@@ -16,7 +16,7 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "baseUrl": "./src/",
+    "baseUrl": "src",
     "resolveJsonModule": true
   },
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]

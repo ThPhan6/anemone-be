@@ -2,16 +2,36 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Device } from '../../common/entities/device.entity';
-import { DeviceCartridge } from '../../common/entities/device-cartridge.entity';
-import { Product } from '../../common/entities/product.entity';
-import { DeviceRepository } from '../../common/repositories/device.repository';
-import { DeviceController } from './device.controller';
-import { DeviceService } from './device.service';
-
+import { Category } from '../../common/entities/category.entity';
+import { SystemSetting } from '../../common/entities/system-setting.entity';
+import { StorageModule } from '../storage/storage.module';
+import { DeviceController } from './controllers/device.controller';
+import { DeviceIotController } from './controllers/device-iot.controller';
+import { Device } from './entities/device.entity';
+import { DeviceCartridge } from './entities/device-cartridge.entity';
+import { DeviceCertificate } from './entities/device-certificate.entity';
+import { DeviceCommand } from './entities/device-command.entity';
+import { Product } from './entities/product.entity';
+import { AwsIotCoreService } from './services/aws-iot-core.service';
+import { DeviceService } from './services/device.service';
+import { DeviceCertificateService } from './services/device-certificate.service';
+import { DeviceIotService } from './services/device-iot.service';
 @Module({
-  imports: [ConfigModule.forRoot(), TypeOrmModule.forFeature([Device, Product, DeviceCartridge])],
-  controllers: [DeviceController],
-  providers: [DeviceService, DeviceRepository],
+  imports: [
+    ConfigModule,
+    StorageModule,
+    TypeOrmModule.forFeature([
+      Device,
+      DeviceCertificate,
+      DeviceCartridge,
+      DeviceCommand,
+      Product,
+      Category,
+      SystemSetting,
+    ]),
+  ],
+  controllers: [DeviceController, DeviceIotController],
+  providers: [AwsIotCoreService, DeviceIotService, DeviceCertificateService, DeviceService],
+  exports: [DeviceService, DeviceCertificateService],
 })
 export class DeviceModule {}

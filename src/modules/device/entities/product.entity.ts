@@ -1,9 +1,9 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
-import { Device } from '../../modules/device/entities/device.entity';
-import { DeviceCartridge } from '../../modules/device/entities/device-cartridge.entity';
-import { BaseEntity } from './base.entity';
-import { Category } from './category.entity';
+import { BaseEntity } from '../../../common/entities/base.entity';
+import { Category } from '../../../common/entities/category.entity';
+import { Device } from './device.entity';
+import { DeviceCartridge } from './device-cartridge.entity';
 
 export enum ProductType {
   DEVICE = 0,

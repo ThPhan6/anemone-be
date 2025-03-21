@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany } from 'typeorm';
 
+import { Device } from '../../modules/device/entities/device.entity';
 import { BaseEntity } from './base.entity';
-import { Device } from './device.entity';
 import { FamilyMember } from './family-member.entity';
 import { Space } from './space.entity';
 

@@ -1,6 +1,6 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-import { BaseEntity } from './base.entity';
+import { BaseEntity } from '../../../common/entities/base.entity';
 import { Device } from './device.entity';
 import { Product } from './product.entity';
 
@@ -12,8 +12,8 @@ export class DeviceCartridge extends BaseEntity {
   @Column({ name: 'ert', type: 'bigint' })
   ert: number;
 
-  @OneToOne(() => Product)
-  @JoinColumn({ name: 'serial_number' })
+  @ManyToOne(() => Product, (product) => product.cartridges)
+  @JoinColumn({ name: 'productId' })
   product: Product;
 
   @Column({ name: 'serial_number' })

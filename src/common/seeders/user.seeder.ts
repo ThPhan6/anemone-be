@@ -17,25 +17,25 @@ export class UserSeeder extends BaseSeeder {
     const profileRepo = dataSource.getRepository(UserProfile);
 
     const userData = [
+      // {
+      //   email: 'admin@tangent.com',
+      //   role: UserRole.ADMIN,
+      //   isActive: true,
+      //   password: 'Tan.gent@123!',
+      //   name: 'Anemone Admin',
+      // },
+      // {
+      //   email: 'staff@tangent.com',
+      //   role: UserRole.STAFF,
+      //   isActive: true,
+      //   password: 'Tan.gent@123!',
+      //   name: 'Anemone Staff',
+      // },
       {
-        email: 'admin@tangent.com',
-        role: UserRole.ADMIN,
-        isActive: true,
-        password: 'Tan.gent@123!',
-        name: 'Anemone Admin',
-      },
-      {
-        email: 'staff@tangent.com',
-        role: UserRole.STAFF,
-        isActive: true,
-        password: 'Tan.gent@123!',
-        name: 'Anemone Staff',
-      },
-      {
-        email: 'member@tangent.com',
+        email: 'member.loc@tangent.com',
         role: UserRole.MEMBER,
         isActive: true,
-        password: 'Tan.gent@123!',
+        password: 'Loc@123123',
         name: 'Anemone Member',
       },
     ];
@@ -43,8 +43,8 @@ export class UserSeeder extends BaseSeeder {
     const client = new CognitoIdentityProviderClient({
       region: process.env.AWS_REGION,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY,
-        secretAccessKey: process.env.AWS_SECRET_KEY,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
     });
 

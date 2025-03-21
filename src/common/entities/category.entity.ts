@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany } from 'typeorm';
 
+import { Product } from '../../modules/device/entities/product.entity';
 import { BaseEntity } from './base.entity';
-import { Product } from './product.entity';
 import { SystemSetting } from './system-setting.entity';
 
 @Entity('categories')
