@@ -10,7 +10,7 @@ export class AwsConfigService {
     return new CognitoIdentityProviderClient({
       region: this.configService.get<string>('AWS_REGION'),
       credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID_ID'),
+        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
         secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY'),
       },
     });

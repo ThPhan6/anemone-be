@@ -8,7 +8,6 @@ RUN yarn install
 
 COPY . ./
 # Add env, replace real path before build image
-# COPY .env.build .env
 RUN yarn build
 
 
@@ -33,9 +32,12 @@ WORKDIR /usr/src/app
 COPY --from=dist dist /usr/src/app/dist
 COPY --from=node_modules node_modules /usr/src/app/node_modules
 COPY . /usr/src/app
+COPY ./entrypoint.sh /usr/src/app/entrypoint.sh
+RUN chmod +x /usr/src/app/entrypoint.sh
 # Add env & configs, replace real path before build image
-# COPY .env.build .env
+#ADD .env.build .env
+#ADD configs configs
 
 EXPOSE $PORT
 
-CMD ["yarn", "start:prod"]
+CMD ["./entrypoint.sh"]
