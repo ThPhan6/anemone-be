@@ -6,6 +6,12 @@ export class UserDto {
   username: string;
 
   @Expose()
+  firstName: string;
+
+  @Expose()
+  lastName: string;
+
+  @Expose()
   iss: string;
 
   @Expose()

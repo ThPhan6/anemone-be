@@ -62,7 +62,8 @@ export class UserManagementController extends BaseController {
       cogId,
       isActive: true,
       profile: {
-        name: body.name,
+        firstName: body.firstName,
+        lastName: body.lastName,
       },
     });
 
@@ -72,7 +73,8 @@ export class UserManagementController extends BaseController {
 
     await this.profileService.create({
       user: user,
-      name: body.name,
+      firstName: body.firstName,
+      lastName: body.lastName,
     });
 
     return this.dataType(UserCreateResDto, user);
@@ -124,20 +126,21 @@ export class UserManagementController extends BaseController {
 
     const result = await this.cognitoService.updateUser({
       email: user.email,
-      name: body.name,
+      firstName: body.firstName,
+      lastName: body.lastName,
       role: body.role,
     });
     if (!result) {
       throw new Error('Update user failed');
     }
 
-    const { name, role, isActive } = body;
+    const { firstName, lastName, role, isActive } = body;
 
     if (role !== user.role || isActive !== user.isActive) {
       await this.service.update(user.id, { role, isActive });
     }
 
-    await this.profileService.updateByUserId(id, { name });
+    await this.profileService.updateByUserId(id, { firstName, lastName });
 
     return this.dataType(UserUpdateResDto, await this.service.getUserDetail(id));
   }

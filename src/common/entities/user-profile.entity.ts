@@ -6,7 +6,10 @@ import { User } from './user.entity';
 @Entity('user_profiles')
 export class UserProfile extends BaseEntity {
   @Column({ name: 'name', nullable: true })
-  public name: string;
+  public firstName: string;
+
+  @Column({ name: 'given_name', nullable: true })
+  public lastName: string;
 
   @Column({ name: 'preferred_username', nullable: true })
   public username: string;

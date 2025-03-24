@@ -56,5 +56,8 @@ export class SignUpDto {
   password: string;
 
   @CheckAny({ required: true })
-  name: string;
+  firstName: string;
+
+  @CheckAny({ required: true })
+  lastName: string;
 }

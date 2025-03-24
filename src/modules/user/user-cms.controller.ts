@@ -49,7 +49,8 @@ export class UserCMSController extends BaseController {
 
     const result = await this.cognitoService.updateUser({
       email: userDetail.email,
-      name: body.name,
+      firstName: body.firstName,
+      lastName: body.lastName,
       role: userDetail.role,
     });
 
@@ -57,7 +58,10 @@ export class UserCMSController extends BaseController {
       throw new ApiBadRequestException(MessageCode.badRequest, 'Update user failed');
     }
 
-    await this.profileService.updateByUserId(userDetail.id, { name: body.name });
+    await this.profileService.updateByUserId(userDetail.id, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+    });
 
     return this.dataType(UserDetailResDto, this.service.getUserDetailBy({ cogId: user.username }));
   }

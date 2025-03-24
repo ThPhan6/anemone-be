@@ -110,16 +110,18 @@ export class CognitoService {
   async createUser(data: {
     email: string;
     password: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     role: UserRole;
   }): Promise<AdminCreateUserCommandOutput> {
-    const { email, password, name, role } = data;
+    const { email, password, firstName, lastName, role } = data;
     const params: AdminCreateUserCommandInput = {
       UserPoolId: this.awsConfigService.userPoolId,
       Username: email,
       UserAttributes: [
         { Name: 'email', Value: email },
-        { Name: 'name', Value: name },
+        { Name: 'name', Value: firstName },
+        { Name: 'given_name', Value: lastName },
         { Name: 'custom:role', Value: role },
       ],
       TemporaryPassword: password,
@@ -127,20 +129,24 @@ export class CognitoService {
 
     const command = new AdminCreateUserCommand(params);
 
-    return this.cognitoClient.send(command);
+    const result = await this.cognitoClient.send(command);
+
+    return result;
   }
 
   async updateUser(data: {
     email: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     role: UserRole;
   }): Promise<AdminUpdateUserAttributesCommandOutput> {
-    const { email, name, role } = data;
+    const { email, firstName, lastName, role } = data;
     const params: AdminUpdateUserAttributesCommandInput = {
       UserPoolId: this.awsConfigService.userPoolId,
       Username: email,
       UserAttributes: [
-        { Name: 'name', Value: name },
+        { Name: 'name', Value: firstName },
+        { Name: 'given_name', Value: lastName },
         {
           Name: 'custom:role',
           Value: role,

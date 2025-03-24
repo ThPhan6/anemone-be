@@ -11,7 +11,10 @@ export class CreateUserDto {
   email: string;
 
   @CheckAny({ required: true })
-  name: string;
+  firstName: string;
+
+  @CheckAny({ required: true })
+  lastName: string;
 
   @CheckAny({ required: true })
   @IsPassword()
@@ -23,8 +26,11 @@ export class CreateUserDto {
 }
 
 export class UpdateUserDto {
-  @CheckAny({ required: true })
-  name: string;
+  @CheckAny({ required: false })
+  firstName: string;
+
+  @CheckAny({ required: false })
+  lastName: string;
 
   @CheckAny({ required: true })
   @IsEnum(UserRole)
@@ -50,5 +56,8 @@ export class UserGetListQueries extends ApiBaseGetListQueries {
 
 export class UpdateProfileDto {
   @CheckAny({ required: true })
-  name: string;
+  firstName: string;
+
+  @CheckAny({ required: true })
+  lastName: string;
 }

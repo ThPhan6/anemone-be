@@ -68,6 +68,8 @@ export class AuthController extends BaseController {
   async signUp(@Body() body: SignUpDto) {
     const newBody = Object.assign(body, {
       role: UserRole.MEMBER,
+      firstName: body.firstName,
+      lastName: body.lastName,
     });
     const result = await this.cognitoService.createUser(newBody);
     if (!result.User) {
@@ -91,7 +93,8 @@ export class AuthController extends BaseController {
 
     await this.userProfileService.create({
       user: user,
-      name: body.name,
+      firstName: body.firstName,
+      lastName: body.lastName,
     });
 
     return this.ok();

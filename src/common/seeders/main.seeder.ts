@@ -19,7 +19,7 @@ async function runSeeders() {
     username: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DB,
-    entities: ['src/common/entities/*.entity{.ts,.js}'],
+    entities: ['src/common/entities/*.entity{.ts,.js}', 'src/modules/**/*.entity{.ts,.js}'],
   });
 
   try {
