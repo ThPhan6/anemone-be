@@ -1,7 +1,12 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { BaseController } from '../../../core/controllers/base.controller';
+import { Rbac } from '../../../core/decorator/auth.decorator';
+import { AuthUser } from '../../../core/decorator/auth-user.decorator';
+import { UserDto } from '../../user/dto/user.dto';
+import { UserRole } from '../../user/user.type';
+import { RegisterDeviceDto } from '../dto';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
 
@@ -14,6 +19,14 @@ export class DeviceController extends BaseController {
     private readonly deviceCertificateService: DeviceCertificateService,
   ) {
     super();
+  }
+
+  @Rbac([UserRole.ADMIN, UserRole.MEMBER])
+  @Post('register')
+  async registerDevice(@Body() dto: RegisterDeviceDto, @AuthUser() user: UserDto) {
+    const result = await this.deviceService.registerDevice(dto, user.id);
+
+    return { success: true, data: result };
   }
 
   @Post(':deviceId/provision')

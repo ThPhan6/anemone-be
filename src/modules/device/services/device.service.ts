@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
 import { Repository } from 'typeorm';
 
+import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
@@ -100,5 +101,34 @@ export class DeviceService {
     }
 
     return device;
+  }
+
+  async registerDevice(dto: RegisterDeviceDto, userId: string) {
+    const device = await this.repository.findOne({
+      where: { deviceId: dto.deviceId },
+      relations: ['registeredBy'],
+    });
+
+    if (!device) {
+      throw new BadRequestException('Device not found');
+    }
+
+    if (device.provisioningStatus !== DeviceProvisioningStatus.PROVISIONED) {
+      throw new BadRequestException('Device is not provisioned');
+    }
+
+    if (device.registeredBy?.id === userId) {
+      return device;
+    } else if (device.registeredBy) {
+      throw new BadRequestException('Device is already registered to another user');
+    }
+
+    const lastPing = device.lastPingAt;
+
+    if (!lastPing || lastPing.getTime() > Date.now() - 10 * 60 * 1000) {
+      throw new BadRequestException('Device is not responding');
+    }
+
+    await this.repository.update(device.id, { registeredBy: { id: userId } });
   }
 }

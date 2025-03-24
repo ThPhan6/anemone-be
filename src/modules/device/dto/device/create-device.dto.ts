@@ -22,3 +22,10 @@ export class CreateDeviceDto {
   @IsOptional()
   description?: string;
 }
+
+export class RegisterDeviceDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  deviceId: string;
+}

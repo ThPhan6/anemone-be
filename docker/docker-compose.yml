@@ -31,6 +31,8 @@ services:
     restart: unless-stopped
     env_file:
       - ./.api.env
+    volumes:
+      - ./certs:/usr/src/app/certs
     ports:
       - 8000:80
     depends_on:
