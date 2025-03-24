@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IoTDevice } from 'core/decorator/iot-device.decorator';
-import { ApiDeviceHeaders } from 'core/decorator/iot-device-headers.decorator';
+import { ApiDeviceHeaders, IoTDevice } from 'core/decorator/iot-device.decorator';
 import { IoTAuthGuard } from 'core/guards/iot-auth.guard';
 
 import { DeviceCartridgesDto } from '../dto';
