@@ -26,6 +26,7 @@
     "docker:app": "docker rm -f app & docker rmi -f base_app & docker-compose up base_app",
     "docker:db": "docker-compose up pg-write pg-read-1 pg-read-2",
     "docker:log": "docker logs -f -n 0 -- ",
+    "docker:dev": "cd docker && docker-compose -f docker-compose.dev.yml up -d && cd ../",
     "prepare": "husky install",
     "seed": "ts-node -r tsconfig-paths/register ./src/common/seeders/main.seeder.ts"
   },
