@@ -33,9 +33,6 @@ WORKDIR /usr/src/app
 COPY --from=dist dist /usr/src/app/dist
 COPY --from=node_modules node_modules /usr/src/app/node_modules
 COPY . /usr/src/app
-# Add env & configs, replace real path before build image
-ADD .env.build .env
-ADD configs configs
 
 EXPOSE $PORT
 
