@@ -7,8 +7,6 @@ COPY package.json yarn.lock ./
 RUN yarn install
 
 COPY . ./
-# Add env, replace real path before build image
-ADD .env.build .env
 RUN yarn build
 
 
