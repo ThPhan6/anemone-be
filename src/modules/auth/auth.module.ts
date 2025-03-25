@@ -5,7 +5,6 @@ import { AwsConfigService } from 'common/config/aws.config';
 
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
-import { AuthCMSController } from './auth-cms.controller';
 import { CognitoService } from './cognito.service';
 import { JwtStrategy } from './jwt.strategy';
 
@@ -15,7 +14,7 @@ import { JwtStrategy } from './jwt.strategy';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     forwardRef(() => UserModule),
   ],
-  controllers: [AuthCMSController, AuthController],
+  controllers: [AuthController],
   providers: [JwtStrategy, CognitoService, AwsConfigService],
   exports: [PassportModule, CognitoService],
 })

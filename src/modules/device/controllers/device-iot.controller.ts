@@ -1,14 +1,17 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Get, Post, UseGuards } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import { ApiDeviceHeaders, IoTDevice } from 'core/decorator/iot-device.decorator';
 import { IoTAuthGuard } from 'core/guards/iot-auth.guard';
 
+import { ApiController } from '../../../core/decorator/apiController.decorator';
 import { DeviceCartridgesDto } from '../dto';
 import { Device } from '../entities/device.entity';
 import { DeviceIotService } from '../services/device-iot.service';
 
-@Controller('iot-devices')
-@ApiTags('IoT Device')
+@ApiController({
+  name: 'iot-devices',
+  tags: 'IoT Devices',
+})
 @UseGuards(IoTAuthGuard)
 export class DeviceIotController {
   constructor(private service: DeviceIotService) {}

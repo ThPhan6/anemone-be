@@ -7,7 +7,7 @@ import { PERM_KEY, PERM_OPTION_KEY, RoleGuard } from '../guards/role.guard';
 
 export type PermDecoratorOptions = { skipClassContext?: boolean };
 
-export function Rbac(roles: UserRole[] = [], options?: PermDecoratorOptions) {
+export function RolesGuard(roles: UserRole[] = [], options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, roles),
     SetMetadata(PERM_OPTION_KEY, options),
@@ -17,7 +17,7 @@ export function Rbac(roles: UserRole[] = [], options?: PermDecoratorOptions) {
   );
 }
 
-export function RbacAdmin(options?: PermDecoratorOptions) {
+export function AdminRoleGuard(options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, [UserRole.ADMIN]),
     SetMetadata(PERM_OPTION_KEY, options),
@@ -27,7 +27,7 @@ export function RbacAdmin(options?: PermDecoratorOptions) {
   );
 }
 
-export function RbacStaff(options?: PermDecoratorOptions) {
+export function StaffRoleGuard(options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, [UserRole.ADMIN, UserRole.STAFF]),
     SetMetadata(PERM_OPTION_KEY, options),
@@ -37,7 +37,7 @@ export function RbacStaff(options?: PermDecoratorOptions) {
   );
 }
 
-export function RbacMember(options?: PermDecoratorOptions) {
+export function MemberRoleGuard(options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, [UserRole.MEMBER]),
     SetMetadata(PERM_OPTION_KEY, options),

@@ -1,18 +1,17 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Body, Get, Param, Post } from '@nestjs/common';
 
 import { BaseController } from '../../../core/controllers/base.controller';
-import { Rbac } from '../../../core/decorator/auth.decorator';
+import { ApiController } from '../../../core/decorator/apiController.decorator';
+import { AdminRoleGuard, MemberRoleGuard } from '../../../core/decorator/auth.decorator';
 import { AuthUser } from '../../../core/decorator/auth-user.decorator';
 import { UserDto } from '../../user/dto/user.dto';
-import { UserRole } from '../../user/user.type';
 import { RegisterDeviceDto } from '../dto';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
 
-@ApiTags('devices')
-@Controller('devices')
-@ApiBearerAuth()
+@ApiController({
+  name: 'devices',
+})
 export class DeviceController extends BaseController {
   constructor(
     private readonly deviceService: DeviceService,
@@ -21,7 +20,7 @@ export class DeviceController extends BaseController {
     super();
   }
 
-  @Rbac([UserRole.ADMIN, UserRole.MEMBER])
+  @MemberRoleGuard()
   @Post('register')
   async registerDevice(@Body() dto: RegisterDeviceDto, @AuthUser() user: UserDto) {
     const result = await this.deviceService.registerDevice(dto, user.id);
@@ -29,6 +28,7 @@ export class DeviceController extends BaseController {
     return { success: true, data: result };
   }
 
+  @AdminRoleGuard()
   @Post(':deviceId/provision')
   async provisionDevice(@Param('deviceId') deviceId: string) {
     const result = await this.deviceService.provisionDevice(deviceId);
@@ -36,6 +36,7 @@ export class DeviceController extends BaseController {
     return { success: true, data: result };
   }
 
+  @AdminRoleGuard()
   @Get(':deviceId/certificates')
   async getDeviceCertificates(@Param('deviceId') deviceId: string) {
     const certificates = await this.deviceCertificateService.findCertificateById(deviceId);

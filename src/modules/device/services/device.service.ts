@@ -117,7 +117,7 @@ export class DeviceService {
       throw new BadRequestException('Device is not provisioned');
     }
 
-    if (device.registeredBy?.id === userId) {
+    if (device.registeredBy === userId) {
       return device;
     } else if (device.registeredBy) {
       throw new BadRequestException('Device is already registered to another user');
@@ -129,6 +129,6 @@ export class DeviceService {
       throw new BadRequestException('Device is not responding');
     }
 
-    await this.repository.update(device.id, { registeredBy: { id: userId } });
+    await this.repository.update(device.id, { registeredBy: userId });
   }
 }

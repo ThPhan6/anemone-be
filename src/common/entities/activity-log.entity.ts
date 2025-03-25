@@ -1,7 +1,6 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, CreateDateColumn, Entity } from 'typeorm';
 
 import { AutoUUIDEntity } from './entity';
-import { User } from './user.entity';
 
 export enum ActivityAction {
   LOGIN = 'LOGIN',
@@ -15,9 +14,8 @@ export enum ActivityAction {
 
 @Entity('activity_logs')
 export class ActivityLog extends AutoUUIDEntity {
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  public user: User;
+  @Column({ name: 'user_id' })
+  userId: string;
 
   @Column({
     name: 'entity_id',

@@ -3,7 +3,7 @@ import { MessageCode } from 'common/constants/messageCode';
 import { ApiBadRequestException, ApiNotFoundException } from 'common/types/apiException.type';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
-import { Rbac } from 'core/decorator/auth.decorator';
+import { RolesGuard } from 'core/decorator/auth.decorator';
 import { AuthUser } from 'core/decorator/auth-user.decorator';
 import { UserDto } from 'modules/auth/dto/auth-user.dto';
 import { UserService } from 'modules/user/service/user.service';
@@ -13,7 +13,7 @@ import { CognitoService } from '../auth/cognito.service';
 import { UpdateProfileDto } from './dto/user.request';
 import { UserDetailResDto } from './dto/user.response';
 
-@Rbac()
+@RolesGuard()
 @ApiController({
   name: 'profile',
 })

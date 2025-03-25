@@ -85,7 +85,7 @@ export class UserSeeder extends BaseSeeder {
           await repository.save(newUser);
 
           const profile = profileRepo.create({
-            user: newUser,
+            userId: newUser.id,
             firstName: user.firstName,
             lastName: user.lastName,
           });

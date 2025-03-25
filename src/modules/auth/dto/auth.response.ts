@@ -10,14 +10,14 @@ export class AuthChallengeRequiredDto {
 
 export class AuthResponseDto {
   @ExposeApi()
-  AccessToken: string;
+  accessToken: string;
 
   @ExposeApi()
-  IdToken: string;
+  idToken: string;
 
   @ExposeApi()
-  ExpiresIn: number;
+  expiresIn: number;
 
   @ExposeApi()
-  RefreshToken: string;
+  refreshToken: string;
 }

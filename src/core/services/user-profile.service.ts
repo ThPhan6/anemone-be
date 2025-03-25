@@ -13,7 +13,7 @@ export class UserProfileService extends BaseService<UserProfile> {
   updateByUserId(userId: string, data: Partial<UserProfile>) {
     return this.repository.update(
       {
-        user: { id: userId },
+        userId,
       },
       data,
     );

@@ -3,7 +3,7 @@ import { MessageCode } from 'common/constants/messageCode';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse, ApiDataWrapType } from 'core/decorator/apiDoc.decorator';
-import { RbacStaff } from 'core/decorator/auth.decorator';
+import { AdminRoleGuard } from 'core/decorator/auth.decorator';
 
 import { CreateScentDto, ScentGetListQueries, UpdateScentDto } from './dto/scent.request';
 import {
@@ -19,7 +19,7 @@ import { ScentService } from './scent.service';
 @ApiController({
   name: 'scents',
 })
-@RbacStaff()
+@AdminRoleGuard()
 export class ScentController extends BaseController {
   constructor(private readonly service: ScentService) {
     super();

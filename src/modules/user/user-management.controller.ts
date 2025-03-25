@@ -4,9 +4,8 @@ import { ApiNotFoundException } from 'common/types/apiException.type';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse, ApiDataWrapType } from 'core/decorator/apiDoc.decorator';
-import { RbacStaff } from 'core/decorator/auth.decorator';
+import { StaffRoleGuard } from 'core/decorator/auth.decorator';
 import { AuthUser } from 'core/decorator/auth-user.decorator';
-import { UserProfileService } from 'core/services/user-profile.service';
 import { CognitoService } from 'modules/auth/cognito.service';
 import { UserDto } from 'modules/auth/dto/auth-user.dto';
 import { UserService } from 'modules/user/service/user.service';
@@ -27,11 +26,10 @@ import {
 @ApiController({
   name: 'users',
 })
-@RbacStaff()
+@StaffRoleGuard()
 export class UserManagementController extends BaseController {
   constructor(
     private readonly service: UserService,
-    private readonly profileService: UserProfileService,
     private readonly cognitoService: CognitoService,
   ) {
     super();
@@ -51,7 +49,7 @@ export class UserManagementController extends BaseController {
     }
 
     const result = await this.cognitoService.createUser(body);
-    if (!result.User) {
+    if (!result) {
       throw new Error('Create user failed');
     }
 
@@ -60,22 +58,11 @@ export class UserManagementController extends BaseController {
     const user = await this.service.create({
       ...body,
       cogId,
-      isActive: true,
-      profile: {
-        firstName: body.firstName,
-        lastName: body.lastName,
-      },
     });
 
     if (!user) {
       throw new Error('Create user failed');
     }
-
-    await this.profileService.create({
-      user: user,
-      firstName: body.firstName,
-      lastName: body.lastName,
-    });
 
     return this.dataType(UserCreateResDto, user);
   }
@@ -133,14 +120,6 @@ export class UserManagementController extends BaseController {
     if (!result) {
       throw new Error('Update user failed');
     }
-
-    const { firstName, lastName, role, isActive } = body;
-
-    if (role !== user.role || isActive !== user.isActive) {
-      await this.service.update(user.id, { role, isActive });
-    }
-
-    await this.profileService.updateByUserId(id, { firstName, lastName });
 
     return this.dataType(UserUpdateResDto, await this.service.getUserDetail(id));
   }

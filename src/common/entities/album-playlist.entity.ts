@@ -1,9 +1,8 @@
-import { Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
 import { Album } from './album.entity';
 import { BaseEntity } from './base.entity';
 import { Playlist } from './playlist.entity';
-import { User } from './user.entity';
 
 @Entity('album_playlists')
 export class AlbumPlaylist extends BaseEntity {
@@ -15,7 +14,6 @@ export class AlbumPlaylist extends BaseEntity {
   @JoinColumn({ name: 'playlist_id' })
   playlist: Playlist;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'created_by' })
-  createdBy: User;
+  @Column({ name: 'created_by' })
+  createdBy: string;
 }

@@ -2,7 +2,6 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
 import { BaseEntity } from './base.entity';
 import { Scent } from './scent.entity';
-import { User } from './user.entity';
 
 @Entity('scent_play_histories')
 export class ScentPlayHistory extends BaseEntity {
@@ -19,7 +18,6 @@ export class ScentPlayHistory extends BaseEntity {
   @Column({ name: 'viewed_at', type: 'timestamp', nullable: true })
   viewedAt: Date;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @Column({ name: 'user_id' })
+  userId: string;
 }

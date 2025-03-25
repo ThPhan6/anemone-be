@@ -1,7 +1,6 @@
 import { BaseEntity } from 'common/entities/base.entity';
 import { Family } from 'common/entities/family.entity';
 import { Space } from 'common/entities/space.entity';
-import { User } from 'common/entities/user.entity';
 import { DeviceCartridge } from 'modules/device/entities/device-cartridge.entity';
 import { Product } from 'modules/device/entities/product.entity';
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
@@ -49,9 +48,8 @@ export class Device extends BaseEntity {
   @JoinColumn({ name: 'serial_number', referencedColumnName: 'serialNumber' })
   product: Product;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'registered_by' })
-  registeredBy: User;
+  @Column({ name: 'registered_by', nullable: true })
+  registeredBy: string;
 
   @ManyToOne(() => Space, (space) => space.devices)
   @JoinColumn({ name: 'space_id' })

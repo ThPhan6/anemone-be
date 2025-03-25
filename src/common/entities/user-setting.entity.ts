@@ -1,13 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 
 import { BaseEntity } from './base.entity';
-import { User } from './user.entity';
 
 @Entity('user_settings')
 export class UserSetting extends BaseEntity {
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @Column({ name: 'user_id' })
+  userId: string;
 
   @Column({ name: 'schedule_timer', type: 'json', nullable: true })
   scheduleTimer: any;
@@ -32,4 +30,10 @@ export class UserSetting extends BaseEntity {
 
   @Column({ name: 'personalise', default: false })
   personalise: boolean;
+
+  @Column({ name: 'is_public', default: false })
+  isPublic: boolean;
+
+  @Column({ name: 'follower_access', default: false })
+  followerAccess: boolean;
 }

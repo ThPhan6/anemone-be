@@ -1,10 +1,8 @@
 import { UserRole } from 'modules/user/user.type';
-import { Column, Entity, OneToOne } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 
 import { BaseEntity } from './base.entity';
-import { UserProfile } from './user-profile.entity';
 
-// Entities
 @Entity('users')
 export class User extends BaseEntity {
   @Column({
@@ -25,15 +23,9 @@ export class User extends BaseEntity {
   })
   role: UserRole;
 
-  @Column({ name: 'is_active' })
-  isActive: boolean;
-
-  @Column({ name: 'password', select: false })
-  password: string;
-
   @Column({ name: 'third_party_accounts', type: 'json', nullable: true })
   thirdPartyAccounts: any;
 
-  @OneToOne(() => UserProfile, (profile) => profile.user)
-  profile: UserProfile;
+  @Column({ name: 'user_id' })
+  userId: string;
 }

@@ -5,7 +5,6 @@ import { Album } from './album.entity';
 import { BaseEntity } from './base.entity';
 import { Playlist } from './playlist.entity';
 import { Scent } from './scent.entity';
-import { User } from './user.entity';
 
 @Entity('user_sessions')
 export class UserSession extends BaseEntity {
@@ -28,7 +27,6 @@ export class UserSession extends BaseEntity {
   @Column({ name: 'status', type: 'smallint' })
   status: number;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @Column({ name: 'user_id' })
+  userId: string;
 }

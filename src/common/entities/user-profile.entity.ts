@@ -1,7 +1,6 @@
-import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 
 import { BaseEntity } from './base.entity';
-import { User } from './user.entity';
 
 @Entity('user_profiles')
 export class UserProfile extends BaseEntity {
@@ -23,9 +22,8 @@ export class UserProfile extends BaseEntity {
   @Column({ name: 'email', nullable: true })
   public email: string;
 
-  @OneToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  public user: User;
+  @Column({ name: 'user_id' })
+  userId: string;
 
   // Privacy settings
   @Column({ name: 'is_public', default: false })

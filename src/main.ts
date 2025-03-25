@@ -67,8 +67,26 @@ class App {
           enableImplicitConversion: false,
         },
         stopAtFirstError: stopAtFirstError,
-        exceptionFactory: (e) =>
-          new BadRequestException({ errors: !stopAtFirstError ? e : undefined }),
+        exceptionFactory: (errors) => {
+          // If stopAtFirstError is true, return the first error
+          if (stopAtFirstError && errors.length > 0) {
+            const firstError = errors[0];
+
+            return new BadRequestException({
+              message: firstError.constraints,
+              errors: firstError.constraints,
+            });
+          }
+
+          // If not stopping at the first error, return all errors
+          return new BadRequestException({
+            message: 'Validation failed',
+            errors: errors.map((err) => ({
+              property: err.property,
+              constraints: err.constraints,
+            })),
+          });
+        },
       }),
     );
   }

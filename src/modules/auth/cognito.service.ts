@@ -5,6 +5,7 @@ import {
   AdminDeleteUserCommand,
   AdminDeleteUserCommandInput,
   AdminDeleteUserCommandOutput,
+  AdminGetUserCommand,
   AdminInitiateAuthCommand,
   AdminInitiateAuthCommandInput,
   AdminInitiateAuthCommandOutput,
@@ -20,16 +21,21 @@ import {
   GlobalSignOutCommand,
   InitiateAuthCommand,
   InitiateAuthCommandInput,
-  InitiateAuthCommandOutput,
   RespondToAuthChallengeCommand,
   RespondToAuthChallengeCommandInput,
   RespondToAuthChallengeCommandOutput,
   RevokeTokenCommand,
+  SignUpCommand,
+  SignUpCommandInput,
+  SignUpCommandOutput,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AwsConfigService } from 'common/config/aws.config';
 import * as crypto from 'crypto';
 import { UserRole } from 'modules/user/user.type';
+
+import { logger } from '../../core/logger/index.logger';
+import { AuthResponseDto } from './dto/auth.response';
 
 @Injectable()
 export class CognitoService {
@@ -39,22 +45,51 @@ export class CognitoService {
     this.cognitoClient = this.awsConfigService.getCognitoIdentityServiceProvider();
   }
 
-  async signIn(email: string, password: string): Promise<InitiateAuthCommandOutput> {
-    const secretHash = this.calculateSecretHash(email);
+  async isUserEmailVerified(email: string): Promise<boolean> {
+    try {
+      const params = {
+        UserPoolId: this.awsConfigService.userPoolId,
+        Username: email,
+      };
 
+      const command = new AdminGetUserCommand(params);
+      const result = await this.cognitoClient.send(command);
+
+      logger.info(`result: ${JSON.stringify(result, null, 2)}`);
+
+      return result.UserAttributes.some(
+        (attr) => attr.Name === 'email_verified' && attr.Value === 'true',
+      );
+    } catch (error) {
+      logger.error(`Error fetching user details from Cognito: ${JSON.stringify(error, null, 2)}`);
+      throw new Error('Could not verify email status');
+    }
+  }
+
+  async signIn(email: string, password: string): Promise<AuthResponseDto> {
     const params: InitiateAuthCommandInput = {
       AuthFlow: 'USER_PASSWORD_AUTH',
       ClientId: this.awsConfigService.userPoolClientId,
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,
-        SECRET_HASH: secretHash,
       },
     };
 
     const command = new InitiateAuthCommand(params);
+    const result = await this.cognitoClient.send(command);
+    // Only handle successful authentication
+    if (!result.AuthenticationResult) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    return this.cognitoClient.send(command);
+    // Return only the authentication result
+    return {
+      accessToken: result.AuthenticationResult.AccessToken,
+      idToken: result.AuthenticationResult.IdToken,
+      refreshToken: result.AuthenticationResult.RefreshToken,
+      expiresIn: result.AuthenticationResult.ExpiresIn,
+    };
   }
 
   async respondToNewPasswordChallenge(
@@ -62,15 +97,12 @@ export class CognitoService {
     newPassword: string,
     session: string,
   ): Promise<RespondToAuthChallengeCommandOutput> {
-    const secretHash = this.calculateSecretHash(email);
-
     const params: RespondToAuthChallengeCommandInput = {
       ChallengeName: 'NEW_PASSWORD_REQUIRED',
       ClientId: this.awsConfigService.userPoolClientId,
       ChallengeResponses: {
         USERNAME: email,
         NEW_PASSWORD: newPassword,
-        SECRET_HASH: secretHash,
       },
       Session: session,
     };
@@ -94,17 +126,42 @@ export class CognitoService {
   }
 
   async resetPassword(email: string): Promise<ForgotPasswordCommandOutput> {
-    const secretHash = this.calculateSecretHash(email);
-
     const params: ForgotPasswordCommandInput = {
       ClientId: this.awsConfigService.userPoolClientId,
       Username: email,
-      SecretHash: secretHash,
     };
 
     const command = new ForgotPasswordCommand(params);
 
     return this.cognitoClient.send(command);
+  }
+
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: UserRole;
+  }): Promise<SignUpCommandOutput> {
+    const { email, password, firstName, lastName, role } = data;
+    const params: SignUpCommandInput = {
+      ClientId: this.awsConfigService.userPoolClientId,
+      Username: email,
+      UserAttributes: [
+        { Name: 'email', Value: email },
+        { Name: 'name', Value: firstName },
+        { Name: 'given_name', Value: lastName },
+        { Name: 'custom:role', Value: role },
+        { Name: 'phone_number', Value: '' },
+      ],
+      Password: password,
+    };
+
+    const command = new SignUpCommand(params);
+
+    const result = await this.cognitoClient.send(command);
+
+    return result;
   }
 
   async createUser(data: {
@@ -147,10 +204,7 @@ export class CognitoService {
       UserAttributes: [
         { Name: 'name', Value: firstName },
         { Name: 'given_name', Value: lastName },
-        {
-          Name: 'custom:role',
-          Value: role,
-        },
+        { Name: 'custom:role', Value: role },
       ],
     };
 
@@ -174,15 +228,13 @@ export class CognitoService {
     refreshToken: string,
     username: string,
   ): Promise<AdminInitiateAuthCommandOutput> {
-    const secretHash = this.calculateSecretHash(username);
-
     const params: AdminInitiateAuthCommandInput = {
       AuthFlow: 'REFRESH_TOKEN_AUTH',
       ClientId: this.awsConfigService.userPoolClientId,
       UserPoolId: this.awsConfigService.userPoolId,
       AuthParameters: {
         REFRESH_TOKEN: refreshToken,
-        SECRET_HASH: secretHash,
+        USERNAME: username,
       },
     };
 

@@ -8,20 +8,19 @@ import { UserProfileService } from 'core/services/user-profile.service';
 import { UserService } from 'modules/user/service/user.service';
 import { UserRole } from 'modules/user/user.type';
 
+import { logger } from '../../core/logger/index.logger';
 import { CognitoService } from './cognito.service';
 import {
   ChangePasswordDto,
   RefreshTokenDto,
   ResetPasswordDto,
   SignInDto,
-  SignOutDto,
   SignUpDto,
 } from './dto/auth.request';
-import { AuthChallengeRequiredDto, AuthResponseDto } from './dto/auth.response';
+import { AuthResponseDto } from './dto/auth.response';
 
 @ApiController({
   name: 'auth',
-  isMobile: true,
 })
 export class AuthController extends BaseController {
   constructor(
@@ -32,80 +31,92 @@ export class AuthController extends BaseController {
     super();
   }
 
+  private handleCognitoError(error: any) {
+    logger.error(`handleCognitoError: ${JSON.stringify(error, null, 2)}`);
+    throw new ApiBadRequestException(
+      MessageCode.badRequest,
+      error.message || 'Something went wrong while creating user',
+    );
+  }
+
   @ApiBaseOkResponse({
     description: 'Sign in user',
     type: SignInDto,
   })
-  @Post('sign-in')
-  async signIn(@Body() body: SignInDto) {
+  @Post('login')
+  async login(@Body() body: SignInDto) {
     // Check user is exist
     const userExisted = await this.userService.getUserDetailByEmail(body.email);
     if (!userExisted) {
-      throw new ApiBadRequestException(MessageCode.badRequest, 'Invalid email or password');
+      throw new ApiBadRequestException(MessageCode.badRequest, 'Incorrect username or password');
     }
 
-    if (!userExisted.isActive) {
-      throw new ApiBadRequestException(MessageCode.badRequest, 'User is not active');
+    const isVerified = await this.cognitoService.isUserEmailVerified(body.email);
+    if (!isVerified) {
+      throw new ApiBadRequestException(MessageCode.badRequest, 'User is not verified');
     }
 
-    const result = await this.cognitoService.signIn(body.email, body.password);
-    if (result.ChallengeName) {
-      return this.dataType(AuthChallengeRequiredDto, result);
-    }
+    try {
+      const result = await this.cognitoService.signIn(body.email, body.password);
 
-    if (!result.AuthenticationResult) {
-      throw new ApiBadRequestException(MessageCode.badRequest, 'Invalid email or password');
+      return this.dataType(AuthResponseDto, result);
+    } catch (error) {
+      this.handleCognitoError(error);
     }
-
-    return this.dataType(AuthResponseDto, result.AuthenticationResult);
   }
 
   @ApiBaseOkResponse({
-    description: 'Sign up',
+    description: 'Register Mobile App User',
     type: SignInDto,
   })
-  @Post('sign-up')
-  async signUp(@Body() body: SignUpDto) {
+  @Post('register')
+  async register(@Body() body: SignUpDto) {
     const newBody = Object.assign(body, {
       role: UserRole.MEMBER,
       firstName: body.firstName,
       lastName: body.lastName,
     });
-    const result = await this.cognitoService.createUser(newBody);
-    if (!result.User) {
-      throw new ApiBadRequestException(
-        MessageCode.badRequest,
-        'Something went wrong while creating user',
-      );
+    try {
+      const result = await this.cognitoService.register(newBody);
+
+      logger.info(`result: ${JSON.stringify(result, null, 2)}`);
+
+      if (!result.UserSub) {
+        throw new ApiBadRequestException(
+          MessageCode.badRequest,
+          'Something went wrong while creating user',
+        );
+      }
+
+      const user = await this.userService.create({
+        ...body,
+        cogId: result.UserSub,
+      });
+      if (!user) {
+        throw new ApiBadRequestException(
+          MessageCode.badRequest,
+          'Something went wrong while creating user',
+        );
+      }
+
+      await this.userProfileService.create({
+        userId: user.id,
+        firstName: body.firstName,
+        lastName: body.lastName,
+      });
+
+      return this.ok();
+    } catch (error) {
+      this.handleCognitoError(error);
     }
-
-    const user = await this.userService.create({
-      ...body,
-      cogId: result.User.Username,
-      isActive: true,
-    });
-    if (!user) {
-      throw new ApiBadRequestException(
-        MessageCode.badRequest,
-        'Something went wrong while creating user',
-      );
-    }
-
-    await this.userProfileService.create({
-      user: user,
-      firstName: body.firstName,
-      lastName: body.lastName,
-    });
-
-    return this.ok();
   }
 
   @ApiBaseOkResponse({
     description: 'Change password',
     type: ChangePasswordDto,
   })
-  @Post('change-password')
-  async changePassword(@Body() body: ChangePasswordDto) {
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: ChangePasswordDto) {
     await this.cognitoService.respondToNewPasswordChallenge(
       body.email,
       body.password,
@@ -128,20 +139,6 @@ export class AuthController extends BaseController {
     }
 
     return this.ok();
-  }
-
-  @ApiBaseOkResponse({
-    description: 'Sign out',
-  })
-  @Post('sign-out')
-  async signOut(@Body() body: SignOutDto) {
-    const error = await this.cognitoService.signOut(body);
-
-    if (!error) {
-      return this.ok();
-    }
-
-    throw new ApiBadRequestException(MessageCode.badRequest, error.message);
   }
 
   @ApiBaseOkResponse({

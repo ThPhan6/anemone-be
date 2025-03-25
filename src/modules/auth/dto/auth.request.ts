@@ -4,7 +4,7 @@ import { IsPassword } from 'core/decorator/validators/password.decorator';
 
 export class SignInDto {
   @CheckAny({ required: true })
-  @IsEmail()
+  @IsEmail({}, { message: 'Email is invalid' })
   email: string;
 
   @CheckAny({ required: true })
@@ -13,13 +13,13 @@ export class SignInDto {
 
 export class ResetPasswordDto {
   @CheckAny({ required: true })
-  @IsEmail()
+  @IsEmail({}, { message: 'Email is invalid' })
   email: string;
 }
 
 export class ChangePasswordDto {
   @CheckAny({ required: true })
-  @IsEmail()
+  @IsEmail({}, { message: 'Email is invalid' })
   email: string;
 
   @CheckAny({ required: true })
@@ -48,7 +48,7 @@ export class SignOutDto {
 
 export class SignUpDto {
   @CheckAny({ required: true })
-  @IsEmail()
+  @IsEmail({}, { message: 'Email is invalid' })
   email: string;
 
   @CheckAny({ required: true })

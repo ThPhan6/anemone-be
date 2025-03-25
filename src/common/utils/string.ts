@@ -17,3 +17,11 @@ export function isHan(val: string): boolean {
 export function halfWidthRomaji(str: string): string {
   return StrUtil.toHalfWidth(wanakana.toRomaji(str));
 }
+
+export function endWithPeriod(str: string): string {
+  if (!str.endsWith('.')) {
+    return str + '.';
+  }
+
+  return str;
+}

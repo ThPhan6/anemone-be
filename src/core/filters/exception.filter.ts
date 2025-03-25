@@ -14,6 +14,7 @@ import { ApiErrorDescription, ApiException } from 'common/types/apiException.typ
 import { buildResponse } from 'core/helper';
 import { HttpResponse } from 'core/types/response.type';
 
+import { endWithPeriod } from '../../common/utils/string';
 import { logger } from '../logger/index.logger';
 
 @Catch()
@@ -58,12 +59,14 @@ export class ExceptionFilter extends BaseExceptionFilter {
     const errRes = error.response;
 
     if (error instanceof BadRequestException) {
+      const specificErrors: string[] = errRes?.errors ? Object.values(errRes.errors) : [];
+      const errorMessage = specificErrors[0] || Message.invalidInput;
+
       return new HttpResponse({
         success: false,
         statusCode: HttpStatus.BAD_REQUEST,
         messageCode: MessageCode.invalidInput,
-        message: Message.invalidInput,
-        error: errRes?.errors,
+        message: endWithPeriod(errorMessage),
       });
     }
 
@@ -71,7 +74,7 @@ export class ExceptionFilter extends BaseExceptionFilter {
       success: false,
       statusCode: error.statusCode || error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       messageCode: error.messageCode || MessageCode.generalError,
-      message: error.message || Message.generalError,
+      message: endWithPeriod(error.message || Message.generalError),
     });
   }
 
@@ -82,7 +85,7 @@ export class ExceptionFilter extends BaseExceptionFilter {
       messageCode: error.messageCode || MessageCode.generalError,
     });
     if (typeof error.message === 'string') {
-      res.message = error.message;
+      res.message = endWithPeriod(error.message);
 
       return res;
     }
