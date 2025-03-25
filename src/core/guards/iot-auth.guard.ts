@@ -29,6 +29,54 @@ export class IoTAuthGuard implements CanActivate {
     }); // Use your region
   }
 
+  // Compute the SHA-1 fingerprint of a certificate
+  private computeFingerprint(certPem: string): string {
+    const cert = forge.pki.certificateFromPem(certPem);
+    const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
+    const hash = forge.md.sha1.create();
+    hash.update(der);
+    const fingerprint = hash.digest().toHex();
+
+    return fingerprint.toLowerCase();
+  }
+
+  async findCertificateId(clientFingerprint: string, deviceId: string) {
+    try {
+      // Get the certificates associated with the device
+      const thingsData = await this.iotClient
+        .listThingPrincipals({ thingName: 'anemone_test_device' })
+        .promise();
+      const certificateArns = thingsData.principals;
+
+      if (!certificateArns || certificateArns.length === 0) {
+        // eslint-disable-next-line no-console
+        console.log('No certificates associated with device:', deviceId);
+        throw new Error('No certificates found for device');
+      }
+
+      // Check each certificate associated with the device
+      for (const arn of certificateArns) {
+        const certId = arn.split('/')[1];
+        const describeResponse = await this.iotClient
+          .describeCertificate({ certificateId: certId })
+          .promise();
+        const awsCertPem = describeResponse.certificateDescription.certificatePem;
+
+        // Compute the fingerprint of the AWS certificate
+        const awsFingerprint = this.computeFingerprint(awsCertPem);
+
+        if (awsFingerprint === clientFingerprint) {
+          return describeResponse;
+        }
+      }
+      throw new Error('Certificate not found for device');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error finding certificate ID:', error.message);
+      throw error;
+    }
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
@@ -40,27 +88,22 @@ export class IoTAuthGuard implements CanActivate {
     }
 
     const certPem = decodeURIComponent(encodedCert);
-    const cert = forge.pki.certificateFromPem(certPem);
-    const certificateId = cert.subject.getField('CN')?.value;
-    if (!certificateId) {
-      return false; // Invalid certificate (no CN)
-    }
-
-    logger.info(`Client Cert ID: ${JSON.stringify(certificateId)}`);
+    // Compute the fingerprint of the client certificate
+    const clientFingerprint = this.computeFingerprint(certPem);
 
     // Extract device ID from headers
     const deviceId = request.headers['x-device-id'];
     logger.info(`Device ID: ${JSON.stringify(deviceId)}`);
 
-    if (!deviceId) {
-      throw new UnauthorizedException('Missing authentication headers');
-    }
-
     try {
-      // Check if the certificate is active
-      const certData = await this.iotClient.describeCertificate({ certificateId }).promise();
-      if (certData.certificateDescription.status !== 'ACTIVE') {
-        return false; // Certificate is not active
+      // Find the certificate ID by fingerprint
+      const certificate = await this.findCertificateId(clientFingerprint, deviceId);
+      // Validate the certificate
+      if (certificate.certificateDescription.status !== 'ACTIVE') {
+        // eslint-disable-next-line no-console
+        console.log('Certificate is not active:', certificate.certificateDescription.status);
+
+        return false;
       }
 
       // First check device in your database
@@ -74,16 +117,13 @@ export class IoTAuthGuard implements CanActivate {
       }
 
       request.device = device;
-      // // Verify the certificate is associated with the device
-      // const thingsData = await this.iot.listPrincipalThings({
-      //   principal: certData.certificateDescription.certificateArn,
-      // }).promise();
-      // if ()thingsData.things.includes(deviceId); // Return true if device is associated
+
+      return true;
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Certificate validation error:', error.message);
 
-      return false; // Validation failed
+      return false;
     }
   }
 }
