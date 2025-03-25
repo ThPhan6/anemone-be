@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as AWS from 'aws-sdk';
+import * as forge from 'node-forge';
 import { Repository } from 'typeorm';
 
 import { DeviceRepository } from '../../common/repositories/device.repository';
@@ -31,34 +32,37 @@ export class IoTAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    const cert = request.socket.getPeerCertificate();
-    // logger.info('Client Cert Subject:', cert);
-    // logger.info('Serial Number:', cert.serialNumber);
-    logger.info(
-      JSON.stringify(
-        {
-          serialNumber: cert.serialNumber,
-          subject: cert.subject,
-          authorized: request.client.authorized,
-        },
-        null,
-        2,
-      ),
-    );
-
-    if (!cert || !cert.subject || !cert.subject.CN) {
-      throw new UnauthorizedException('No valid cert subject');
+    // Extract device certificate from headers
+    const encodedCert = request.headers['x-client-cert'];
+    logger.info('Client Cert Subject:', encodedCert);
+    if (!encodedCert) {
+      return false; // No certificate provided
     }
 
-    // Extract device ID and certificate ID from headers
+    const certPem = decodeURIComponent(encodedCert);
+    const cert = forge.pki.certificateFromPem(certPem);
+    const certificateId = cert.subject.getField('CN')?.value;
+    if (!certificateId) {
+      return false; // Invalid certificate (no CN)
+    }
+
+    logger.info('Client Cert ID:', certificateId);
+
+    // Extract device ID from headers
     const deviceId = request.headers['x-device-id'];
-    // const certificateId = request.headers['x-certificate-id'];
+    logger.info('Device ID:', deviceId);
 
     if (!deviceId) {
       throw new UnauthorizedException('Missing authentication headers');
     }
 
     try {
+      // Check if the certificate is active
+      const certData = await this.iotClient.describeCertificate({ certificateId }).promise();
+      if (certData.certificateDescription.status !== 'ACTIVE') {
+        return false; // Certificate is not active
+      }
+
       // First check device in your database
       const device = await this.deviceRepository.findOne({
         where: { deviceId },
@@ -69,55 +73,17 @@ export class IoTAuthGuard implements CanActivate {
         throw new UnauthorizedException('Device not registered');
       }
 
-      // Verify certificate status in AWS IoT Core
-      const params = {
-        certificateId:
-          process.env.AWS_IOT_TEST_CERTIFICATE_ID ||
-          'c645baccb7a4ec0cefe9692bc32035694b2b390624e5cc49ab45fecec4272795',
-      };
-      const certResponse = await this.iotClient.describeCertificate(params).promise();
-
-      logger.info(
-        JSON.stringify(
-          {
-            deviceId,
-            certificateId: params.certificateId,
-            status: certResponse.certificateDescription.status,
-          },
-          null,
-          2,
-        ),
-      );
-      if (certResponse.certificateDescription.status !== 'ACTIVE') {
-        throw new UnauthorizedException('Certificate is not active in AWS IoT Core');
-      }
-
-      // Also verify against your local database
-      // const certificate = await this.certificateRepository.findOne({
-      //   where: {
-      //     certificateId,
-      //     device: { id: device.id },
-      //     status: CertificateStatus.ACTIVE,
-      //   },
-      // });
-
-      // if (!certificate) {
-      //   throw new UnauthorizedException('Invalid or inactive certificate');
-      // }
-
-      // // Check if certificate is expired
-      // const now = new Date();
-      // if (certificate.expiresAt < now) {
-      //   throw new UnauthorizedException('Certificate expired');
-      // }
-
-      // Attach device to request
       request.device = device;
-
-      return true;
+      // // Verify the certificate is associated with the device
+      // const thingsData = await this.iot.listPrincipalThings({
+      //   principal: certData.certificateDescription.certificateArn,
+      // }).promise();
+      // if ()thingsData.things.includes(deviceId); // Return true if device is associated
     } catch (error) {
-      logger.error(error);
-      throw new UnauthorizedException('Authentication failed');
+      // eslint-disable-next-line no-console
+      console.error('Certificate validation error:', error.message);
+
+      return false; // Validation failed
     }
   }
 }

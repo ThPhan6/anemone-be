@@ -4,7 +4,6 @@ import { BadRequestException, INestApplication, ValidationPipe } from '@nestjs/c
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as Sentry from '@sentry/nestjs';
-import * as fs from 'fs';
 import { AppModule } from 'modules/app.module';
 
 import { ExceptionFilter } from './core/filters/exception.filter';
@@ -33,17 +32,7 @@ class App {
 
     Sentry.setTag('project', 'tangent');
 
-    const httpsOptions = {
-      key: fs.readFileSync('certs/server-key.pem'),
-      cert: fs.readFileSync('certs/server-cert.pem'),
-      ca: fs.readFileSync('certs/aws-iot-ca-chain.pem'),
-      requestCert: true,
-      rejectUnauthorized: false,
-    };
-
-    this.app = await NestFactory.create(AppModule, {
-      httpsOptions,
-    });
+    this.app = await NestFactory.create(AppModule);
 
     this.configApp();
 
@@ -53,7 +42,7 @@ class App {
 
     this.filterException();
 
-    this.listen();
+    await this.listen();
   }
 
   private configApp() {
