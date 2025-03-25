@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as AWS from 'aws-sdk';
+import * as forge from 'node-forge';
 import { Repository } from 'typeorm';
 
 import { DeviceRepository } from '../../common/repositories/device.repository';
@@ -28,37 +29,83 @@ export class IoTAuthGuard implements CanActivate {
     }); // Use your region
   }
 
+  // Compute the SHA-1 fingerprint of a certificate
+  private computeFingerprint(certPem: string): string {
+    const cert = forge.pki.certificateFromPem(certPem);
+    const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
+    const hash = forge.md.sha1.create();
+    hash.update(der);
+    const fingerprint = hash.digest().toHex();
+
+    return fingerprint.toLowerCase();
+  }
+
+  async findCertificateId(clientFingerprint: string, deviceId: string) {
+    try {
+      // Get the certificates associated with the device
+      const thingsData = await this.iotClient
+        .listThingPrincipals({ thingName: 'anemone_test_device' })
+        .promise();
+      const certificateArns = thingsData.principals;
+
+      if (!certificateArns || certificateArns.length === 0) {
+        // eslint-disable-next-line no-console
+        console.log('No certificates associated with device:', deviceId);
+        throw new Error('No certificates found for device');
+      }
+
+      // Check each certificate associated with the device
+      for (const arn of certificateArns) {
+        const certId = arn.split('/')[1];
+        const describeResponse = await this.iotClient
+          .describeCertificate({ certificateId: certId })
+          .promise();
+        const awsCertPem = describeResponse.certificateDescription.certificatePem;
+
+        // Compute the fingerprint of the AWS certificate
+        const awsFingerprint = this.computeFingerprint(awsCertPem);
+
+        if (awsFingerprint === clientFingerprint) {
+          return describeResponse;
+        }
+      }
+      throw new Error('Certificate not found for device');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error finding certificate ID:', error.message);
+      throw error;
+    }
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    const cert = request.socket.getPeerCertificate();
-    // logger.info('Client Cert Subject:', cert);
-    // logger.info('Serial Number:', cert.serialNumber);
-    logger.info(
-      JSON.stringify(
-        {
-          serialNumber: cert.serialNumber,
-          subject: cert.subject,
-          authorized: request.client.authorized,
-        },
-        null,
-        2,
-      ),
-    );
-
-    if (!cert || !cert.subject || !cert.subject.CN) {
-      throw new UnauthorizedException('No valid cert subject');
+    // Extract device certificate from headers
+    const encodedCert = request.headers['x-client-cert'];
+    logger.info(`encodeCert ${JSON.stringify(encodedCert)}`);
+    if (!encodedCert) {
+      return false; // No certificate provided
     }
 
-    // Extract device ID and certificate ID from headers
+    const certPem = decodeURIComponent(encodedCert);
+    // Compute the fingerprint of the client certificate
+    const clientFingerprint = this.computeFingerprint(certPem);
+
+    // Extract device ID from headers
     const deviceId = request.headers['x-device-id'];
-    // const certificateId = request.headers['x-certificate-id'];
-
-    if (!deviceId) {
-      throw new UnauthorizedException('Missing authentication headers');
-    }
+    logger.info(`Device ID: ${JSON.stringify(deviceId)}`);
 
     try {
+      // Find the certificate ID by fingerprint
+      const certificate = await this.findCertificateId(clientFingerprint, deviceId);
+      // Validate the certificate
+      if (certificate.certificateDescription.status !== 'ACTIVE') {
+        // eslint-disable-next-line no-console
+        console.log('Certificate is not active:', certificate.certificateDescription.status);
+
+        return false;
+      }
+
       // First check device in your database
       const device = await this.deviceRepository.findOne({
         where: { deviceId },
@@ -69,55 +116,14 @@ export class IoTAuthGuard implements CanActivate {
         throw new UnauthorizedException('Device not registered');
       }
 
-      // Verify certificate status in AWS IoT Core
-      const params = {
-        certificateId:
-          process.env.AWS_IOT_TEST_CERTIFICATE_ID ||
-          'c645baccb7a4ec0cefe9692bc32035694b2b390624e5cc49ab45fecec4272795',
-      };
-      const certResponse = await this.iotClient.describeCertificate(params).promise();
-
-      logger.info(
-        JSON.stringify(
-          {
-            deviceId,
-            certificateId: params.certificateId,
-            status: certResponse.certificateDescription.status,
-          },
-          null,
-          2,
-        ),
-      );
-      if (certResponse.certificateDescription.status !== 'ACTIVE') {
-        throw new UnauthorizedException('Certificate is not active in AWS IoT Core');
-      }
-
-      // Also verify against your local database
-      // const certificate = await this.certificateRepository.findOne({
-      //   where: {
-      //     certificateId,
-      //     device: { id: device.id },
-      //     status: CertificateStatus.ACTIVE,
-      //   },
-      // });
-
-      // if (!certificate) {
-      //   throw new UnauthorizedException('Invalid or inactive certificate');
-      // }
-
-      // // Check if certificate is expired
-      // const now = new Date();
-      // if (certificate.expiresAt < now) {
-      //   throw new UnauthorizedException('Certificate expired');
-      // }
-
-      // Attach device to request
       request.device = device;
 
       return true;
     } catch (error) {
-      logger.error(error);
-      throw new UnauthorizedException('Authentication failed');
+      // eslint-disable-next-line no-console
+      console.error('Certificate validation error:', error.message);
+
+      return false;
     }
   }
 }
