@@ -34,7 +34,7 @@ export class IoTAuthGuard implements CanActivate {
 
     // Extract device certificate from headers
     const encodedCert = request.headers['x-client-cert'];
-    logger.info('Client Cert Subject:', encodedCert);
+    logger.info(`encodeCert ${JSON.stringify(encodedCert)}`);
     if (!encodedCert) {
       return false; // No certificate provided
     }
@@ -46,11 +46,11 @@ export class IoTAuthGuard implements CanActivate {
       return false; // Invalid certificate (no CN)
     }
 
-    logger.info('Client Cert ID:', certificateId);
+    logger.info(`Client Cert ID: ${JSON.stringify(certificateId)}`);
 
     // Extract device ID from headers
     const deviceId = request.headers['x-device-id'];
-    logger.info('Device ID:', deviceId);
+    logger.info(`Device ID: ${JSON.stringify(deviceId)}`);
 
     if (!deviceId) {
       throw new UnauthorizedException('Missing authentication headers');
