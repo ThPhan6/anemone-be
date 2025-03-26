@@ -2,11 +2,9 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { InjectRepository } from '@nestjs/typeorm';
 import * as AWS from 'aws-sdk';
 import * as forge from 'node-forge';
-import { Repository } from 'typeorm';
 
 import { DeviceRepository } from '../../common/repositories/device.repository';
 import { Device } from '../../modules/device/entities/device.entity';
-import { DeviceCertificate } from '../../modules/device/entities/device-certificate.entity';
 import { logger } from '../logger/index.logger';
 
 @Injectable()
@@ -16,8 +14,6 @@ export class IoTAuthGuard implements CanActivate {
   constructor(
     @InjectRepository(Device)
     private deviceRepository: DeviceRepository,
-    @InjectRepository(DeviceCertificate)
-    private certificateRepository: Repository<DeviceCertificate>,
   ) {
     // Initialize AWS IoT client
     this.iotClient = new AWS.Iot({
@@ -49,8 +45,7 @@ export class IoTAuthGuard implements CanActivate {
       const certificateArns = thingsData.principals;
 
       if (!certificateArns || certificateArns.length === 0) {
-        // eslint-disable-next-line no-console
-        console.log('No certificates associated with device:', deviceId);
+        logger.error(`No certificates associated with device: ${deviceId}`);
         throw new Error('No certificates found for device');
       }
 
@@ -93,15 +88,14 @@ export class IoTAuthGuard implements CanActivate {
 
     // Extract device ID from headers
     const deviceId = request.headers['x-device-id'];
-    logger.info(`Device ID: ${JSON.stringify(deviceId)}`);
+    logger.info(`Device ID: ${deviceId}`);
 
     try {
       // Find the certificate ID by fingerprint
       const certificate = await this.findCertificateId(clientFingerprint, deviceId);
       // Validate the certificate
       if (certificate.certificateDescription.status !== 'ACTIVE') {
-        // eslint-disable-next-line no-console
-        console.log('Certificate is not active:', certificate.certificateDescription.status);
+        logger.error(`Certificate is not active: ${certificate.certificateDescription.status}`);
 
         return false;
       }

@@ -17,12 +17,12 @@ export class DeviceCertificate extends BaseEntity {
   certificateId: string; // AWS IoT certificate ID
 
   @Column({ name: 'certificate_arn' })
-  certificateArn: string;
+  certificateArn: string; // AWS IoT certificate ARN
 
-  @Column({ name: 'certificate_s3_key', nullable: true })
+  @Column({ name: 'certificate_s3_key' })
   certificateS3Key: string; // S3 key for stored certificate
 
-  @Column({ name: 'private_key_s3_key', nullable: true })
+  @Column({ name: 'private_key_s3_key' })
   privateKeyS3Key: string; // S3 key for stored private key (temporary)
 
   @Column({
