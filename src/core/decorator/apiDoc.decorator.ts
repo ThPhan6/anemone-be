@@ -168,6 +168,6 @@ export function ApiUploadFile<T extends Type>(options: {
 }
 
 class FileSchema {
-  @ApiProperty({ type: 'file' })
+  @ApiProperty({ type: 'string', format: 'binary' })
   file: Express.Multer.File;
 }

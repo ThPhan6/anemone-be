@@ -8,6 +8,7 @@ import { AppModule } from 'modules/app.module';
 
 import { ExceptionFilter } from './core/filters/exception.filter';
 import { logger, morganMiddleware } from './core/logger/index.logger';
+import { TrimPipe } from './core/pipes/trim.pipe';
 
 class App {
   public app: INestApplication;
@@ -49,10 +50,11 @@ class App {
     this.app.enableCors();
     const stopAtFirstError = process.env.STOP_AT_FIRST_VALIDATION_ERROR === 'YES';
     this.app.useGlobalPipes(
+      new TrimPipe(),
       new ValidationPipe({
+        transform: true,
         transformOptions: {
-          excludeExtraneousValues: true,
-          exposeUnsetFields: true,
+          exposeDefaultValues: true,
           enableImplicitConversion: true,
         },
         stopAtFirstError: stopAtFirstError,

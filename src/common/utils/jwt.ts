@@ -1,11 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 
-export const signData = (
-  payload: string | { [key: string]: any } | Buffer,
-  expiresIn?: string,
-): string => {
+export const signData = (payload: string | { [key: string]: any } | Buffer): string => {
   return jwt.sign(payload, 'privateKey', {
-    expiresIn: expiresIn || process.env.ACCESS_TOKEN_DURATION || '1h',
     algorithm: 'RS256',
   });
 };
