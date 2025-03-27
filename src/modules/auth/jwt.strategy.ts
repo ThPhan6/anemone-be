@@ -21,7 +21,6 @@ export class MobileJwtStrategy extends PassportStrategy(Strategy, 'mobile') {
         jwksRequestsPerMinute: 5,
         jwksUri: `${process.env.AWS_COGNITO_MOBILE_ISSUER}/.well-known/jwks.json`,
       }),
-
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       issuer: process.env.AWS_COGNITO_MOBILE_ISSUER,
       algorithms: ['RS256'],
@@ -47,7 +46,6 @@ export class CmsJwtStrategy extends PassportStrategy(Strategy, 'cms') {
         jwksRequestsPerMinute: 5,
         jwksUri: `${process.env.AWS_COGNITO_ISSUER}/.well-known/jwks.json`,
       }),
-
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       issuer: process.env.AWS_COGNITO_ISSUER,
       algorithms: ['RS256'],

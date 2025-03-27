@@ -7,7 +7,6 @@ import { Reflector } from '@nestjs/core';
 import { logger } from 'core/logger/index.logger';
 
 import { ApiUnauthorizedException } from '../../common/types/apiException.type';
-import { UserDto } from '../../modules/auth/dto/auth-user.dto';
 import { UserRole } from '../../modules/user/user.type';
 import { PermDecoratorOptions } from '../decorator/auth.decorator';
 
@@ -29,22 +28,11 @@ export class RoleGuard implements CanActivate {
   }
   async canActivate(context: ExecutionContext) {
     try {
+      const request = context.switchToHttp().getRequest();
       const options = this.reflector.get<PermDecoratorOptions>(
         PERM_OPTION_KEY,
         context.getHandler(),
       );
-
-      const request = context.switchToHttp().getRequest();
-      const token = request.headers['authorization']?.split(' ')[1];
-
-      if (!token) {
-        throw new ApiUnauthorizedException();
-      }
-
-      const userInfo = await this.getUser(token);
-      if (!userInfo) {
-        throw new ApiUnauthorizedException();
-      }
 
       const roles = options?.skipClassContext
         ? this.reflector.get(PERM_KEY, context.getHandler())
@@ -53,22 +41,25 @@ export class RoleGuard implements CanActivate {
             context.getHandler(),
           ]);
 
-      const role = userInfo.UserAttributes.find((x) => x.Name === 'custom:role')?.Value as UserRole;
+      // set user to request (UserDto)
+      request.user = context.getArgs()[0]?.user;
 
-      const user = context.getArgs()[0]?.user as UserDto;
-      user.role = role;
-      user.isAdmin = role === UserRole.ADMIN;
-
-      // set user role
-      request.user = user;
+      if (request.user.token_use !== 'access') {
+        throw new ApiUnauthorizedException();
+      }
 
       if (!roles.length || roles[0] === UserRole.MEMBER) {
         return true;
       }
 
-      const hasPermission = roles.includes(role);
+      const userInfo = await this.getUser(request.user.accessToken);
 
-      return hasPermission;
+      const role = userInfo.UserAttributes.find((x) => x.Name === 'custom:role')?.Value as UserRole;
+
+      request.user.role = role;
+      request.user.isAdmin = role === UserRole.ADMIN;
+
+      return roles.includes(role);
     } catch (error) {
       logger.error('RoleGuard failed', error);
 
