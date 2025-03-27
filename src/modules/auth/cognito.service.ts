@@ -31,7 +31,6 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AwsConfigService } from 'common/config/aws.config';
-import * as crypto from 'crypto';
 import { UserRole } from 'modules/user/user.type';
 
 import { logger } from '../../core/logger/index.logger';
@@ -48,7 +47,7 @@ export class CognitoService {
   async isUserEmailVerified(email: string): Promise<boolean> {
     try {
       const params = {
-        UserPoolId: this.awsConfigService.userPoolId,
+        UserPoolId: this.awsConfigService.userMobilePoolId,
         Username: email,
       };
 
@@ -69,7 +68,7 @@ export class CognitoService {
   async signIn(email: string, password: string): Promise<AuthResponseDto> {
     const params: InitiateAuthCommandInput = {
       AuthFlow: 'USER_PASSWORD_AUTH',
-      ClientId: this.awsConfigService.userPoolClientId,
+      ClientId: this.awsConfigService.userCmsPoolClientId,
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,
@@ -99,7 +98,7 @@ export class CognitoService {
   ): Promise<RespondToAuthChallengeCommandOutput> {
     const params: RespondToAuthChallengeCommandInput = {
       ChallengeName: 'NEW_PASSWORD_REQUIRED',
-      ClientId: this.awsConfigService.userPoolClientId,
+      ClientId: this.awsConfigService.userCmsPoolClientId,
       ChallengeResponses: {
         USERNAME: email,
         NEW_PASSWORD: newPassword,
@@ -114,7 +113,7 @@ export class CognitoService {
 
   async changePassword(email: string, newPassword: string) {
     const params: AdminSetUserPasswordCommandInput = {
-      UserPoolId: this.awsConfigService.userPoolId,
+      UserPoolId: this.awsConfigService.userCmsPoolId,
       Username: email,
       Password: newPassword,
       // Permanent: true, Set to true if you want the password to be permanent
@@ -127,7 +126,7 @@ export class CognitoService {
 
   async resetPassword(email: string): Promise<ForgotPasswordCommandOutput> {
     const params: ForgotPasswordCommandInput = {
-      ClientId: this.awsConfigService.userPoolClientId,
+      ClientId: this.awsConfigService.userCmsPoolClientId,
       Username: email,
     };
 
@@ -145,7 +144,7 @@ export class CognitoService {
   }): Promise<SignUpCommandOutput> {
     const { email, password, firstName, lastName, role } = data;
     const params: SignUpCommandInput = {
-      ClientId: this.awsConfigService.userPoolClientId,
+      ClientId: this.awsConfigService.userCmsPoolClientId,
       Username: email,
       UserAttributes: [
         { Name: 'email', Value: email },
@@ -173,7 +172,7 @@ export class CognitoService {
   }): Promise<AdminCreateUserCommandOutput> {
     const { email, password, firstName, lastName, role } = data;
     const params: AdminCreateUserCommandInput = {
-      UserPoolId: this.awsConfigService.userPoolId,
+      UserPoolId: this.awsConfigService.userCmsPoolId,
       Username: email,
       UserAttributes: [
         { Name: 'email', Value: email },
@@ -199,7 +198,7 @@ export class CognitoService {
   }): Promise<AdminUpdateUserAttributesCommandOutput> {
     const { email, firstName, lastName, role } = data;
     const params: AdminUpdateUserAttributesCommandInput = {
-      UserPoolId: this.awsConfigService.userPoolId,
+      UserPoolId: this.awsConfigService.userCmsPoolId,
       Username: email,
       UserAttributes: [
         { Name: 'name', Value: firstName },
@@ -215,7 +214,7 @@ export class CognitoService {
 
   async deleteUser(email: string): Promise<AdminDeleteUserCommandOutput> {
     const params: AdminDeleteUserCommandInput = {
-      UserPoolId: this.awsConfigService.userPoolId,
+      UserPoolId: this.awsConfigService.userCmsPoolId,
       Username: email,
     };
 
@@ -230,8 +229,8 @@ export class CognitoService {
   ): Promise<AdminInitiateAuthCommandOutput> {
     const params: AdminInitiateAuthCommandInput = {
       AuthFlow: 'REFRESH_TOKEN_AUTH',
-      ClientId: this.awsConfigService.userPoolClientId,
-      UserPoolId: this.awsConfigService.userPoolId,
+      ClientId: this.awsConfigService.userCmsPoolClientId,
+      UserPoolId: this.awsConfigService.userCmsPoolId,
       AuthParameters: {
         REFRESH_TOKEN: refreshToken,
         USERNAME: username,
@@ -249,7 +248,7 @@ export class CognitoService {
 
     const commandRevokeRefreshToken = new RevokeTokenCommand({
       Token: refreshToken,
-      ClientId: this.awsConfigService.userPoolClientId,
+      ClientId: this.awsConfigService.userCmsPoolClientId,
     });
 
     try {
@@ -262,15 +261,5 @@ export class CognitoService {
     } catch (error) {
       return error;
     }
-  }
-
-  private calculateSecretHash(username: string): string {
-    const clientId = this.awsConfigService.userPoolClientId;
-    const clientSecret = this.awsConfigService.userPoolClientSecret;
-
-    return crypto
-      .createHmac('SHA256', clientSecret)
-      .update(username + clientId)
-      .digest('base64');
   }
 }

@@ -6,7 +6,7 @@ import { AwsConfigService } from 'common/config/aws.config';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { CognitoService } from './cognito.service';
-import { JwtStrategy } from './jwt.strategy';
+import { CmsJwtStrategy, MobileJwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { JwtStrategy } from './jwt.strategy';
     forwardRef(() => UserModule),
   ],
   controllers: [AuthController],
-  providers: [JwtStrategy, CognitoService, AwsConfigService],
+  providers: [MobileJwtStrategy, CmsJwtStrategy, CognitoService, AwsConfigService],
   exports: [PassportModule, CognitoService],
 })
 export class AuthModule {}

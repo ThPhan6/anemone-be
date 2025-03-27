@@ -52,8 +52,8 @@ class App {
       new ValidationPipe({
         transformOptions: {
           excludeExtraneousValues: true,
-          exposeDefaultValues: true,
-          enableImplicitConversion: false,
+          exposeUnsetFields: true,
+          enableImplicitConversion: true,
         },
         stopAtFirstError: stopAtFirstError,
         exceptionFactory: (errors) => {

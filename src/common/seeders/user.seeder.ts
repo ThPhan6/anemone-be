@@ -54,7 +54,7 @@ export class UserSeeder extends BaseSeeder {
       // Check if users already exist to prevent duplicates
       for (const user of userData) {
         const params: AdminCreateUserCommandInput = {
-          UserPoolId: process.env.AWS_COGNITO_USER_POOL_ID,
+          UserPoolId: process.env.AWS_COGNITO_USER_MOBILE_POOL_ID,
           Username: user.email,
           UserAttributes: [
             { Name: 'email', Value: user.email },

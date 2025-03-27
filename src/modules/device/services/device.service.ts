@@ -106,7 +106,7 @@ export class DeviceService {
   async registerDevice(dto: RegisterDeviceDto, userId: string) {
     const device = await this.repository.findOne({
       where: { deviceId: dto.deviceId },
-      relations: ['registeredBy'],
+      // relations: ['registeredBy'],
     });
 
     if (!device) {
@@ -125,10 +125,12 @@ export class DeviceService {
 
     const lastPing = device.lastPingAt;
 
-    if (!lastPing || lastPing.getTime() > Date.now() - 10 * 60 * 1000) {
+    if (!lastPing || Date.now() - lastPing.getTime() > 10 * 60 * 1000) {
       throw new BadRequestException('Device is not responding');
     }
 
     await this.repository.update(device.id, { registeredBy: userId });
+
+    return Object.assign(device, { registeredBy: userId });
   }
 }

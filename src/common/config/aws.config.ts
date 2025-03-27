@@ -16,15 +16,17 @@ export class AwsConfigService {
     });
   }
 
-  get userPoolId() {
+  get userMobilePoolId() {
+    return this.configService.get<string>('AWS_COGNITO_MOBILE_USER_POOL_ID');
+  }
+  get userCmsPoolId() {
     return this.configService.get<string>('AWS_COGNITO_USER_POOL_ID');
   }
 
-  get userPoolClientId() {
-    return this.configService.get<string>('AWS_COGNITO_CLIENT_ID');
+  get userMobilePoolClientId() {
+    return this.configService.get<string>('AWS_COGNITO_MOBILE_CLIENT_ID');
   }
-
-  get userPoolClientSecret() {
-    return this.configService.get<string>('AWS_COGNITO_CLIENT_SECRET');
+  get userCmsPoolClientId() {
+    return this.configService.get<string>('AWS_COGNITO_CLIENT_ID');
   }
 }

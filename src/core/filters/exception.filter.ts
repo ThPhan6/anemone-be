@@ -59,8 +59,10 @@ export class ExceptionFilter extends BaseExceptionFilter {
     const errRes = error.response;
 
     if (error instanceof BadRequestException) {
-      const specificErrors: string[] = errRes?.errors ? Object.values(errRes.errors) : [];
-      const errorMessage = specificErrors[0] || Message.invalidInput;
+      const specificErrors: string = errRes?.errors
+        ? Object.values(errRes.errors)[0]
+        : errRes.message || '';
+      const errorMessage = specificErrors || Message.invalidInput;
 
       return new HttpResponse({
         success: false,

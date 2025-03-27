@@ -1,5 +1,6 @@
 import { Body, Get, Param, Post } from '@nestjs/common';
 
+import { getUserId } from '../../../common/utils/helper';
 import { BaseController } from '../../../core/controllers/base.controller';
 import { ApiController } from '../../../core/decorator/apiController.decorator';
 import { AdminRoleGuard, MemberRoleGuard } from '../../../core/decorator/auth.decorator';
@@ -22,8 +23,8 @@ export class DeviceController extends BaseController {
 
   @MemberRoleGuard()
   @Post('register')
-  async registerDevice(@Body() dto: RegisterDeviceDto, @AuthUser() user: UserDto) {
-    const result = await this.deviceService.registerDevice(dto, user.id);
+  async registerDevice(@AuthUser() user: UserDto, @Body() dto: RegisterDeviceDto) {
+    const result = await this.deviceService.registerDevice(dto, getUserId(user));
 
     return { success: true, data: result };
   }

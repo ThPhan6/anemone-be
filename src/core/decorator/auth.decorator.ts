@@ -11,7 +11,7 @@ export function RolesGuard(roles: UserRole[] = [], options?: PermDecoratorOption
   return applyDecorators(
     SetMetadata(PERM_KEY, roles),
     SetMetadata(PERM_OPTION_KEY, options),
-    UseGuards(...[AuthGuard('jwt'), RoleGuard]),
+    UseGuards(...[AuthGuard('cms'), RoleGuard]),
     ApiBearerAuth(),
     ApiUnauthorizedResponse(),
   );
@@ -21,7 +21,7 @@ export function AdminRoleGuard(options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, [UserRole.ADMIN]),
     SetMetadata(PERM_OPTION_KEY, options),
-    UseGuards(...[AuthGuard('jwt'), RoleGuard]),
+    UseGuards(...[AuthGuard('cms'), RoleGuard]),
     ApiBearerAuth(),
     ApiUnauthorizedResponse(),
   );
@@ -31,7 +31,7 @@ export function StaffRoleGuard(options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, [UserRole.ADMIN, UserRole.STAFF]),
     SetMetadata(PERM_OPTION_KEY, options),
-    UseGuards(...[AuthGuard('jwt'), RoleGuard]),
+    UseGuards(...[AuthGuard('cms'), RoleGuard]),
     ApiBearerAuth(),
     ApiUnauthorizedResponse(),
   );
@@ -41,7 +41,7 @@ export function MemberRoleGuard(options?: PermDecoratorOptions) {
   return applyDecorators(
     SetMetadata(PERM_KEY, [UserRole.MEMBER]),
     SetMetadata(PERM_OPTION_KEY, options),
-    UseGuards(...[AuthGuard('jwt'), RoleGuard]),
+    UseGuards(...[AuthGuard('mobile'), RoleGuard]),
     ApiBearerAuth(),
     ApiUnauthorizedResponse(),
   );

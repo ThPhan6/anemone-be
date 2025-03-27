@@ -53,10 +53,6 @@ export class RoleGuard implements CanActivate {
             context.getHandler(),
           ]);
 
-      if (!roles.length) {
-        return true;
-      }
-
       const role = userInfo.UserAttributes.find((x) => x.Name === 'custom:role')?.Value as UserRole;
 
       const user = context.getArgs()[0]?.user as UserDto;
@@ -65,6 +61,10 @@ export class RoleGuard implements CanActivate {
 
       // set user role
       request.user = user;
+
+      if (!roles.length || roles[0] === UserRole.MEMBER) {
+        return true;
+      }
 
       const hasPermission = roles.includes(role);
 
@@ -78,11 +78,7 @@ export class RoleGuard implements CanActivate {
 
   private async getUser(token: string) {
     try {
-      const params = {
-        AccessToken: token,
-      };
-
-      return this.cognitoClient.send(new GetUserCommand(params));
+      return this.cognitoClient.send(new GetUserCommand({ AccessToken: token }));
     } catch (error) {
       if (
         error.name === 'NotAuthorizedException' &&
