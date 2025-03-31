@@ -1,4 +1,4 @@
-FROM node:18.16.0-bullseye AS dist
+FROM node:22-bullseye AS dist
 
 COPY package.json yarn.lock ./
 # RUN apk add g++ make py3-pip
@@ -10,7 +10,7 @@ COPY . ./
 RUN yarn build
 
 
-FROM node:18.16.0-bullseye AS node_modules
+FROM node:22-bullseye AS node_modules
 
 COPY package.json yarn.lock ./
 # RUN apk add g++ make py3-pip
@@ -19,7 +19,7 @@ COPY package.json yarn.lock ./
 RUN yarn install --prod
 
 
-FROM node:18.16.0-alpine3.18
+FROM node:22-alpine3.21
 
 ARG PORT=3000
 
