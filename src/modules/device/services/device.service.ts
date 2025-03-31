@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
 import { Repository } from 'typeorm';
@@ -120,14 +125,17 @@ export class DeviceService {
     if (device.registeredBy === userId) {
       return device;
     } else if (device.registeredBy) {
-      throw new BadRequestException('Device is already registered to another user');
+      throw new ForbiddenException('Device is already registered to another user');
     }
 
     const lastPing = device.lastPingAt;
 
-    if (!lastPing || Date.now() - lastPing.getTime() > 10 * 60 * 1000) {
+    if (!lastPing) {
       throw new BadRequestException('Device is not responding');
     }
+    // if (!lastPing || Date.now() - lastPing.getTime() > 10 * 60 * 1000) {
+    //   throw new BadRequestException('Device is not responding');
+    // }
 
     await this.repository.update(device.id, { registeredBy: userId });
 
