@@ -3,13 +3,14 @@ import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { runSeeder, SeederOptions } from 'typeorm-extension';
 
+import { QuestionnaireSeeder } from './questionnaire.seeder';
 import { UserSeeder } from './user.seeder';
 
 config();
 
 async function runSeeders() {
   const options: SeederOptions = {
-    seeds: [UserSeeder],
+    seeds: [UserSeeder, QuestionnaireSeeder],
   };
 
   const dataSource = new DataSource({
