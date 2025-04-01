@@ -28,6 +28,14 @@ export class DeviceController extends BaseController {
     return { success: true, data: result };
   }
 
+  @MemberRoleGuard()
+  @Post('un-register')
+  async unregisterDevice(@AuthUser() user: UserDto, @Body() dto: RegisterDeviceDto) {
+    const result = await this.deviceService.registerDevice(dto, user.sub);
+
+    return { success: true, data: result };
+  }
+
   @AdminRoleGuard()
   @Post(':deviceId/provision')
   async provisionDevice(@Param('deviceId') deviceId: string) {

@@ -108,11 +108,24 @@ export class DeviceService {
     return device;
   }
 
-  async registerDevice(dto: RegisterDeviceDto, userId: string) {
+  async findValidDevice(deviceId: string) {
     const device = await this.repository.findOne({
-      where: { deviceId: dto.deviceId },
-      // relations: ['registeredBy'],
+      where: { deviceId },
     });
+
+    if (!device) {
+      throw new BadRequestException('Device not found');
+    }
+
+    if (device.provisioningStatus !== DeviceProvisioningStatus.PROVISIONED) {
+      throw new BadRequestException('Device is not provisioned');
+    }
+
+    return device;
+  }
+
+  async registerDevice(dto: RegisterDeviceDto, userId: string) {
+    const device = await this.findValidDevice(dto.deviceId);
 
     if (!device) {
       throw new BadRequestException('Device not found');
@@ -140,5 +153,17 @@ export class DeviceService {
     await this.repository.update(device.id, { registeredBy: userId });
 
     return Object.assign(device, { registeredBy: userId });
+  }
+
+  async unregisterDevice(dto: RegisterDeviceDto, userId: string) {
+    const device = await this.findValidDevice(dto.deviceId);
+
+    if (device.registeredBy !== userId) {
+      throw new ForbiddenException('Device is already registered to another user');
+    }
+
+    await this.repository.update(device.id, { registeredBy: null });
+
+    return Object.assign(device, { registeredBy: null });
   }
 }
