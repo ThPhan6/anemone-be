@@ -36,6 +36,14 @@ export class DeviceController extends BaseController {
     return { success: true, data: result };
   }
 
+  @MemberRoleGuard()
+  @Get('/')
+  async getUserRegisteredDevices(@AuthUser() user: UserDto) {
+    const result = await this.deviceService.getUserRegisteredDevices(user.sub);
+
+    return { success: true, data: result };
+  }
+
   @AdminRoleGuard()
   @Post(':deviceId/provision')
   async provisionDevice(@Param('deviceId') deviceId: string) {
