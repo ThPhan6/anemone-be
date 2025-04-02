@@ -4,6 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AuthModule } from './auth/auth.module';
+import { CategoryModule } from './category/category.module';
 import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
 import { ScentModule } from './scent/scent.module';
@@ -20,6 +21,7 @@ import { UserModule } from './user/user.module';
     AuthModule,
     DeviceModule,
     ScentModule,
+    CategoryModule,
     MulterModule.register({
       dest: './uploads',
     }),
