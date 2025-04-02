@@ -51,9 +51,13 @@ export class CategoryService {
     return questionnaire;
   }
 
-  async createQuestionnaireAnswer(userId: string, answers: QuestionnaireAnswerItem[]) {
+  async createQuestionnaireAnswer(userId: string, bodyRequest: QuestionnaireAnswerItem[]) {
     // Check all questions before saving to database
-    for (const el of answers) {
+    for (const el of bodyRequest) {
+      if (!Array.isArray(el.answers)) {
+        throw new HttpException(MESSAGE.CATEGORY.INVALID_ANSWER, HttpStatus.BAD_REQUEST);
+      }
+
       const question = await this.categoryRepository.findOne({
         where: {
           id: el.questionId,
@@ -69,7 +73,7 @@ export class CategoryService {
     // If all questions are valid, save data to database
     const answer = await this.userSettingRepository.create({
       userId,
-      system: answers,
+      system: bodyRequest,
     });
 
     await this.userSettingRepository.save(answer);
@@ -105,7 +109,7 @@ export class CategoryService {
       return {
         id: category.id,
         question: category.name,
-        answer: answer.answer,
+        answers: answer.answers,
       };
     });
 
