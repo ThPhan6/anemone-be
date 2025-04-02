@@ -1,4 +1,5 @@
-import { Body, Get, Param, Post } from '@nestjs/common';
+import { Body, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { AdminRoleGuard, MemberRoleGuard } from 'core/decorator/auth.decorator';
@@ -6,9 +7,9 @@ import { AuthUser } from 'core/decorator/auth-user.decorator';
 
 import { UserDto } from '../../user/dto/user.dto';
 import { RegisterDeviceDto } from '../dto';
+import { DeviceConnectSpaceDto } from '../dto/device/device-connect-space.dto';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
-
 @ApiController({
   name: 'devices',
 })
@@ -114,4 +115,35 @@ export class DeviceController extends BaseController {
   //     message: 'Certificate deactivated successfully',
   //   };
   // }
+
+  @MemberRoleGuard()
+  @Put(':deviceId/connect')
+  @ApiOperation({ summary: 'Connect a device to a space' })
+  async connectSpace(
+    @AuthUser() user: UserDto,
+    @Param('deviceId') deviceId: string,
+    @Body() bodyRequest: DeviceConnectSpaceDto,
+  ) {
+    const result = await this.deviceService.connectSpace(user.sub, deviceId, bodyRequest.spaceId);
+
+    return { success: true, data: result };
+  }
+
+  @MemberRoleGuard()
+  @Put(':deviceId/disconnect')
+  @ApiOperation({ summary: 'Disconnect a device from a space' })
+  async disconnectSpace(@Param('deviceId') deviceId: string) {
+    const result = await this.deviceService.disconnectSpace(deviceId);
+
+    return { success: true, data: result };
+  }
+
+  @MemberRoleGuard()
+  @Delete(':deviceId/space')
+  @ApiOperation({ summary: 'Remove a device from a space' })
+  async removeSpace(@Param('deviceId') deviceId: string) {
+    const result = await this.deviceService.removeSpace(deviceId);
+
+    return { success: true, data: result };
+  }
 }

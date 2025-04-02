@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,6 +10,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
 import { Repository } from 'typeorm';
 
+import { MESSAGE } from '../../../common/constants/message.constant';
+import { Space } from '../../../common/entities/space.entity';
 import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
@@ -22,6 +26,8 @@ export class DeviceService {
     private deviceCertificateService: DeviceCertificateService,
     @InjectRepository(DeviceCertificate)
     private certificateRepository: Repository<DeviceCertificate>,
+    @InjectRepository(Space)
+    private spaceRepository: Repository<Space>,
   ) {}
 
   /**
@@ -174,5 +180,59 @@ export class DeviceService {
     await this.repository.update(device.id, { registeredBy: null });
 
     return Object.assign(device, { registeredBy: null });
+  }
+
+  async connectSpace(userId: string, deviceId: string, spaceId: string) {
+    const device = await this.findValidDevice(deviceId);
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const space = await this.spaceRepository.findOne({
+      where: { id: spaceId },
+    });
+
+    if (!space) {
+      throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const connectedDevice = await this.repository.update(device.id, {
+      space: { id: space.id },
+      isConnected: true,
+      registeredBy: userId,
+    });
+
+    return connectedDevice;
+  }
+
+  async disconnectSpace(deviceId: string) {
+    const device = await this.findValidDevice(deviceId);
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const disconnectedDevice = await this.repository.update(device.id, {
+      isConnected: false,
+    });
+
+    return disconnectedDevice;
+  }
+
+  async removeSpace(deviceId: string) {
+    const device = await this.findValidDevice(deviceId);
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const removedDevice = await this.repository.update(device.id, {
+      space: null,
+      isConnected: false,
+      registeredBy: null,
+    });
+
+    return removedDevice;
   }
 }
