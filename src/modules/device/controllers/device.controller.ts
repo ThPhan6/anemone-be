@@ -1,4 +1,4 @@
-import { Body, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
@@ -117,7 +117,7 @@ export class DeviceController extends BaseController {
   // }
 
   @MemberRoleGuard()
-  @Put(':deviceId/connect')
+  @Patch(':deviceId/connect')
   @ApiOperation({ summary: 'Connect a device to a space' })
   async connectSpace(
     @AuthUser() user: UserDto,
@@ -130,7 +130,7 @@ export class DeviceController extends BaseController {
   }
 
   @MemberRoleGuard()
-  @Put(':deviceId/disconnect')
+  @Patch(':deviceId/disconnect')
   @ApiOperation({ summary: 'Disconnect a device from a space' })
   async disconnectSpace(@Param('deviceId') deviceId: string) {
     const result = await this.deviceService.disconnectSpace(deviceId);
