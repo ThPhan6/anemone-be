@@ -8,9 +8,9 @@ import { CategoryModule } from './category/category.module';
 import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
 import { ScentModule } from './scent/scent.module';
+import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
 import { UserModule } from './user/user.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -22,6 +22,7 @@ import { UserModule } from './user/user.module';
     DeviceModule,
     ScentModule,
     CategoryModule,
+    SpaceModule,
     MulterModule.register({
       dest: './uploads',
     }),
