@@ -1,10 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsNotEmpty, IsString } from 'class-validator';
 
 export class QuestionnaireAnswerDto {
   @ApiProperty({
-    example: [{ questionId: '8a72aa0a-f492-4e86-bd8f-ca3340320c1', answer: 'Sleep' }],
+    example: [
+      {
+        questionId: '8a72aa0a-f492-4e86-bd8f-ca3340320c1',
+        answers: ['Sleep'],
+      },
+    ],
   })
   @IsNotEmpty()
   @IsArray()
@@ -17,7 +22,9 @@ export class QuestionnaireAnswerItem {
   @IsNotEmpty()
   questionId: string;
 
-  @IsString()
-  @IsNotEmpty()
-  answer: string;
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  @Type(() => String)
+  answers: string[];
 }
