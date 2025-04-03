@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
 import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
+import { PlaylistModule } from './playlist/playlist.module';
+import { ScentMobileModule } from './scent.mobile/scent.mobile.module';
 import { ScentModule } from './scent/scent.module';
 import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
@@ -23,6 +25,8 @@ import { UserModule } from './user/user.module';
     ScentModule,
     CategoryModule,
     SpaceModule,
+    PlaylistModule,
+    ScentMobileModule,
     MulterModule.register({
       dest: './uploads',
     }),
