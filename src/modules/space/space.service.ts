@@ -100,6 +100,17 @@ export class SpaceService {
       throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const devicesInSpace = await this.deviceRepository.find({
+      where: { space: { id } },
+    });
+
+    if (devicesInSpace.length > 0) {
+      await this.deviceRepository.update(
+        { space: { id } },
+        { space: null, isConnected: false, registeredBy: null },
+      );
+    }
+
     const space = await this.spaceRepository.delete(id);
 
     return space;
