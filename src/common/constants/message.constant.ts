@@ -12,4 +12,14 @@ export const MESSAGE = {
   DEVICE: {
     NOT_FOUND: 'Device not found',
   },
+  PLAYLIST: {
+    NOT_FOUND: 'Not found playlist',
+    ALREADY_EXIST: 'Playlist already exists',
+    SCENT_NOT_FOUND: 'Scent not found in playlist',
+  },
+
+  SCENT_MOBILE: {
+    NOT_FOUND: 'Scent not found',
+    ALREADY_EXISTS: 'Scent already exists',
+  },
 };

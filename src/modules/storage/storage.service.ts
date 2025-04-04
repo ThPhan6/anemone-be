@@ -2,7 +2,9 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  ObjectCannedACL,
   PutObjectCommand,
+  PutObjectCommandInput,
   S3Client,
   S3ClientConfig,
 } from '@aws-sdk/client-s3';
@@ -10,9 +12,14 @@ import { fromInstanceMetadata } from '@aws-sdk/credential-providers';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ReadStream } from 'fs';
+import { extname } from 'path';
 import { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
+import { MessageCode } from '../../common/constants/messageCode';
+import { ApiBadRequestException } from '../../common/types/apiException.type';
+import { logger } from '../../core/logger/index.logger';
 import { UploadImageResDto } from './dto/storage.response';
 import { LocalStorage } from './util';
 
@@ -28,6 +35,7 @@ export class StorageService {
   private s3Client: S3Client;
   private local: LocalStorage;
   private bucket: string;
+  private keyPrefix: string;
 
   constructor(private readonly configService: ConfigService) {
     const accessKeyId = configService.get('AWS_ACCESS_KEY_ID');
@@ -35,6 +43,7 @@ export class StorageService {
     const region = configService.get('AWS_REGION');
     const fileDir = configService.get('FILE_DIR') ?? 'files';
     this.bucket = configService.get('AWS_BUCKET');
+    this.keyPrefix = configService.get('AWS_BUCKET_KEY_PREFIX') || 'staging/color';
     const config: S3ClientConfig = { region };
     if (accessKeyId && secretAccessKey) {
       config.credentials = { accessKeyId, secretAccessKey };
@@ -166,11 +175,81 @@ export class StorageService {
     });
   }
 
-  async uploadFile(data: Buffer | string, key: string) {
-    return this.uploadObject({
-      Key: key,
-      Body: data,
-    });
+  async uploadImage(file: Express.Multer.File, fileName: string) {
+    try {
+      const ext = extname(file.originalname);
+      const fullPathName = `${fileName}${ext}`;
+
+      const contentType = 'image/jpeg';
+
+      const calls = [];
+
+      calls.push(this.uploadFile(file.buffer, `${fullPathName}`, 'public-read', contentType));
+
+      const [pathToOrigin, pathToConverted] = await Promise.all(calls);
+
+      return {
+        origin: pathToOrigin,
+        converted: pathToConverted,
+      };
+    } catch (error) {
+      throw new ApiBadRequestException(
+        MessageCode.badRequest,
+        error.message || 'Upload image failed.',
+      );
+    }
+  }
+
+  async uploadFile(
+    data: Buffer | string | ReadStream | ArrayBuffer,
+    key: string,
+    ACL?: ObjectCannedACL,
+    contentType?: string,
+    prefix = this.keyPrefix,
+    maxRetries = 0,
+    retryDelayMs = 1000,
+  ) {
+    const newKey = `${prefix}/${key}`;
+    let attempt = 0;
+
+    while (attempt <= maxRetries) {
+      try {
+        const putInput: PutObjectCommandInput = {
+          Bucket: this.bucket,
+          Key: newKey,
+          Body: data as any,
+          ContentType: contentType,
+        };
+        if (ACL) {
+          putInput.ACL = ACL;
+        }
+
+        const result = await this.s3Client.send(new PutObjectCommand(putInput));
+        if (result.$metadata.httpStatusCode != HttpStatus.OK) {
+          throw new HttpException(
+            '',
+            result.$metadata.httpStatusCode ?? HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+
+        return newKey;
+      } catch (err) {
+        attempt++;
+
+        // If we've exhausted all retries, throw the error
+        if (attempt > maxRetries) {
+          logger.error(`uploadFile: ${key} - failed after ${maxRetries} attempts. Error: ${err}`);
+          throw err;
+        }
+
+        logger.warn(
+          `uploadFile: ${key} - attempt ${attempt}/${maxRetries} failed. Retrying in ${retryDelayMs}ms. Error: ${err}`,
+        );
+
+        // Wait for the fixed delay
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
   }
 
   async uploadImageFile(file: Express.Multer.File): Promise<UploadImageResDto> {

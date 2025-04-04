@@ -4,13 +4,14 @@ import { DataSource } from 'typeorm';
 import { runSeeder, SeederOptions } from 'typeorm-extension';
 
 import { QuestionnaireSeeder } from './questionnaire.seeder';
+import { ScentTagSeeder } from './scent-tag.seeder';
 import { UserSeeder } from './user.seeder';
 
 config();
 
 async function runSeeders() {
   const options: SeederOptions = {
-    seeds: [UserSeeder, QuestionnaireSeeder],
+    seeds: [UserSeeder, QuestionnaireSeeder, ScentTagSeeder],
   };
 
   const dataSource = new DataSource({
