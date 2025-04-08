@@ -115,4 +115,17 @@ export class CategoryService {
 
     return result;
   }
+
+  async getScentTags() {
+    const scentTags = await this.categoryRepository.find({
+      where: {
+        type: CategoryType.ScentTag,
+      },
+    });
+
+    return scentTags.map((scentTag) => ({
+      id: scentTag.id,
+      name: scentTag.name,
+    }));
+  }
 }
