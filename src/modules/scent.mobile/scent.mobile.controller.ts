@@ -39,6 +39,12 @@ export class ScentMobileController extends BaseController {
     return this.scentMobileService.get(user.sub, search);
   }
 
+  @Get('public')
+  @ApiOperation({ summary: 'Get all public scents' })
+  async getPublic(@Query('search') search?: string) {
+    return this.scentMobileService.getPublic(search);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a scent by id' })
   async getById(@Param('id') id: string) {

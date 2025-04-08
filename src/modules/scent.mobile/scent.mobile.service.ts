@@ -1,14 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Category } from '../../common/entities/category.entity';
 import { Scent } from '../../common/entities/scent.entity';
+import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
 import { StorageService } from '../storage/storage.service';
 import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-request.mobile.dto';
-
 @Injectable()
 export class ScentMobileService {
   constructor(
@@ -17,6 +17,8 @@ export class ScentMobileService {
     private storageService: StorageService,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(UserSetting)
+    private readonly userSettingRepository: Repository<UserSetting>,
   ) {}
 
   async get(userId: string, search?: string) {
@@ -153,5 +155,36 @@ export class ScentMobileService {
     }
 
     return await this.scentRepository.delete(scentId);
+  }
+
+  async getPublic(search?: string) {
+    //Get list userId public
+    const publicUsers = await this.userSettingRepository.find({
+      where: { isPublic: true },
+      select: ['userId'],
+    });
+
+    const publicUserIds = publicUsers.map((u) => u.userId);
+
+    if (publicUserIds.length === 0) {
+      return [];
+    }
+
+    const where: any = {
+      createdBy: In(publicUserIds),
+    };
+
+    if (search) {
+      where.name = ILike(`%${search}%`);
+    }
+
+    const scents = await this.scentRepository.find({ where });
+
+    return scents.map((scent) => ({
+      id: scent.id,
+      name: scent.name,
+      image: scent.image,
+      createdBy: scent.createdBy,
+    }));
   }
 }
