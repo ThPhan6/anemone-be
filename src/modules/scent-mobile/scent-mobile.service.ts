@@ -7,6 +7,8 @@ import { Category } from '../../common/entities/category.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { Pagination } from '../../core/types/response.type';
 import { StorageService } from '../storage/storage.service';
 import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
 @Injectable()
@@ -21,7 +23,9 @@ export class ScentMobileService {
     private readonly userSettingRepository: Repository<UserSetting>,
   ) {}
 
-  async get(userId: string, search?: string) {
+  async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+    const { page, perPage, search } = queries;
+
     const whereConditions: any = {
       createdBy: userId,
     };
@@ -30,14 +34,23 @@ export class ScentMobileService {
       whereConditions.name = ILike(`%${search}%`); // ILike for case-insensitive search
     }
 
-    const scents = await this.scentRepository.find({ where: whereConditions });
+    const [scents, total] = await this.scentRepository.findAndCount({
+      where: whereConditions,
+      skip: (page - 1) * perPage,
+      take: perPage,
+      order: {
+        createdAt: 'DESC',
+      },
+    });
 
-    return scents.map((scent) => ({
-      id: scent.id,
-      name: scent.name,
-      image: scent.image,
-      createdBy: scent.createdBy,
-    }));
+    return {
+      items: scents,
+      pagination: {
+        total,
+        page,
+        perPage,
+      },
+    };
   }
 
   async getById(scentId: string) {
@@ -157,7 +170,8 @@ export class ScentMobileService {
     return await this.scentRepository.delete(scentId);
   }
 
-  async getPublic(search?: string) {
+  async getPublic(queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+    const { page, perPage, search } = queries;
     //Get list userId public
     const publicUsers = await this.userSettingRepository.find({
       where: { isPublic: true },
@@ -167,7 +181,14 @@ export class ScentMobileService {
     const publicUserIds = publicUsers.map((u) => u.userId);
 
     if (publicUserIds.length === 0) {
-      return [];
+      return {
+        items: [],
+        pagination: {
+          total: 0,
+          page,
+          perPage,
+        },
+      };
     }
 
     const where: any = {
@@ -178,13 +199,22 @@ export class ScentMobileService {
       where.name = ILike(`%${search}%`);
     }
 
-    const scents = await this.scentRepository.find({ where });
+    const [scents, total] = await this.scentRepository.findAndCount({
+      where,
+      skip: (page - 1) * perPage,
+      take: perPage,
+      order: {
+        createdAt: 'DESC',
+      },
+    });
 
-    return scents.map((scent) => ({
-      id: scent.id,
-      name: scent.name,
-      image: scent.image,
-      createdBy: scent.createdBy,
-    }));
+    return {
+      items: scents,
+      pagination: {
+        total,
+        page,
+        perPage,
+      },
+    };
   }
 }

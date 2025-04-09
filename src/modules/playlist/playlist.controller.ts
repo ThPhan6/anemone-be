@@ -1,16 +1,17 @@
-import { Body, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 
+import { convertQueryParams } from '../../common/utils/queryConversion.util';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { UserDto } from '../auth/dto/auth-user.dto';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
 import { PlaylistService } from './playlist.service';
-
 @MemberRoleGuard()
 @ApiController({
   name: 'playlists',
@@ -22,8 +23,9 @@ export class PlaylistController extends BaseController {
 
   @Get()
   @ApiOperation({ summary: 'Get all playlists by user' })
-  async getAllPlaylists(@AuthUser() user: UserDto) {
-    const playlists = await this.playlistService.get(user.sub);
+  async getAllPlaylists(@AuthUser() user: UserDto, @Query() queries: ApiBaseGetListQueries) {
+    const convertedQueries = convertQueryParams(queries);
+    const playlists = await this.playlistService.get(user.sub, convertedQueries);
 
     return playlists;
   }

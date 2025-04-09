@@ -16,10 +16,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation } from '@nestjs/swagger';
 
 import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
+import { convertQueryParams } from '../../common/utils/queryConversion.util';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { UserDto } from '../auth/dto/auth-user.dto';
 import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
 import { ScentMobileService } from './scent-mobile.service';
@@ -35,14 +37,18 @@ export class ScentMobileController extends BaseController {
 
   @Get()
   @ApiOperation({ summary: 'Get all scents' })
-  async get(@AuthUser() user: UserDto, @Query('search') search?: string) {
-    return this.scentMobileService.get(user.sub, search);
+  async get(@AuthUser() user: UserDto, @Query() queries: ApiBaseGetListQueries) {
+    const convertedQueries = convertQueryParams(queries);
+
+    return this.scentMobileService.get(user.sub, convertedQueries);
   }
 
   @Get('public')
   @ApiOperation({ summary: 'Get all public scents' })
-  async getPublic(@Query('search') search?: string) {
-    return this.scentMobileService.getPublic(search);
+  async getPublic(@Query() queries: ApiBaseGetListQueries) {
+    const convertedQueries = convertQueryParams(queries);
+
+    return this.scentMobileService.getPublic(convertedQueries);
   }
 
   @Get(':id')
