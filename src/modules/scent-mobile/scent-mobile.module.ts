@@ -4,8 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Category } from '../../common/entities/category.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
-import { ScentMobileController } from './scent.mobile.controller';
-import { ScentMobileService } from './scent.mobile.service';
+import { ScentMobileController } from './scent-mobile.controller';
+import { ScentMobileService } from './scent-mobile.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Scent, Category, UserSetting])],

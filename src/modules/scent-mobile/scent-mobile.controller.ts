@@ -21,8 +21,8 @@ import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { UserDto } from '../auth/dto/auth-user.dto';
-import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-request.mobile.dto';
-import { ScentMobileService } from './scent.mobile.service';
+import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
+import { ScentMobileService } from './scent-mobile.service';
 
 @MemberRoleGuard()
 @ApiController({

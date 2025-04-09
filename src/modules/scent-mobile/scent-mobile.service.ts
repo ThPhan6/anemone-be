@@ -8,7 +8,7 @@ import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
 import { StorageService } from '../storage/storage.service';
-import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-request.mobile.dto';
+import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
 @Injectable()
 export class ScentMobileService {
   constructor(
