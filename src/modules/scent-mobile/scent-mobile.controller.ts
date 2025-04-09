@@ -21,8 +21,8 @@ import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { UserDto } from '../auth/dto/auth-user.dto';
-import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-request.mobile.dto';
-import { ScentMobileService } from './scent.mobile.service';
+import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
+import { ScentMobileService } from './scent-mobile.service';
 
 @MemberRoleGuard()
 @ApiController({
@@ -37,6 +37,12 @@ export class ScentMobileController extends BaseController {
   @ApiOperation({ summary: 'Get all scents' })
   async get(@AuthUser() user: UserDto, @Query('search') search?: string) {
     return this.scentMobileService.get(user.sub, search);
+  }
+
+  @Get('public')
+  @ApiOperation({ summary: 'Get all public scents' })
+  async getPublic(@Query('search') search?: string) {
+    return this.scentMobileService.getPublic(search);
   }
 
   @Get(':id')
