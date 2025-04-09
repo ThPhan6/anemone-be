@@ -1,4 +1,5 @@
 import { Body, Get, Post } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
@@ -7,7 +8,6 @@ import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { UserDto } from '../auth/dto/auth-user.dto';
 import { CategoryService } from './category.service';
 import { QuestionnaireAnswerDto } from './dto/questionnaire-answer.dto';
-
 @MemberRoleGuard()
 @ApiController({
   name: 'categories',
@@ -22,6 +22,14 @@ export class CategoryController extends BaseController {
     const questionnaires = await this.categoryService.getQuestionnaires();
 
     return questionnaires;
+  }
+
+  @Get('scent-tag')
+  @ApiOperation({ summary: 'Get all scent tags' })
+  async getScentTags() {
+    const scentTags = await this.categoryService.getScentTags();
+
+    return scentTags;
   }
 
   @Get('/questionnaire/result')

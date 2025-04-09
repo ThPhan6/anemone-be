@@ -26,9 +26,14 @@ export class PlaylistService {
       where: {
         createdBy: userId,
       },
+      relations: ['playlistScents', 'playlistScents.scent'],
     });
 
-    return playlists;
+    return playlists.map((playlist) => ({
+      id: playlist.id,
+      name: playlist.name,
+      image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
+    }));
   }
 
   // Get playlist details with associated scents
@@ -47,7 +52,7 @@ export class PlaylistService {
     const playlistDetail = {
       id: playlist.id,
       name: playlist.name,
-      image: playlist.image,
+      image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
       createdBy: playlist.createdBy,
       scents: playlist.playlistScents.map((ps) => ({
         scentId: ps.scent.id,
