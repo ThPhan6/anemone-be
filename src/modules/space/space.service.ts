@@ -4,10 +4,12 @@ import { In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Space } from '../../common/entities/space.entity';
+import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { Device } from '../device/entities/device.entity';
 import { CreateSpaceDto, UpdateSpaceDto } from './dto/space-request.dto';
+
 @Injectable()
 export class SpaceService {
   constructor(
@@ -18,20 +20,14 @@ export class SpaceService {
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Space>> {
-    const { page, perPage } = queries;
-
-    const [spaces, total] = await this.spaceRepository.findAndCount({
+    const { items, pagination } = await paginate(this.spaceRepository, {
       where: {
         createdBy: userId,
       },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      order: {
-        createdAt: 'DESC',
-      },
+      params: queries,
     });
 
-    const spaceIds = spaces.map((space) => space.id);
+    const spaceIds = items.map((space) => space.id);
 
     const devices = await this.deviceRepository.find({
       where: {
@@ -43,15 +39,11 @@ export class SpaceService {
     });
 
     return {
-      items: spaces.map((space) => ({
+      items: items.map((space) => ({
         ...space,
         totalDevices: devices.filter((device) => device.space.id === space.id).length,
       })),
-      pagination: {
-        total,
-        page,
-        perPage,
-      },
+      pagination,
     };
   }
 

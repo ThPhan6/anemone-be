@@ -6,6 +6,7 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
+import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
@@ -23,30 +24,20 @@ export class PlaylistService {
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Playlist>> {
-    const { page, perPage } = queries;
-
-    const [playlists, total] = await this.playlistRepository.findAndCount({
+    const { items, pagination } = await paginate(this.playlistRepository, {
       where: {
         createdBy: userId,
       },
+      params: queries,
       relations: ['playlistScents', 'playlistScents.scent'],
-      skip: (page - 1) * perPage,
-      take: perPage,
-      order: {
-        createdAt: 'DESC',
-      },
     });
 
     return {
-      items: playlists.map((playlist) => ({
+      items: items.map((playlist) => ({
         ...playlist,
         image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
       })),
-      pagination: {
-        total,
-        page,
-        perPage,
-      },
+      pagination,
     };
   }
 

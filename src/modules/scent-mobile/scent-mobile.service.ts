@@ -7,6 +7,7 @@ import { Category } from '../../common/entities/category.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
+import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { StorageService } from '../storage/storage.service';
@@ -24,33 +25,21 @@ export class ScentMobileService {
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
-    const { page, perPage, search } = queries;
+    const { search } = queries;
 
     const whereConditions: any = {
       createdBy: userId,
     };
-
     if (search) {
       whereConditions.name = ILike(`%${search}%`); // ILike for case-insensitive search
     }
 
-    const [scents, total] = await this.scentRepository.findAndCount({
+    const result = await paginate(this.scentRepository, {
       where: whereConditions,
-      skip: (page - 1) * perPage,
-      take: perPage,
-      order: {
-        createdAt: 'DESC',
-      },
+      params: queries,
     });
 
-    return {
-      items: scents,
-      pagination: {
-        total,
-        page,
-        perPage,
-      },
-    };
+    return result;
   }
 
   async getById(scentId: string) {
@@ -199,22 +188,11 @@ export class ScentMobileService {
       where.name = ILike(`%${search}%`);
     }
 
-    const [scents, total] = await this.scentRepository.findAndCount({
+    const result = await paginate(this.scentRepository, {
       where,
-      skip: (page - 1) * perPage,
-      take: perPage,
-      order: {
-        createdAt: 'DESC',
-      },
+      params: queries,
     });
 
-    return {
-      items: scents,
-      pagination: {
-        total,
-        page,
-        perPage,
-      },
-    };
+    return result;
   }
 }

@@ -1,7 +1,6 @@
 import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 
-import { convertQueryParams } from '../../common/utils/queryConversion.util';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
@@ -23,10 +22,7 @@ export class SpaceController extends BaseController {
   @Get()
   @ApiOperation({ summary: 'Get all spaces by user id' })
   async get(@AuthUser() user: UserDto, @Query() queries: ApiBaseGetListQueries) {
-    const convertedQueries = convertQueryParams(queries);
-    const spaces = await this.spaceService.get(user.sub, convertedQueries);
-
-    return spaces;
+    return this.spaceService.get(user.sub, queries);
   }
 
   @Get(':id')

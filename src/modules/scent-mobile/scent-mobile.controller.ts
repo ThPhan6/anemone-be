@@ -16,7 +16,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation } from '@nestjs/swagger';
 
 import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
-import { convertQueryParams } from '../../common/utils/queryConversion.util';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
@@ -38,17 +37,13 @@ export class ScentMobileController extends BaseController {
   @Get()
   @ApiOperation({ summary: 'Get all scents' })
   async get(@AuthUser() user: UserDto, @Query() queries: ApiBaseGetListQueries) {
-    const convertedQueries = convertQueryParams(queries);
-
-    return this.scentMobileService.get(user.sub, convertedQueries);
+    return this.scentMobileService.get(user.sub, queries);
   }
 
   @Get('public')
   @ApiOperation({ summary: 'Get all public scents' })
   async getPublic(@Query() queries: ApiBaseGetListQueries) {
-    const convertedQueries = convertQueryParams(queries);
-
-    return this.scentMobileService.getPublic(convertedQueries);
+    return this.scentMobileService.getPublic(queries);
   }
 
   @Get(':id')
