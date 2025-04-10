@@ -6,10 +6,12 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
+import { paginate } from '../../common/utils/helper';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { Pagination } from '../../core/types/response.type';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
-
 @Injectable()
 export class PlaylistService {
   constructor(
@@ -21,19 +23,22 @@ export class PlaylistService {
     private playlistScentRepository: Repository<PlaylistScent>,
   ) {}
 
-  async get(userId: string) {
-    const playlists = await this.playlistRepository.find({
+  async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Playlist>> {
+    const { items, pagination } = await paginate(this.playlistRepository, {
       where: {
         createdBy: userId,
       },
+      params: queries,
       relations: ['playlistScents', 'playlistScents.scent'],
     });
 
-    return playlists.map((playlist) => ({
-      id: playlist.id,
-      name: playlist.name,
-      image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
-    }));
+    return {
+      items: items.map((playlist) => ({
+        ...playlist,
+        image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
+      })),
+      pagination,
+    };
   }
 
   // Get playlist details with associated scents

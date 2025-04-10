@@ -7,6 +7,9 @@ import { Category } from '../../common/entities/category.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
+import { paginate } from '../../common/utils/helper';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { Pagination } from '../../core/types/response.type';
 import { StorageService } from '../storage/storage.service';
 import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
 @Injectable()
@@ -21,23 +24,22 @@ export class ScentMobileService {
     private readonly userSettingRepository: Repository<UserSetting>,
   ) {}
 
-  async get(userId: string, search?: string) {
+  async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+    const { search } = queries;
+
     const whereConditions: any = {
       createdBy: userId,
     };
-
     if (search) {
       whereConditions.name = ILike(`%${search}%`); // ILike for case-insensitive search
     }
 
-    const scents = await this.scentRepository.find({ where: whereConditions });
+    const result = await paginate(this.scentRepository, {
+      where: whereConditions,
+      params: queries,
+    });
 
-    return scents.map((scent) => ({
-      id: scent.id,
-      name: scent.name,
-      image: scent.image,
-      createdBy: scent.createdBy,
-    }));
+    return result;
   }
 
   async getById(scentId: string) {
@@ -157,7 +159,8 @@ export class ScentMobileService {
     return await this.scentRepository.delete(scentId);
   }
 
-  async getPublic(search?: string) {
+  async getPublic(queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+    const { page, perPage, search } = queries;
     //Get list userId public
     const publicUsers = await this.userSettingRepository.find({
       where: { isPublic: true },
@@ -167,7 +170,14 @@ export class ScentMobileService {
     const publicUserIds = publicUsers.map((u) => u.userId);
 
     if (publicUserIds.length === 0) {
-      return [];
+      return {
+        items: [],
+        pagination: {
+          total: 0,
+          page,
+          perPage,
+        },
+      };
     }
 
     const where: any = {
@@ -178,13 +188,11 @@ export class ScentMobileService {
       where.name = ILike(`%${search}%`);
     }
 
-    const scents = await this.scentRepository.find({ where });
+    const result = await paginate(this.scentRepository, {
+      where,
+      params: queries,
+    });
 
-    return scents.map((scent) => ({
-      id: scent.id,
-      name: scent.name,
-      image: scent.image,
-      createdBy: scent.createdBy,
-    }));
+    return result;
   }
 }
