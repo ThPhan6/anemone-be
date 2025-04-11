@@ -80,13 +80,17 @@ export class ScentMobileService {
       throw new HttpException(MESSAGE.SCENT_MOBILE.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
-    const fileName = `scents/${Date.now()}`;
+    let uploadedImageUrl = '';
 
-    const uploadedImage = await this.storageService.uploadImage(file, fileName);
+    if (file) {
+      const fileName = `scents/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      uploadedImageUrl = uploadedImage.origin;
+    }
 
     const scent = this.scentRepository.create({
       ...bodyRequest,
-      image: uploadedImage.origin,
+      image: uploadedImageUrl,
       createdBy: userId,
     });
 
