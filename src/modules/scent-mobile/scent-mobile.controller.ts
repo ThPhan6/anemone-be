@@ -65,7 +65,7 @@ export class ScentMobileController extends BaseController {
           new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
         ],
-        fileIsRequired: true,
+        fileIsRequired: false,
       }),
     )
     image: Express.Multer.File,
