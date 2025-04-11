@@ -45,6 +45,14 @@ export class DeviceController extends BaseController {
     return { success: true, data: result };
   }
 
+  @MemberRoleGuard()
+  @Get(':deviceId')
+  async getDeviceDetail(@Param('deviceId') deviceId: string) {
+    const result = await this.deviceService.getDeviceDetail(deviceId);
+
+    return result;
+  }
+
   @AdminRoleGuard()
   @Post(':deviceId/provision')
   async provisionDevice(@Param('deviceId') deviceId: string) {
