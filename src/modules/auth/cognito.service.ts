@@ -18,6 +18,7 @@ import {
   ForgotPasswordCommand,
   ForgotPasswordCommandInput,
   ForgotPasswordCommandOutput,
+  GetUserCommand,
   GlobalSignOutCommand,
   InitiateAuthCommand,
   InitiateAuthCommandInput,
@@ -44,10 +45,12 @@ export class CognitoService {
     this.cognitoClient = this.awsConfigService.getCognitoIdentityServiceProvider();
   }
 
-  async isUserEmailVerified(email: string): Promise<boolean> {
+  async isUserEmailVerified(email: string, cms = false): Promise<boolean> {
     try {
       const params = {
-        UserPoolId: this.awsConfigService.userMobilePoolId,
+        UserPoolId: cms
+          ? this.awsConfigService.userCmsPoolId
+          : this.awsConfigService.userMobilePoolId,
         Username: email,
       };
 
@@ -260,6 +263,38 @@ export class CognitoService {
       return null;
     } catch (error) {
       return error;
+    }
+  }
+
+  async getProfile(accessToken: string) {
+    try {
+      const command = new GetUserCommand({
+        AccessToken: accessToken,
+      });
+
+      const response = await this.cognitoClient.send(command);
+
+      const attrMap = response.UserAttributes?.reduce(
+        (acc, attr) => {
+          if (attr.Name && attr.Value) {
+            acc[attr.Name] = attr.Value;
+          }
+
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
+      return {
+        id: attrMap.sub,
+        email: attrMap.email,
+        name: attrMap.name,
+        givenName: attrMap.given_name,
+        role: attrMap['custom:role'],
+        emailVerified: attrMap.email_verified === 'true',
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid access token');
     }
   }
 }

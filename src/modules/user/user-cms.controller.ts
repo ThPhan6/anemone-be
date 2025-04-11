@@ -1,4 +1,4 @@
-import { Body, Get, Put } from '@nestjs/common';
+import { Body, Get, Put, Query } from '@nestjs/common';
 import { MessageCode } from 'common/constants/messageCode';
 import { ApiBadRequestException, ApiNotFoundException } from 'common/types/apiException.type';
 import { BaseController } from 'core/controllers/base.controller';
@@ -27,15 +27,10 @@ export class UserCMSController extends BaseController {
   }
 
   @Get()
-  async getProfile(@AuthUser() user: UserDto) {
-    const userDetail = await this.service.getUserDetailBy({
-      cogId: user.username,
-    });
-    if (!userDetail) {
-      throw new ApiNotFoundException(MessageCode.notFound, 'User not found');
-    }
+  async getProfile(@Query('token') token: string) {
+    const user = await this.cognitoService.getProfile(token);
 
-    return this.dataType(UserDetailResDto, userDetail);
+    return user;
   }
 
   @Put()

@@ -45,13 +45,7 @@ export class AuthController extends BaseController {
   })
   @Post('login')
   async login(@Body() body: SignInDto) {
-    // Check user is exist
-    const userExisted = await this.userService.getUserDetailByEmail(body.email);
-    if (!userExisted) {
-      throw new ApiBadRequestException(MessageCode.badRequest, 'Incorrect username or password');
-    }
-
-    const isVerified = await this.cognitoService.isUserEmailVerified(body.email);
+    const isVerified = await this.cognitoService.isUserEmailVerified(body.email, true);
     if (!isVerified) {
       throw new ApiBadRequestException(MessageCode.badRequest, 'User is not verified');
     }
@@ -87,23 +81,6 @@ export class AuthController extends BaseController {
           'Something went wrong while creating user',
         );
       }
-
-      const user = await this.userService.create({
-        ...body,
-        cogId: result.UserSub,
-      });
-      if (!user) {
-        throw new ApiBadRequestException(
-          MessageCode.badRequest,
-          'Something went wrong while creating user',
-        );
-      }
-
-      await this.userProfileService.create({
-        userId: user.id,
-        firstName: body.firstName,
-        lastName: body.lastName,
-      });
 
       return this.ok();
     } catch (error) {
