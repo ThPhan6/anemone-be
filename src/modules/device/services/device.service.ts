@@ -235,4 +235,35 @@ export class DeviceService {
 
     return removedDevice;
   }
+
+  async getDeviceDetail(deviceId: string) {
+    const device = await this.repository.findOne({
+      where: { deviceId },
+      relations: ['product', 'cartridges', 'cartridges.product', 'space'],
+    });
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    return {
+      id: device.id,
+      name: device.name,
+      deviceId: device.deviceId,
+      isConnected: device.isConnected,
+      warranty: device.warrantyExpirationDate,
+      productInfo: {
+        serialNumber: device.product.serialNumber,
+        sku: device.product.sku,
+        batch: device.product.batchId,
+      },
+      cartridges: device.cartridges.map((cartridge) => ({
+        id: cartridge.id,
+        name: cartridge.product.name,
+        percentage: Number(cartridge.percentage),
+        position: Number(cartridge.position),
+      })),
+      spaceName: device.space?.name,
+    };
+  }
 }
