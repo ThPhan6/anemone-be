@@ -80,7 +80,7 @@ export class PlaylistService {
       id: playlist.id,
       name: playlist.name,
       image:
-        playlist.playlistScents.length > 0
+        playlist.playlistScents.length > 0 && playlist.playlistScents[0].scent.image
           ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
           : '',
       createdBy: userInfo,
