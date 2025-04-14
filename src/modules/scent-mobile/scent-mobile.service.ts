@@ -7,9 +7,11 @@ import { Category } from '../../common/entities/category.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
+import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
+import { CognitoService } from '../auth/cognito.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
 @Injectable()
@@ -22,6 +24,7 @@ export class ScentMobileService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(UserSetting)
     private readonly userSettingRepository: Repository<UserSetting>,
+    private readonly cognitoService: CognitoService,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
@@ -34,12 +37,21 @@ export class ScentMobileService {
       whereConditions.name = ILike(`%${search}%`); // ILike for case-insensitive search
     }
 
+    const userInfo = await this.cognitoService.getUserByUserId(userId);
+
     const result = await paginate(this.scentRepository, {
       where: whereConditions,
       params: queries,
     });
 
-    return result;
+    return {
+      items: result.items.map((el) => ({
+        ...el,
+        image: el.image ? convertURLToS3Readable(el.image) : '',
+        createdBy: userInfo,
+      })),
+      pagination: result.pagination,
+    };
   }
 
   async getById(scentId: string) {
@@ -64,6 +76,7 @@ export class ScentMobileService {
 
     return {
       ...scent,
+      image: scent.image ? convertURLToS3Readable(scent.image) : '',
       tags: categoryTags,
     };
   }
@@ -197,6 +210,12 @@ export class ScentMobileService {
       params: queries,
     });
 
-    return result;
+    return {
+      items: result.items.map((el) => ({
+        ...el,
+        image: el.image ? convertURLToS3Readable(el.image) : '',
+      })),
+      pagination: result.pagination,
+    };
   }
 }

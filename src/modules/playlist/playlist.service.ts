@@ -1,14 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, In, Not, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
+import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
+import { CognitoService } from '../auth/cognito.service';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
@@ -21,9 +23,13 @@ export class PlaylistService {
     private scentRepository: Repository<Scent>,
     @InjectRepository(PlaylistScent)
     private playlistScentRepository: Repository<PlaylistScent>,
+    private cognitoService: CognitoService,
   ) {}
 
-  async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Playlist>> {
+  async get(
+    userId: string,
+    queries: ApiBaseGetListQueries,
+  ): Promise<Pagination<Partial<Playlist>>> {
     const { items, pagination } = await paginate(this.playlistRepository, {
       where: {
         createdBy: userId,
@@ -32,10 +38,24 @@ export class PlaylistService {
       relations: ['playlistScents', 'playlistScents.scent'],
     });
 
+    const userInfo = await this.cognitoService.getUserByUserId(userId);
+
     return {
       items: items.map((playlist) => ({
-        ...playlist,
-        image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
+        id: playlist.id,
+        name: playlist.name,
+        image:
+          playlist.playlistScents.length > 0
+            ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
+            : '',
+        createdBy: userInfo,
+        scents: playlist.playlistScents.map((ps) => ({
+          id: ps.scent.id,
+          name: ps.scent.name,
+          image: ps.scent.image ? convertURLToS3Readable(ps.scent.image) : '',
+          intensity: ps.scent.intensity,
+          description: ps.scent.description,
+        })),
       })),
       pagination,
     };
@@ -53,19 +73,25 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const userInfo = await this.cognitoService.getUserByUserId(playlist.createdBy);
+
     // Format the response to include the scents in the playlist
     const playlistDetail = {
       id: playlist.id,
       name: playlist.name,
-      image: playlist.playlistScents.length > 0 ? playlist.playlistScents[0].scent.image : '',
-      createdBy: playlist.createdBy,
+      image:
+        playlist.playlistScents.length > 0
+          ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
+          : '',
+      createdBy: userInfo,
       scents: playlist.playlistScents.map((ps) => ({
-        scentId: ps.scent.id,
-        scentName: ps.scent.name,
-        scentImage: ps.scent.image,
+        id: ps.scent.id,
+        name: ps.scent.name,
+        image: ps.scent.image ? convertURLToS3Readable(ps.scent.image) : '',
         intensity: ps.scent.intensity,
         description: ps.scent.description,
-        sequence: ps.sequence, // Add the sequence for the scent
+        sequence: ps.sequence,
+        createdBy: userInfo,
       })),
     };
 
@@ -207,8 +233,10 @@ export class PlaylistService {
     return result;
   }
 
-  async getScentsOfPlaylist(playlistId: string) {
+  async getScentsOfPlaylist(userId: string, playlistId: string, queries: ApiBaseGetListQueries) {
     const playlist = await this.playlistRepository.findOne({ where: { id: playlistId } });
+
+    const search = queries.search;
 
     if (!playlist) {
       throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
@@ -220,15 +248,25 @@ export class PlaylistService {
       order: { sequence: 'ASC' },
     });
 
-    return playlistScents.map((ps) => ({
-      id: ps.scent.id,
-      name: ps.scent.name,
-      image: ps.scent.image,
-      intensity: ps.scent.intensity,
-      cartridgeInfo: ps.scent.cartridgeInfo,
-      tags: ps.scent.tags,
-      description: ps.scent.description,
-      sequence: ps.sequence,
-    }));
+    const { items: scents, pagination } = await paginate(this.scentRepository, {
+      where: {
+        id: Not(In(playlistScents.map((ps) => ps.scent.id))),
+        createdBy: userId,
+        ...(search ? { name: ILike(`%${search}%`) } : {}),
+      },
+      params: queries,
+    });
+
+    const userInfo = await this.cognitoService.getUserByUserId(userId);
+
+    return {
+      items: scents.map((el) => ({
+        id: el.id,
+        name: el.name,
+        image: el.image ? convertURLToS3Readable(el.image) : '',
+        createdBy: userInfo,
+      })),
+      pagination,
+    };
   }
 }

@@ -62,9 +62,13 @@ export class PlaylistController extends BaseController {
   }
 
   @Get(':playlistId/scents')
-  @ApiOperation({ summary: 'get list scent of playlist' })
-  async getScentsOfPlaylist(@Param('playlistId') playlistId: string) {
-    return this.playlistService.getScentsOfPlaylist(playlistId);
+  @ApiOperation({ summary: 'get list scent to add to playlist' })
+  async getScentsOfPlaylist(
+    @AuthUser() user: UserDto,
+    @Param('playlistId') playlistId: string,
+    @Query() queries: ApiBaseGetListQueries,
+  ) {
+    return this.playlistService.getScentsOfPlaylist(user.sub, playlistId, queries);
   }
 
   @Post(':playlistId/scents')
