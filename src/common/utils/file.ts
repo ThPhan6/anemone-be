@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import { readFile, utils } from 'xlsx';
 
+import { isValidURL } from './string';
+
 export function checkExistsFile(path: string): boolean {
   try {
     return fs.existsSync(path) ? true : false;
@@ -20,3 +22,16 @@ export const readFileExcel = (filePath: string) => {
 
   return data;
 };
+
+export function convertURLToS3Readable(url: string, hasPrefix = false) {
+  // check string is valid url or not
+  if (!isValidURL(url)) {
+    if (hasPrefix) {
+      return `${process.env.AWS_PUBLIC_URL}/${process.env.AWS_BUCKET_KEY_PREFIX}/${url}`;
+    }
+
+    return `${process.env.AWS_PUBLIC_URL}/${url}`;
+  }
+
+  return url;
+}

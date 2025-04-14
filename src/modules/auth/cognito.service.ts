@@ -297,4 +297,28 @@ export class CognitoService {
       throw new UnauthorizedException('Invalid access token');
     }
   }
+
+  async getUserByUserId(userId: string) {
+    try {
+      const command = new AdminGetUserCommand({
+        UserPoolId: this.awsConfigService.userMobilePoolId,
+        Username: userId,
+      });
+
+      const result = await this.cognitoClient.send(command);
+
+      const attrMap = Object.fromEntries(
+        result.UserAttributes?.map((attr) => [attr.Name, attr.Value]),
+      );
+
+      const givenName = attrMap['given_name'] || '';
+      const familyName = attrMap['family_name'] || '';
+
+      return `${givenName} ${familyName}`;
+    } catch (error) {
+      logger.error('Failed to fetch user from Cognito:', error);
+
+      return null;
+    }
+  }
 }
