@@ -131,5 +131,18 @@ export class MockService {
 
       await this.deviceCartridgeRepository.save(cart);
     }
+
+    return {
+      id: device.id,
+      name: device.name,
+      deviceId: device.deviceId,
+      thingName: device.thingName,
+      provisioningStatus: device.provisioningStatus,
+      firmwareVersion: device.firmwareVersion,
+      isConnected: device.isConnected,
+      lastPingAt: device.lastPingAt,
+      warrantyExpirationDate: device.warrantyExpirationDate,
+      registeredBy: device.registeredBy,
+    };
   }
 }
