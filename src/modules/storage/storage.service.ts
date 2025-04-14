@@ -12,7 +12,7 @@ import { fromInstanceMetadata } from '@aws-sdk/credential-providers';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ReadStream } from 'fs';
+import { createReadStream, ReadStream } from 'fs';
 import { extname } from 'path';
 import { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
@@ -184,7 +184,9 @@ export class StorageService {
 
       const calls = [];
 
-      calls.push(this.uploadFile(file.buffer, `${fullPathName}`, 'public-read', contentType));
+      calls.push(
+        this.uploadFile(createReadStream(file.path), `${fullPathName}`, 'public-read', contentType),
+      );
 
       const [pathToOrigin, pathToConverted] = await Promise.all(calls);
 
