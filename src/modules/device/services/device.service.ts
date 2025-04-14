@@ -133,10 +133,13 @@ export class DeviceService {
   async getUserRegisteredDevices(userId: string) {
     const devices = await this.repository.find({
       where: { registeredBy: userId },
-      relations: ['product'],
+      relations: ['product', 'space'],
     });
 
-    return devices;
+    return devices.map((el) => ({
+      ...el,
+      spaceName: el.space ? el.space.name : null,
+    }));
   }
 
   async registerDevice(dto: RegisterDeviceDto, userId: string) {

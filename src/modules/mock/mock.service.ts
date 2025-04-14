@@ -17,44 +17,50 @@ export class MockService {
     private readonly deviceCartridgeRepository: Repository<DeviceCartridge>,
   ) {}
 
+  generateRandomSerialNumber(prefix = 'SN', digits = 9): string {
+    const randomNumber = Math.floor(Math.random() * Math.pow(10, digits));
+
+    return `${prefix}${randomNumber.toString().padStart(digits, '0')}`;
+  }
+
   async mockDeviceWithCartridges(userId: string, deviceName: string) {
     const deviceOrCartridges = [
       {
         manufacturerId: 'vitruvi',
         sku: 'SKU-001',
         batchId: 'BATCH-02-2025',
-        serialNumber: 'SN01111111',
+        serialNumber: this.generateRandomSerialNumber(),
         name: deviceName,
         type: ProductType.DEVICE,
       },
       {
         name: 'S01',
-        serialNumber: 'SN000000002',
+        serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'R01',
-        serialNumber: 'SN000000003',
+        serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'I01',
-        serialNumber: 'SN000000004',
+        serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'H01',
-        serialNumber: 'SN000000005',
+        serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'F01',
-        serialNumber: 'SN000000006',
+        serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'E01',
-        serialNumber: 'SN000000007',
+        serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
     ];
