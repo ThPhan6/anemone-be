@@ -11,6 +11,8 @@ export const MESSAGE = {
   },
   DEVICE: {
     NOT_FOUND: 'Device not found',
+    ALREADY_EXISTS: 'Device already exists',
+    USED: 'Device is used',
   },
   PLAYLIST: {
     NOT_FOUND: 'Not found playlist',
@@ -21,5 +23,10 @@ export const MESSAGE = {
   SCENT_MOBILE: {
     NOT_FOUND: 'Scent not found',
     ALREADY_EXISTS: 'Scent already exists',
+  },
+  CARTRIDGE: {
+    NOT_FOUND: 'Cartridge not found',
+    ALREADY_EXISTS: 'Cartridge already exists',
+    USED: 'Cartridge is used',
   },
 };
