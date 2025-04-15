@@ -44,7 +44,7 @@ export class CategoryService {
       return {
         id: questionnaire.id,
         question: questionnaire.name,
-        answers: systemSetting.name.split('//'),
+        answers: systemSetting?.name.split('//'),
       };
     });
 
