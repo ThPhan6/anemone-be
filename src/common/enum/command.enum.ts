@@ -1,5 +1,5 @@
 export enum Command {
-  'None',
-  'Pending command',
-  'Request auth',
+  NONE,
+  PENDING_COMMAND,
+  REQUEST_AUTH,
 }

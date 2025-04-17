@@ -296,15 +296,15 @@ export class DeviceIotService {
     if (device.lastPingAt) {
       const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
 
-      if (secondsSinceLastPing > 15) {
+      if (secondsSinceLastPing > parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)) {
         return {
-          command: Command['Request auth'],
+          command: Command.REQUEST_AUTH,
         };
       }
     }
 
     return {
-      command: pendingCommand ? Command['Pending command'] : Command.None,
+      command: pendingCommand ? Command.PENDING_COMMAND : Command.NONE,
     };
   }
 }
