@@ -3,16 +3,6 @@ import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class DeviceCartridgeDto {
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  scentId: string;
-
-  @ApiProperty()
-  @IsNumber()
-  @IsNotEmpty()
-  remainingVolume: number;
-
-  @ApiProperty()
   @IsNumber()
   @IsNotEmpty()
   eot: number;
@@ -34,6 +24,7 @@ export class DeviceCartridgeDto {
 
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   serialNumber: string;
 }
 

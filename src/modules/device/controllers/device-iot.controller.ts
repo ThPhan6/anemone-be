@@ -3,8 +3,9 @@ import { ApiOperation } from '@nestjs/swagger';
 import { ApiDeviceHeaders, IoTDevice } from 'core/decorator/iot-device.decorator';
 import { IoTAuthGuard } from 'core/guards/iot-auth.guard';
 
+import { BaseController } from '../../../core/controllers/base.controller';
 import { ApiController } from '../../../core/decorator/apiController.decorator';
-import { DeviceCartridgesDto } from '../dto';
+import { DeviceCartridgesDto, DeviceHeartbeatDto } from '../dto';
 import { Device } from '../entities/device.entity';
 import { DeviceIotService } from '../services/device-iot.service';
 
@@ -13,8 +14,10 @@ import { DeviceIotService } from '../services/device-iot.service';
   tags: 'IoT Devices',
 })
 @UseGuards(IoTAuthGuard)
-export class DeviceIotController {
-  constructor(private service: DeviceIotService) {}
+export class DeviceIotController extends BaseController {
+  constructor(private service: DeviceIotService) {
+    super();
+  }
 
   @Post('auth')
   @ApiOperation({ summary: 'Device auth endpoint' })
@@ -67,13 +70,19 @@ export class DeviceIotController {
   }
 
   @Post('cartridges')
+  @ApiOperation({ summary: 'Sync cartridges' })
   @ApiDeviceHeaders()
-  async syncCartridges(
-    @IoTDevice() device: Device,
-    @Body() data: { cartridges: DeviceCartridgesDto },
-  ) {
-    await this.service.syncDeviceCartridges(device.deviceId, data.cartridges);
+  async syncCartridges(@IoTDevice() device: Device, @Body() data: DeviceCartridgesDto) {
+    await this.service.syncDeviceCartridges(device.deviceId, data);
 
-    return { status: 'success' };
+    return this.ok(true, {
+      message: 'Cartridge data synced successfully',
+    });
+  }
+
+  @Post('heartbeat')
+  @ApiDeviceHeaders()
+  async heartbeat(@IoTDevice() device: Device, @Body() data: DeviceHeartbeatDto) {
+    return await this.service.handleHeartbeat(device.deviceId, data);
   }
 }

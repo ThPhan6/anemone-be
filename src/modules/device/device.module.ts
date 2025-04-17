@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Category } from '../../common/entities/category.entity';
 import { Space } from '../../common/entities/space.entity';
 import { SystemSetting } from '../../common/entities/system-setting.entity';
+import { UserSession } from '../../common/entities/user-session.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DeviceController } from './controllers/device.controller';
 import { DeviceIotController } from './controllers/device-iot.controller';
@@ -30,6 +31,7 @@ import { DeviceIotService } from './services/device-iot.service';
       Category,
       SystemSetting,
       Space,
+      UserSession,
     ]),
   ],
   controllers: [DeviceController, DeviceIotController],
