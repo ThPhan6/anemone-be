@@ -272,7 +272,7 @@ export class DeviceIotService {
     if (dto.deviceStatus) {
       //check user session
       const userSession = await this.userSessionRepository.findOne({
-        where: { device: { id: deviceId } },
+        where: { device: { id: device.id } },
       });
 
       if (userSession) {
@@ -288,7 +288,7 @@ export class DeviceIotService {
 
     // Check if there is any pending command for the device
     const pendingCommand = await this.commandRepository.findOne({
-      where: { device: { id: deviceId }, deletedAt: IsNull() },
+      where: { device: { id: device.id }, deletedAt: IsNull() },
       order: { createdAt: 'DESC' }, // if you want to get the latest command
     });
 
