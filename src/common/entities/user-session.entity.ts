@@ -6,6 +6,11 @@ import { BaseEntity } from './base.entity';
 import { Playlist } from './playlist.entity';
 import { Scent } from './scent.entity';
 
+export enum Status {
+  PAUSED = 0,
+  PLAYING = 1,
+}
+
 @Entity('user_sessions')
 export class UserSession extends BaseEntity {
   @ManyToOne(() => Device)

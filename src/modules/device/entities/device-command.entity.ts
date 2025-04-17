@@ -11,4 +11,7 @@ export class DeviceCommand extends BaseEntity {
 
   @Column({ name: 'command' })
   command: string;
+
+  @Column({ name: 'is_executed', default: false })
+  isExecuted: boolean;
 }

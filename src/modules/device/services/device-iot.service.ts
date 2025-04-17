@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Device } from 'modules/device/entities/device.entity';
-import { Repository } from 'typeorm';
+import * as moment from 'moment';
+import { IsNull, Repository } from 'typeorm';
 
+import { UserSession } from '../../../common/entities/user-session.entity';
+import { Command } from '../../../common/enum/command.enum';
 import { DeviceCartridgesDto, DeviceHeartbeatDto } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { DeviceCommand } from '../entities/device-command.entity';
+import { Product, ProductType } from '../entities/product.entity';
 
 @Injectable()
 export class DeviceIotService {
@@ -16,6 +20,10 @@ export class DeviceIotService {
     private cartridgeRepository: Repository<DeviceCartridge>,
     @InjectRepository(DeviceCommand)
     private commandRepository: Repository<DeviceCommand>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {}
 
   async findByDeviceId(deviceId: string): Promise<Device> {
@@ -59,10 +67,65 @@ export class DeviceIotService {
     return commands;
   }
 
-  async syncDeviceCartridges(deviceId: string, cartridgesDto: DeviceCartridgesDto): Promise<void> {
+  async syncDeviceCartridges(
+    deviceId: string,
+    cartridgesDto: DeviceCartridgesDto,
+    stopPlay = true,
+  ): Promise<void> {
     const device = await this.findByDeviceId(deviceId);
+
     if (!device) {
-      throw new NotFoundException(`Device with ID ${deviceId} not found`);
+      throw new HttpException(`Device with ID ${deviceId} not found`, HttpStatus.BAD_REQUEST);
+    }
+
+    // Validate positions: must be unique + valid range
+    const seenPositions = new Set<number>();
+
+    for (const cart of cartridgesDto.cartridges) {
+      if (cart.position < 1 || cart.position > 6) {
+        throw new HttpException(
+          `Invalid cartridge position: ${cart.position}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (seenPositions.has(cart.position)) {
+        throw new HttpException(
+          `Duplicate cartridge position: ${cart.position}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      seenPositions.add(cart.position);
+    }
+
+    //check validate cartridges
+    for (const cart of cartridgesDto.cartridges) {
+      const product = await this.productRepository.findOne({
+        where: {
+          serialNumber: cart.serialNumber,
+          type: ProductType.CARTRIDGE,
+        },
+      });
+
+      if (!product) {
+        throw new HttpException(
+          `Cartridge with serial number ${cart.serialNumber} is not registered as a product`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // attach product to cart info for later use (optional but useful)
+      (cart as any).product = product;
+    }
+
+    if (stopPlay) {
+      //send command pause
+      await this.commandRepository.save({
+        device,
+        command: 'pause',
+        isExecuted: false,
+      });
     }
 
     // Get existing cartridges
@@ -70,29 +133,40 @@ export class DeviceIotService {
       where: { device: { id: device.id } },
     });
 
-    // Map by serial number for easier lookup
-    const existingBySerial = new Map(existingCartridges.map((c) => [c.serialNumber, c]));
+    const cartridgeMapByPosition = new Map<number, DeviceCartridge>();
 
-    // Process each cartridge from the request
+    for (const cart of existingCartridges) {
+      cartridgeMapByPosition.set(Number(cart.position), cart);
+    }
+
     for (const cartInfo of cartridgesDto.cartridges) {
-      if (existingBySerial.has(cartInfo.serialNumber)) {
-        // Update existing cartridge
-        const cartridge = existingBySerial.get(cartInfo.serialNumber);
-        cartridge.eot = cartInfo.eot;
-        cartridge.ert = cartInfo.ert;
-        cartridge.percentage = cartInfo.percentage;
-        cartridge.position = cartInfo.position;
-        await this.cartridgeRepository.save(cartridge);
+      const existing = cartridgeMapByPosition.get(cartInfo.position);
+
+      if (existing) {
+        // If the cartridge is already in the map, update it
+        if (existing.serialNumber === cartInfo.serialNumber) {
+          // Same cartridge => update normally
+          existing.eot = cartInfo.eot;
+          existing.ert = cartInfo.ert;
+          existing.percentage = cartInfo.percentage;
+        } else {
+          // New cartridge in same position => update metadata
+          existing.serialNumber = cartInfo.serialNumber;
+          existing.eot = cartInfo.eot;
+          existing.ert = cartInfo.ert;
+          existing.percentage = cartInfo.percentage;
+        }
+
+        await this.cartridgeRepository.save(existing);
       } else {
-        // Create new cartridge
-        const cartridge = new DeviceCartridge();
-        cartridge.serialNumber = cartInfo.serialNumber;
-        cartridge.eot = cartInfo.eot;
-        cartridge.ert = cartInfo.ert;
-        cartridge.percentage = cartInfo.percentage;
-        cartridge.position = cartInfo.position;
-        cartridge.device = device;
-        await this.cartridgeRepository.save(cartridge);
+        // Completely new cartridge (new position)
+        const newCartridge = this.cartridgeRepository.create({
+          ...cartInfo,
+          device,
+          product: (cartInfo as any).product,
+        });
+
+        await this.cartridgeRepository.save(newCartridge);
       }
     }
   }
@@ -182,5 +256,55 @@ export class DeviceIotService {
     // command.executedAt = new Date();
 
     return this.commandRepository.save(command);
+  }
+
+  async handleHeartbeat(deviceId: string, dto: DeviceHeartbeatDto) {
+    const device = await this.findByDeviceId(deviceId);
+
+    if (!device) {
+      throw new NotFoundException('Device not found');
+    }
+
+    // Update last ping
+    await this.updateLastPing(deviceId);
+
+    //  Update device status
+    if (dto.deviceStatus) {
+      //check user session
+      const userSession = await this.userSessionRepository.findOne({
+        where: { device: { id: deviceId } },
+      });
+
+      if (userSession) {
+        userSession.status = dto.deviceStatus;
+        await this.userSessionRepository.update(userSession.id, userSession);
+      }
+    }
+
+    if (dto.cartridges) {
+      // Sync cartridges
+      await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
+    }
+
+    // Check if there is any pending command for the device
+    const pendingCommand = await this.commandRepository.findOne({
+      where: { device: { id: deviceId }, deletedAt: IsNull() },
+      order: { createdAt: 'DESC' }, // if you want to get the latest command
+    });
+
+    // Check lastPingAt — if > 15s ago, return command: "request auth"
+    if (device.lastPingAt) {
+      const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
+
+      if (secondsSinceLastPing > 15) {
+        return {
+          command: Command['Request auth'],
+        };
+      }
+    }
+
+    return {
+      command: pendingCommand ? Command['Pending command'] : Command.None,
+    };
   }
 }
