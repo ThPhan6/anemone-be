@@ -5,75 +5,61 @@ import { IsNotEmpty } from 'class-validator';
 import { ProductType } from '../../device/entities/product.entity';
 
 export class CreateProductDto {
-  @ApiProperty({
-    example: 'Product 1',
-  })
+  @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Name is required' })
   name: string;
 
-  @ApiProperty({
-    example: 'SKU123',
-  })
+  @ApiProperty()
   @IsString()
   @IsOptional()
   sku: string;
 
-  @ApiProperty({
-    example: 'SN335406615',
-  })
+  @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Serial number is required' })
   serialNumber: string;
 
-  @ApiProperty({
-    example: 'BATCH-202504',
-  })
+  @ApiProperty()
   @IsString()
   @IsOptional()
   batchId: string;
 
-  @ApiProperty({
-    example: 'vitruvi',
-  })
+  @ApiProperty()
   @IsString()
   @IsOptional()
   manufacturerId: string;
 
-  @ApiProperty({
-    example: ProductType.DEVICE,
-  })
-  @IsEnum(ProductType)
-  @IsNotEmpty()
+  @ApiProperty()
+  @IsEnum(ProductType, { message: 'Type is required and must be a valid ProductType' })
+  @IsNotEmpty({ message: 'Type is required' })
   type: ProductType;
 }
 
 export class UpdateProductDto {
-  @ApiProperty({
-    example: 'Product 1',
-  })
-  @IsString()
+  @ApiProperty()
   @IsOptional()
+  @IsString()
+  @IsNotEmpty({ message: 'Name must not be empty' })
   name: string;
 
-  @ApiProperty({
-    example: 'SKU123',
-  })
+  @ApiProperty()
   @IsString()
   @IsOptional()
   sku: string;
 
-  @ApiProperty({
-    example: 'BATCH-202504',
-  })
+  @ApiProperty()
   @IsString()
   @IsOptional()
   batchId: string;
 
-  @ApiProperty({
-    example: 'vitruvi',
-  })
+  @ApiProperty()
   @IsString()
   @IsOptional()
   manufacturerId: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsEnum(ProductType, { message: 'Type must be a valid ProductType' })
+  type: ProductType;
 }

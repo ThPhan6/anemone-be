@@ -15,8 +15,8 @@ export class ProductService {
     private readonly productRepository: Repository<Product>,
   ) {}
 
-  async get(type: ProductType, queries: ApiBaseGetListQueries) {
-    const search = queries.search;
+  async getAll(queries: ApiBaseGetListQueries & { type: ProductType }) {
+    const { search, type } = queries;
 
     const result = await paginate(this.productRepository, {
       where: { type, ...(search ? { name: ILike(`%${search}%`) } : {}) },
