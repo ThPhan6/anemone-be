@@ -9,6 +9,7 @@ import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
 import { MockModule } from './mock/mock.module';
 import { PlaylistModule } from './playlist/playlist.module';
+import { ProductModule } from './product/product.module';
 import { ScentModule } from './scent/scent.module';
 import { ScentMobileModule } from './scent-mobile/scent-mobile.module';
 import { SpaceModule } from './space/space.module';
@@ -31,6 +32,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     ScentMobileModule,
     UserSettingsModule,
     MockModule,
+    ProductModule,
     MulterModule.register({
       dest: './uploads',
     }),

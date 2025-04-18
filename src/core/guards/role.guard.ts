@@ -48,11 +48,13 @@ export class RoleGuard implements CanActivate {
         throw new ApiUnauthorizedException();
       }
 
+      const token = request.headers.authorization.split(' ')[1];
+
       if (!roles.length || roles[0] === UserRole.MEMBER) {
         return true;
       }
 
-      const userInfo = await this.getUser(request.user.accessToken);
+      const userInfo = await this.getUser(token);
 
       const role = userInfo.UserAttributes.find((x) => x.Name === 'custom:role')?.Value as UserRole;
 
