@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsNotEmpty } from 'class-validator';
 import { IsString } from 'class-validator';
 
 export class DeviceConnectSpaceDto {
@@ -7,4 +7,11 @@ export class DeviceConnectSpaceDto {
   @IsString()
   @IsNotEmpty()
   spaceId: string;
+}
+
+export class DeviceUpdateStatusDto {
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  @IsNotEmpty()
+  isConnected: boolean;
 }

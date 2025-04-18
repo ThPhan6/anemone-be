@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { orderBy } from 'lodash';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
 import { Repository } from 'typeorm';
 
@@ -209,18 +210,18 @@ export class DeviceService {
     return connectedDevice;
   }
 
-  async disconnectSpace(deviceId: string) {
+  async updateDeviceStatus(deviceId: string, isConnected: boolean) {
     const device = await this.findValidDevice(deviceId);
 
     if (!device) {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const disconnectedDevice = await this.repository.update(device.id, {
-      isConnected: false,
+    const updatedDevice = await this.repository.update(device.id, {
+      isConnected,
     });
 
-    return disconnectedDevice;
+    return updatedDevice;
   }
 
   async removeSpace(deviceId: string) {
@@ -230,11 +231,7 @@ export class DeviceService {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const removedDevice = await this.repository.update(device.id, {
-      space: null,
-      isConnected: false,
-      registeredBy: null,
-    });
+    const removedDevice = await this.repository.softDelete(device.id);
 
     return removedDevice;
   }
@@ -260,12 +257,16 @@ export class DeviceService {
         sku: device.product.sku,
         batch: device.product.batchId,
       },
-      cartridges: device.cartridges.map((cartridge) => ({
-        id: cartridge.id,
-        name: cartridge.product.name,
-        percentage: Number(cartridge.percentage),
-        position: Number(cartridge.position),
-      })),
+      cartridges: orderBy(
+        device.cartridges.map((cartridge) => ({
+          id: cartridge.id,
+          name: cartridge.product.name,
+          percentage: Number(cartridge.percentage),
+          position: Number(cartridge.position),
+        })),
+        ['position'],
+        ['asc'],
+      ),
       spaceName: device.space?.name,
     };
   }
