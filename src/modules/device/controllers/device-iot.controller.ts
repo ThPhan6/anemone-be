@@ -61,12 +61,9 @@ export class DeviceIotController extends BaseController {
   @Get('commands')
   @ApiDeviceHeaders()
   async getCommands(@IoTDevice() device: Device) {
-    const commands = await this.service.getPendingCommands(device.deviceId);
+    const command = await this.service.getPendingCommand(device.deviceId);
 
-    return {
-      status: 'success',
-      data: { commands },
-    };
+    return command;
   }
 
   @Post('cartridges')

@@ -8,12 +8,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
+import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
+import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
+import { DeviceCommand } from '../entities/device-command.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
 
@@ -28,6 +31,12 @@ export class DeviceService {
     private certificateRepository: Repository<DeviceCertificate>,
     @InjectRepository(Space)
     private spaceRepository: Repository<Space>,
+    @InjectRepository(Scent)
+    private scentRepository: Repository<Scent>,
+    @InjectRepository(DeviceCommand)
+    private deviceCommandRepository: Repository<DeviceCommand>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
   ) {}
 
   /**
@@ -268,5 +277,58 @@ export class DeviceService {
       })),
       spaceName: device.space?.name,
     };
+  }
+
+  async queueCommand(
+    deviceId: string,
+    userId: string,
+    commandType: 'play' | 'pause',
+    status: Status,
+    scentId: string,
+  ) {
+    const device = await this.findValidDevice(deviceId);
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const scent = await this.scentRepository.findOne({
+      where: { id: scentId },
+    });
+    if (!scent) {
+      throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    let command = await this.deviceCommandRepository.findOne({
+      where: {
+        device: { id: device.id },
+        isExecuted: false,
+        deletedAt: IsNull(),
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (command) {
+      command.command = commandType;
+      command.updatedAt = new Date();
+      await this.deviceCommandRepository.save(command);
+    } else {
+      command = this.deviceCommandRepository.create({
+        device: { id: device.id },
+        command: commandType,
+        isExecuted: false,
+      });
+      await this.deviceCommandRepository.save(command);
+    }
+
+    const userSession = this.userSessionRepository.create({
+      device: { id: device.id },
+      userId,
+      scent: { id: scent.id },
+      status,
+    });
+
+    await this.userSessionRepository.save(userSession);
+
+    return command;
   }
 }

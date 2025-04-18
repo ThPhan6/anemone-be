@@ -4,6 +4,7 @@ import { Device } from 'modules/device/entities/device.entity';
 import * as moment from 'moment';
 import { IsNull, Repository } from 'typeorm';
 
+import { Scent } from '../../../common/entities/scent.entity';
 import { UserSession } from '../../../common/entities/user-session.entity';
 import { Command } from '../../../common/enum/command.enum';
 import { DeviceCartridgesDto, DeviceHeartbeatDto } from '../dto';
@@ -47,24 +48,57 @@ export class DeviceIotService {
     }
   }
 
-  async getPendingCommands(deviceId: string): Promise<any[]> {
+  async getPendingCommand(deviceId: string) {
     const device = await this.findByDeviceId(deviceId);
     if (!device) {
       throw new NotFoundException(`Device with ID ${deviceId} not found`);
     }
 
     // Find and return pending commands
-    const commands = await this.commandRepository.find({
-      where: { device: { id: device.id } },
-      order: { createdAt: 'ASC' },
+    const command = await this.commandRepository.findOne({
+      where: { device: { id: device.id }, deletedAt: IsNull() },
+      order: { createdAt: 'DESC' },
     });
 
-    // Optionally mark commands as processed/retrieved
-    if (commands.length) {
-      // You could mark them as retrieved or delete them based on your requirements
+    if (!command) {
+      return null;
     }
 
-    return commands;
+    // Continue if command is 'play'
+    //get cartridges of device
+    const cartridges = await this.cartridgeRepository.find({
+      where: { device: { id: device.id } },
+    });
+
+    //Get user session newest with device, include scent info
+    const userSession = await this.userSessionRepository.findOne({
+      where: { device: { id: device.id } },
+      order: { createdAt: 'DESC' },
+      relations: ['scent'],
+    });
+
+    // Pause command or no user session => return all uptime = 0
+    if (command.command === 'pause' || !userSession) {
+      return {
+        interval: parseInt(process.env.REPEAT_INTERVAL),
+        cycle: 1,
+        cartridges: Array.from({ length: 6 }, (_, i) => ({
+          position: i + 1,
+          uptime: 0,
+        })),
+      };
+    }
+
+    const cartridgeUptimes = this.calculateCartridgeUptimes(userSession.scent, cartridges);
+
+    //mark command as executed
+    await this.commandRepository.update(command.id, { isExecuted: true, deletedAt: new Date() });
+
+    return {
+      interval: parseInt(process.env.REPEAT_INTERVAL),
+      cycle: 1,
+      cartridges: cartridgeUptimes,
+    };
   }
 
   async syncDeviceCartridges(
@@ -78,10 +112,13 @@ export class DeviceIotService {
       throw new HttpException(`Device with ID ${deviceId} not found`, HttpStatus.BAD_REQUEST);
     }
 
+    // Filter out invalid cartridges (serialNumber = '0')
+    const validCartridges = cartridgesDto.cartridges.filter((cart) => cart.serialNumber !== '0');
+
     // Validate positions: must be unique + valid range
     const seenPositions = new Set<number>();
 
-    for (const cart of cartridgesDto.cartridges) {
+    for (const cart of validCartridges) {
       if (cart.position < 1 || cart.position > 6) {
         throw new HttpException(
           `Invalid cartridge position: ${cart.position}`,
@@ -100,7 +137,7 @@ export class DeviceIotService {
     }
 
     //check validate cartridges
-    for (const cart of cartridgesDto.cartridges) {
+    for (const cart of validCartridges) {
       const product = await this.productRepository.findOne({
         where: {
           serialNumber: cart.serialNumber,
@@ -306,5 +343,42 @@ export class DeviceIotService {
     return {
       command: pendingCommand ? Command.PENDING_COMMAND : Command.NONE,
     };
+  }
+
+  private calculateCartridgeUptimes(
+    scent: Scent,
+    cartridges: DeviceCartridge[],
+  ): { position: number; uptime: number }[] {
+    // Create map to quickly lookup: serialNumber -> intensity
+    const scentMap = new Map<string, number>();
+
+    for (const info of scent.cartridgeInfo || []) {
+      const intensity = Number(info.intensity);
+      //check intensity valid range
+      if (intensity >= 1 && intensity <= 5) {
+        scentMap.set(info.serialNumber, intensity);
+      }
+    }
+    // intensity in each position from 1 to 6, if not, intensity = 0
+    const cartridgeIntensities: { position: number; intensity: number }[] = [];
+
+    for (let pos = 1; pos <= 6; pos++) {
+      //find cartridge corresponding to current position
+      const deviceCart = cartridges.find((c) => Number(c.position) === pos);
+      // If cartridge exists, get intensity from scentMap (if not, = 0)
+      const intensity = deviceCart ? (scentMap.get(deviceCart.serialNumber) ?? 0) : 0;
+
+      cartridgeIntensities.push({ position: pos, intensity });
+    }
+    //  Calculate total uptime = intensity sum of scent * 200ms (1 unit = 200ms)
+    const totalIntensity = cartridgeIntensities.reduce((sum, c) => sum + c.intensity, 0);
+
+    const totalUptime = Number(scent.intensity) * 200;
+
+    //Calculate uptime of each position based on the intensity of each position
+    return cartridgeIntensities.map((c) => ({
+      position: c.position,
+      uptime: totalIntensity > 0 ? Math.round((c.intensity / totalIntensity) * totalUptime) : 0,
+    }));
   }
 }
