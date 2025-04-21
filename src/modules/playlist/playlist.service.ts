@@ -30,9 +30,12 @@ export class PlaylistService {
     userId: string,
     queries: ApiBaseGetListQueries,
   ): Promise<Pagination<Partial<Playlist>>> {
+    const search = queries.search;
+
     const { items, pagination } = await paginate(this.playlistRepository, {
       where: {
         createdBy: userId,
+        ...(search ? { name: ILike(`%${search}%`) } : {}),
       },
       params: queries,
       relations: ['playlistScents', 'playlistScents.scent'],
