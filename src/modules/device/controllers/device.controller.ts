@@ -7,7 +7,10 @@ import { AuthUser } from 'core/decorator/auth-user.decorator';
 
 import { UserDto } from '../../user/dto/user.dto';
 import { RegisterDeviceDto } from '../dto';
-import { DeviceConnectSpaceDto } from '../dto/device/device-connect-space.dto';
+import {
+  DeviceConnectSpaceDto,
+  DeviceUpdateStatusDto,
+} from '../dto/device/device-connect-space.dto';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
 @ApiController({
@@ -138,12 +141,15 @@ export class DeviceController extends BaseController {
   }
 
   @MemberRoleGuard()
-  @Patch(':deviceId/disconnect')
-  @ApiOperation({ summary: 'Disconnect a device from a space' })
-  async disconnectSpace(@Param('deviceId') deviceId: string) {
-    const result = await this.deviceService.disconnectSpace(deviceId);
+  @Patch(':deviceId/status')
+  @ApiOperation({ summary: 'Update device status' })
+  async updateDeviceStatus(
+    @Param('deviceId') deviceId: string,
+    @Body() bodyRequest: DeviceUpdateStatusDto,
+  ) {
+    const result = await this.deviceService.updateDeviceStatus(deviceId, bodyRequest.isConnected);
 
-    return { success: true, data: result };
+    return result;
   }
 
   @MemberRoleGuard()
@@ -152,6 +158,6 @@ export class DeviceController extends BaseController {
   async removeSpace(@Param('deviceId') deviceId: string) {
     const result = await this.deviceService.removeSpace(deviceId);
 
-    return { success: true, data: result };
+    return result;
   }
 }
