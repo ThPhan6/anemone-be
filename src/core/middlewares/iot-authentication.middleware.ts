@@ -25,7 +25,7 @@ export class IoTAuthenticationMiddleware implements NestMiddleware {
 
     // Find device by deviceId
     const device = await this.deviceRepository.findOne({
-      where: { deviceId: clientId },
+      where: { product: { serialNumber: clientId } },
       relations: ['product'],
     });
 

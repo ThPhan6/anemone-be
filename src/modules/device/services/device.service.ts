@@ -18,6 +18,7 @@ import { Status, UserSession } from '../../../common/entities/user-session.entit
 import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { DeviceCommand } from '../entities/device-command.entity';
+import { Product } from '../entities/product.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
 
@@ -38,6 +39,8 @@ export class DeviceService {
     private deviceCommandRepository: Repository<DeviceCommand>,
     @InjectRepository(UserSession)
     private userSessionRepository: Repository<UserSession>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {}
 
   /**
@@ -58,7 +61,7 @@ export class DeviceService {
 
   async provisionDevice(deviceId: string) {
     const device = await this.repository.findOne({
-      where: { deviceId },
+      where: { product: { serialNumber: deviceId } },
       relations: ['product'],
     });
 
@@ -101,7 +104,7 @@ export class DeviceService {
 
   async getDeviceCertificates(deviceId: string) {
     return await this.certificateRepository.find({
-      where: { device: { deviceId } },
+      where: { device: { product: { serialNumber: deviceId } } },
       order: { createdAt: 'DESC' },
     });
   }
@@ -113,7 +116,7 @@ export class DeviceService {
 
   async getDevice(deviceId: string) {
     const device = await this.repository.findOne({
-      where: { deviceId },
+      where: { product: { serialNumber: deviceId } },
       relations: ['cartridges', 'certificates'],
     });
 
@@ -126,7 +129,7 @@ export class DeviceService {
 
   async findValidDevice(deviceId: string) {
     const device = await this.repository.findOne({
-      where: { deviceId },
+      where: { product: { serialNumber: deviceId } },
     });
 
     if (!device) {
@@ -153,10 +156,28 @@ export class DeviceService {
   }
 
   async registerDevice(dto: RegisterDeviceDto, userId: string) {
-    const device = await this.findValidDevice(dto.deviceId);
+    const product = await this.productRepository.findOne({
+      where: { serialNumber: dto.deviceId },
+    });
+
+    if (!product) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.BAD_REQUEST);
+    }
+
+    const device = await this.repository.findOne({
+      where: { product: { serialNumber: dto.deviceId } },
+    });
 
     if (!device) {
-      throw new BadRequestException('Device not found');
+      const newDevice = this.repository.create({
+        product: { serialNumber: dto.deviceId },
+        name: product.name,
+        isConnected: true,
+        registeredBy: userId,
+        provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
+      });
+
+      return await this.repository.save(newDevice);
     }
 
     if (device.provisioningStatus !== DeviceProvisioningStatus.PROVISIONED) {
@@ -247,7 +268,7 @@ export class DeviceService {
 
   async getDeviceDetail(deviceId: string) {
     const device = await this.repository.findOne({
-      where: { deviceId },
+      where: { product: { serialNumber: deviceId } },
       relations: ['product', 'cartridges', 'cartridges.product', 'space'],
     });
 
@@ -258,7 +279,7 @@ export class DeviceService {
     return {
       id: device.id,
       name: device.name,
-      deviceId: device.deviceId,
+      deviceId: device.product.serialNumber,
       isConnected: device.isConnected,
       warranty: device.warrantyExpirationDate,
       productInfo: {

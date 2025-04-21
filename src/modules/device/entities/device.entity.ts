@@ -18,9 +18,6 @@ export class Device extends BaseEntity {
   @Column({ name: 'name' })
   name: string;
 
-  @Column({ name: 'device_id', unique: true })
-  deviceId: string;
-
   @Column({ name: 'thing_name', nullable: true })
   thingName: string;
 

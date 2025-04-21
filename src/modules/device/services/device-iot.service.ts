@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Device } from 'modules/device/entities/device.entity';
+import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
 import * as moment from 'moment';
 import { IsNull, Repository } from 'typeorm';
 
+import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
 import { UserSession } from '../../../common/entities/user-session.entity';
 import { Command } from '../../../common/enum/command.enum';
@@ -28,7 +29,7 @@ export class DeviceIotService {
   ) {}
 
   async findByDeviceId(deviceId: string): Promise<Device> {
-    return this.repository.findOne({ where: { deviceId } });
+    return this.repository.findOne({ where: { product: { serialNumber: deviceId } } });
   }
 
   async updateDeviceHeartbeat(deviceId: string, heartbeatDto: DeviceHeartbeatDto): Promise<void> {
@@ -212,17 +213,36 @@ export class DeviceIotService {
    * Update device last ping timestamp
    */
   async updateLastPing(deviceId: string) {
-    const device = await this.repository.findOne({
-      where: { deviceId },
+    const product = await this.productRepository.findOne({
+      where: { serialNumber: deviceId },
     });
 
-    if (!device) {
-      throw new NotFoundException(`Device ${deviceId} not found`);
+    if (!product) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.BAD_REQUEST);
     }
 
-    device.lastPingAt = new Date();
-    device.isConnected = true;
-    await this.repository.save(device);
+    const device = await this.repository.findOne({
+      where: { product: { serialNumber: deviceId } },
+    });
+
+    const now = new Date();
+
+    if (!device) {
+      // Create new device if device not found
+      const newDevice = await this.repository.create({
+        product: { serialNumber: deviceId },
+        name: product.name, // or set default name if you want
+        isConnected: true,
+        lastPingAt: now,
+        provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
+      });
+
+      await this.repository.save(newDevice);
+    } else {
+      device.lastPingAt = now;
+      device.isConnected = true;
+      await this.repository.save(device);
+    }
   }
 
   /**

@@ -93,7 +93,6 @@ export class MockService {
 
     const device = this.deviceRepository.create({
       name: deviceProduct.name,
-      deviceId: deviceProduct.serialNumber,
       thingName: `thing-${deviceProduct.serialNumber}`,
       provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
       firmwareVersion: '1.0.0',
@@ -135,7 +134,7 @@ export class MockService {
     return {
       id: device.id,
       name: device.name,
-      deviceId: device.deviceId,
+      deviceId: device.product.serialNumber,
       thingName: device.thingName,
       provisioningStatus: device.provisioningStatus,
       firmwareVersion: device.firmwareVersion,
