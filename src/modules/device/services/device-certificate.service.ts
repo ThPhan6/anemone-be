@@ -65,7 +65,7 @@ export class DeviceCertificateService {
 
     await this.awsIotCoreService.updateCertificateStatus(certificateId, 'ACTIVE');
     await this.awsIotCoreService.attachThingPolicy(
-      certificate.device.deviceId,
+      certificate.device.product.serialNumber,
       certificate.certificateArn,
     );
 
@@ -87,7 +87,7 @@ export class DeviceCertificateService {
   async rotateCertificate(deviceId: string) {
     // Find active certificate
     const activeCertificate = await this.certificateRepository.findOne({
-      where: { device: { deviceId }, status: CertificateStatus.ACTIVE },
+      where: { device: { product: { serialNumber: deviceId } }, status: CertificateStatus.ACTIVE },
     });
 
     if (!activeCertificate) {

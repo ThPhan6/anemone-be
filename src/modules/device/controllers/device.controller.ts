@@ -32,7 +32,7 @@ export class DeviceController extends BaseController {
   async registerDevice(@AuthUser() user: UserDto, @Body() dto: RegisterDeviceDto) {
     const result = await this.deviceService.registerDevice(dto, user.sub);
 
-    return { success: true, data: result };
+    return result;
   }
 
   @MemberRoleGuard()
