@@ -1,13 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
+import { v4 } from 'uuid';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Product, ProductType } from '../device/entities/product.entity';
 import { CreateProductDto } from './dto/product-request.dto';
-
 @Injectable()
 export class ProductService {
   constructor(
@@ -27,22 +27,28 @@ export class ProductService {
   }
 
   async create(data: CreateProductDto) {
-    const { type, serialNumber } = data;
+    const { type, name, sku } = data;
 
-    const existing = await this.productRepository.findOne({
-      where: { serialNumber, type },
+    const existingProduct = await this.productRepository.findOne({
+      where: [
+        { sku, type },
+        { name, type },
+        { sku, name, type },
+      ],
     });
 
-    if (existing) {
+    if (existingProduct) {
       const message =
         type === ProductType.DEVICE
           ? MESSAGE.DEVICE.ALREADY_EXISTS
           : MESSAGE.CARTRIDGE.ALREADY_EXISTS;
-
       throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
 
-    const product = this.productRepository.create(data);
+    const product = this.productRepository.create({
+      ...data,
+      serialNumber: v4(),
+    });
 
     return this.productRepository.save(product);
   }

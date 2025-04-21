@@ -17,11 +17,6 @@ export class CreateProductDto {
 
   @ApiProperty()
   @IsString()
-  @IsNotEmpty({ message: 'Serial number is required' })
-  serialNumber: string;
-
-  @ApiProperty()
-  @IsString()
   @IsOptional()
   batchId: string;
 
