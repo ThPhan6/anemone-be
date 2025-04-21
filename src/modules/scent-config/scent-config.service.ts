@@ -6,6 +6,7 @@ import { Pagination } from 'core/types/response.type';
 import { FindOptionsWhere } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
+import { MESSAGE } from '../../common/constants/message.constant';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
 import { ScentConfig } from './entities/scent-config.entity';
 
@@ -25,13 +26,21 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     });
 
     if (!scentConfig) {
-      throw new HttpException('Scent config not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     return scentConfig;
   }
 
   async create(data: CreateScentConfigDto): Promise<ScentConfig> {
+    const existingScentConfig = await this.repository.findOne({
+      where: { code: data.code },
+    });
+
+    if (existingScentConfig) {
+      throw new HttpException(MESSAGE.SCENT_CONFIG.CODE_EXISTS, HttpStatus.BAD_REQUEST);
+    }
+
     const newScentConfig = new ScentConfig();
     Object.assign(newScentConfig, data);
 
@@ -54,7 +63,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     const scentConfig = await this.findById(id);
 
     if (!scentConfig) {
-      throw new HttpException('Scent config not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(MESSAGE.SCENT_CONFIG.CODE_EXISTS, HttpStatus.NOT_FOUND);
     }
 
     await this.repository.softDelete(id);

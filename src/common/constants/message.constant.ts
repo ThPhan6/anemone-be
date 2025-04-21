@@ -30,4 +30,9 @@ export const MESSAGE = {
     ALREADY_EXISTS: 'Cartridge already exists',
     USED: 'Cartridge is used',
   },
+  SCENT_CONFIG: {
+    NOT_FOUND: 'Scent config not found',
+    ALREADY_EXISTS: 'Scent config already exists',
+    CODE_EXISTS: 'Scent config with this code already exists',
+  },
 };

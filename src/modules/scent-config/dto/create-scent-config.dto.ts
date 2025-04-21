@@ -1,22 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMaxSize, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, ValidateNested } from 'class-validator';
 
-import { IScenStory, IScentNote } from '../entities/scent-config.entity';
+import { ScentNoteDto, ScentStoryDto } from './scent-config.dto';
 
 export class CreateScentConfigDto {
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Code must be a string' })
+  @IsNotEmpty({ message: 'Code is required' })
   code: string;
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
   name: string;
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Title must be a string' })
+  @IsNotEmpty({ message: 'Title is required' })
   title: string;
 
   @ApiProperty()
@@ -25,20 +27,26 @@ export class CreateScentConfigDto {
   description: string;
 
   @ApiProperty()
-  @IsOptional()
-  story: IScenStory;
-
-  @ApiProperty()
   @IsString()
   @IsOptional()
   background: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: [ScentStoryDto] })
+  @ValidateNested({ each: true })
+  @Type(() => ScentStoryDto)
   @IsOptional()
-  @IsString({ each: true })
-  tags: string[];
+  story: ScentStoryDto;
 
   @ApiProperty()
   @IsOptional()
-  notes: IScentNote[];
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  tags: string[];
+
+  @ApiProperty({ type: [ScentNoteDto] })
+  @ValidateNested({ each: true })
+  @Type(() => ScentNoteDto)
+  @IsOptional()
+  notes: ScentNoteDto[];
 }
