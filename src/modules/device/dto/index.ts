@@ -1,6 +1,5 @@
 // Device DTOs
-export * from './device/create-device.dto';
-export * from './device/update-device.dto';
+export * from './device/device.dto';
 
 // IoT DTOs
 export * from './iot/device-cartridges.dto';

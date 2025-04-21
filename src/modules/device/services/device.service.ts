@@ -9,11 +9,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { orderBy } from 'lodash';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
 import { Space } from '../../../common/entities/space.entity';
-import { RegisterDeviceDto } from '../dto';
+import { paginate } from '../../../common/utils/helper';
+import { ApiBaseGetListQueries } from '../../../core/types/apiQuery.type';
+import { CreateDeviceDto, RegisterDeviceDto, UpdateDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
@@ -96,11 +98,6 @@ export class DeviceService {
       order: { createdAt: 'DESC' },
     });
   }
-
-  // Core device operations
-  async createDevice() {}
-  async updateDevice() {}
-  async deleteDevice() {}
 
   async getDevice(deviceId: string) {
     const device = await this.repository.findOne({
@@ -269,5 +266,93 @@ export class DeviceService {
       ),
       spaceName: device.space?.name,
     };
+  }
+
+  async getAll(queries: ApiBaseGetListQueries) {
+    const search = queries.search;
+
+    const result = await paginate(this.repository, {
+      where: { ...(search ? { serialNumber: ILike(`%${search}%`) } : {}) },
+      params: queries,
+    });
+
+    return result;
+  }
+
+  async create(data: CreateDeviceDto) {
+    const { serialNumber } = data;
+
+    const existing = await this.repository.findOne({
+      where: { serialNumber },
+    });
+
+    if (existing) {
+      throw new HttpException(
+        'Device with this serial number already exists',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const device = this.repository.create(data);
+
+    return this.repository.save(device);
+  }
+
+  async update(id: string, data: UpdateDeviceDto) {
+    const device = await this.repository.findOne({
+      where: { id },
+      relations: ['product', 'space'],
+    });
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    // If updating the serial number, check if it exists
+    if (data.serialNumber && data.serialNumber !== device.serialNumber) {
+      const existingSerial = await this.repository.findOne({
+        where: { serialNumber: data.serialNumber },
+      });
+
+      if (existingSerial) {
+        throw new HttpException(
+          'Device with this serial number already exists',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    // Handle space update if provided
+    if (data.spaceId) {
+      const space = await this.spaceRepository.findOne({
+        where: { id: data.spaceId },
+      });
+
+      if (!space) {
+        throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.BAD_REQUEST);
+      }
+
+      device.space = space;
+      delete data.spaceId; // Remove from update data as we've handled it
+    }
+
+    // Apply updates to the device
+    Object.assign(device, data);
+
+    return this.repository.save(device);
+  }
+
+  async delete(id: string) {
+    const device = await this.repository.findOne({
+      where: { id },
+    });
+
+    if (!device) {
+      throw new HttpException('Device not found', HttpStatus.NOT_FOUND);
+    }
+
+    const result = await this.repository.softDelete(id);
+
+    return result;
   }
 }

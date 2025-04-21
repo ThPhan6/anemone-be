@@ -13,7 +13,7 @@ export class DeviceCartridge extends BaseEntity {
   ert: number;
 
   @ManyToOne(() => Product, (product) => product.cartridges)
-  @JoinColumn({ name: 'productId' })
+  @JoinColumn({ name: 'product_id' })
   product: Product;
 
   @Column({ name: 'serial_number' })

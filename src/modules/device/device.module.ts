@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Category } from '../../common/entities/category.entity';
 import { Space } from '../../common/entities/space.entity';
-import { SystemSetting } from '../../common/entities/system-setting.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
+import { SettingDefinition } from '../setting-definition/entities/setting-definition.entity';
+import { SettingValue } from '../setting-definition/entities/setting-value.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DeviceController } from './controllers/device.controller';
 import { DeviceIotController } from './controllers/device-iot.controller';
@@ -28,8 +28,8 @@ import { DeviceIotService } from './services/device-iot.service';
       DeviceCartridge,
       DeviceCommand,
       Product,
-      Category,
-      SystemSetting,
+      SettingDefinition,
+      SettingValue,
       Space,
       UserSession,
     ]),

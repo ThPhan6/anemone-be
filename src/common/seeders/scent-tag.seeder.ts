@@ -1,12 +1,14 @@
 import { DataSource } from 'typeorm';
 
-import { Category } from '../entities/category.entity';
-import { CategoryType } from '../enum/category.enum';
+import {
+  ESystemDefinitionType,
+  SettingDefinition,
+} from '../../modules/setting-definition/entities/setting-definition.entity';
 import { BaseSeeder } from './base.seeder';
 
 export class ScentTagSeeder extends BaseSeeder {
   protected async execute(dataSource: DataSource): Promise<any> {
-    const categoryRepository = dataSource.getRepository(Category);
+    const settingDefinition = dataSource.getRepository(SettingDefinition);
 
     const categories = [
       'Woody',
@@ -25,7 +27,7 @@ export class ScentTagSeeder extends BaseSeeder {
     ];
 
     for (const name of categories) {
-      await categoryRepository.save({ name, type: CategoryType.ScentTag });
+      await settingDefinition.save({ name, type: ESystemDefinitionType.SCENT_TAG });
     }
   }
 }
