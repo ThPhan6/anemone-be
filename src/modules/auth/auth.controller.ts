@@ -51,7 +51,9 @@ export class AuthController extends BaseController {
     }
 
     try {
-      const result = await this.cognitoService.signIn(body.email, body.password);
+      const clientType = body.clientType || 'cms'; // default to CMS
+
+      const result = await this.cognitoService.signIn(body.email, body.password, clientType);
 
       return this.dataType(AuthResponseDto, result);
     } catch (error) {

@@ -68,10 +68,17 @@ export class CognitoService {
     }
   }
 
-  async signIn(email: string, password: string): Promise<AuthResponseDto> {
+  async signIn(
+    email: string,
+    password: string,
+    clientType: 'cms' | 'mobile' = 'cms',
+  ): Promise<AuthResponseDto> {
     const params: InitiateAuthCommandInput = {
       AuthFlow: 'USER_PASSWORD_AUTH',
-      ClientId: this.awsConfigService.userCmsPoolClientId,
+      ClientId:
+        clientType === 'cms'
+          ? this.awsConfigService.userCmsPoolClientId
+          : this.awsConfigService.userMobilePoolClientId,
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,

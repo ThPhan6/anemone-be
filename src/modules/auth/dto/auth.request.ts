@@ -1,4 +1,5 @@
-import { IsEmail } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsIn, IsOptional } from 'class-validator';
 import { CheckAny } from 'core/decorator/validators/checkAny.decorator';
 import { IsPassword } from 'core/decorator/validators/password.decorator';
 
@@ -9,6 +10,11 @@ export class SignInDto {
 
   @CheckAny({ required: true })
   password: string;
+
+  @ApiProperty({ example: 'cms', enum: ['cms', 'mobile'], required: false })
+  @IsOptional()
+  @IsIn(['cms', 'mobile'])
+  clientType?: 'cms' | 'mobile';
 }
 
 export class ResetPasswordDto {
