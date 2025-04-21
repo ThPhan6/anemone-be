@@ -5,14 +5,17 @@ import { ApiController } from 'core/decorator/apiController.decorator';
 import { AdminRoleGuard, MemberRoleGuard } from 'core/decorator/auth.decorator';
 import { AuthUser } from 'core/decorator/auth-user.decorator';
 
+import { Status } from '../../../common/entities/user-session.entity';
 import { UserDto } from '../../user/dto/user.dto';
 import { RegisterDeviceDto } from '../dto';
+import { CommandDto } from '../dto/device/command.dto';
 import {
   DeviceConnectSpaceDto,
   DeviceUpdateStatusDto,
 } from '../dto/device/device-connect-space.dto';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
+
 @ApiController({
   name: 'devices',
 })
@@ -159,5 +162,43 @@ export class DeviceController extends BaseController {
     const result = await this.deviceService.removeSpace(deviceId);
 
     return result;
+  }
+
+  @MemberRoleGuard()
+  @Post(':deviceId/commands/play')
+  @ApiOperation({ summary: 'Send play command to a device' })
+  async sendPlayCommand(
+    @Param('deviceId') deviceId: string,
+    @Body() payload: CommandDto,
+    @AuthUser() user: UserDto,
+  ) {
+    const command = await this.deviceService.queueCommand(
+      deviceId,
+      user.sub,
+      'play',
+      Status.PLAYING,
+      payload.scentId,
+    );
+
+    return command;
+  }
+
+  @MemberRoleGuard()
+  @Post(':deviceId/commands/pause')
+  @ApiOperation({ summary: 'Send pause command to a device' })
+  async sendPauseCommand(
+    @Param('deviceId') deviceId: string,
+    @AuthUser() user: UserDto,
+    @Body() payload: CommandDto,
+  ) {
+    const command = await this.deviceService.queueCommand(
+      deviceId,
+      user.sub,
+      'pause',
+      Status.PAUSED,
+      payload.scentId,
+    );
+
+    return command;
   }
 }

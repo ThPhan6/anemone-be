@@ -4,6 +4,7 @@ import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Category } from '../../common/entities/category.entity';
+import { Product } from '../../common/entities/product.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CategoryType } from '../../common/enum/category.enum';
@@ -12,8 +13,13 @@ import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
+import { ProductType } from '../device/entities/product.entity';
 import { StorageService } from '../storage/storage.service';
-import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
+import {
+  CartridgeInfoDto,
+  CreateScentMobileDto,
+  UpdateScentMobileDto,
+} from './dto/scent-mobile-request.dto';
 @Injectable()
 export class ScentMobileService {
   constructor(
@@ -24,6 +30,8 @@ export class ScentMobileService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(UserSetting)
     private readonly userSettingRepository: Repository<UserSetting>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
     private readonly cognitoService: CognitoService,
   ) {}
 
@@ -81,6 +89,36 @@ export class ScentMobileService {
     };
   }
 
+  private async validateCartridges(cartridgeInfo: CartridgeInfoDto[], intensity: number) {
+    //check validate cartridges
+    for (const cart of cartridgeInfo) {
+      // Validate intensity range for each cartridge
+      if (cart.intensity < 1 || cart.intensity > 5) {
+        throw new HttpException(
+          `Cartridge intensity for serial number ${cart.serialNumber} must be between 1 and 5`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check if the cartridge is a registered product
+      const product = await this.productRepository.findOne({
+        where: { serialNumber: cart.serialNumber, type: ProductType.CARTRIDGE },
+      });
+
+      if (!product) {
+        throw new HttpException(
+          `Cartridge with serial number ${cart.serialNumber} is not registered as a product`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    //check special case intensity
+    if (cartridgeInfo.length === 1 && intensity !== cartridgeInfo[0].intensity) {
+      throw new HttpException(MESSAGE.SCENT_MOBILE.INVALID_INTENSITY, HttpStatus.BAD_REQUEST);
+    }
+  }
+
   async create(userId: string, bodyRequest: CreateScentMobileDto, file: Express.Multer.File) {
     const found = await this.scentRepository.findOne({
       where: {
@@ -92,6 +130,9 @@ export class ScentMobileService {
     if (found) {
       throw new HttpException(MESSAGE.SCENT_MOBILE.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
+
+    //check validate cartridges
+    await this.validateCartridges(JSON.parse(bodyRequest.cartridgeInfo), bodyRequest.intensity);
 
     let uploadedImageUrl = '';
 
@@ -135,6 +176,14 @@ export class ScentMobileService {
       throw new HttpException(MESSAGE.SCENT_MOBILE.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
+    if (updateScentDto.cartridgeInfo) {
+      //check validate cartridges
+      await this.validateCartridges(
+        JSON.parse(updateScentDto.cartridgeInfo),
+        updateScentDto.intensity,
+      );
+    }
+
     let image = found.image;
 
     // Check if we should remove the image
@@ -148,13 +197,13 @@ export class ScentMobileService {
       delete updateScentDto.isRemoveImage;
     }
 
-    // Parse the tags if they're a JSON string
-    const parsedTags = updateScentDto.tags ? JSON.parse(updateScentDto.tags) : [];
-
     // Prepare the updated scent data
     const updatedScentData = {
       ...updateScentDto,
-      tags: parsedTags, // Ensure tags are an array
+      tags: updateScentDto.tags ? updateScentDto.tags : found.tags,
+      cartridgeInfo: updateScentDto.cartridgeInfo
+        ? updateScentDto.cartridgeInfo
+        : found.cartridgeInfo,
       image,
     };
 

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Category } from '../../common/entities/category.entity';
+import { Scent } from '../../common/entities/scent.entity';
 import { Space } from '../../common/entities/space.entity';
 import { SystemSetting } from '../../common/entities/system-setting.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
@@ -32,6 +33,7 @@ import { DeviceIotService } from './services/device-iot.service';
       SystemSetting,
       Space,
       UserSession,
+      Scent,
     ]),
   ],
   controllers: [DeviceController, DeviceIotController],
