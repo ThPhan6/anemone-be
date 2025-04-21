@@ -1,7 +1,6 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { Category } from '../../../common/entities/category.entity';
 import { Device } from './device.entity';
 import { DeviceCartridge } from './device-cartridge.entity';
 
@@ -30,9 +29,9 @@ export class Product extends BaseEntity {
   @Column({ name: 'type', type: 'smallint' })
   type: ProductType;
 
-  @ManyToOne(() => Category)
-  @JoinColumn({ name: 'category_id' })
-  category: Category;
+  // @ManyToOne(() => Category)
+  // @JoinColumn({ name: 'category_id' })
+  // category: Category;
 
   @Column({ name: 'config_template', type: 'json', nullable: true })
   configTemplate: Record<string, any>;

@@ -23,6 +23,7 @@ export const MESSAGE = {
   SCENT_MOBILE: {
     NOT_FOUND: 'Scent not found',
     ALREADY_EXISTS: 'Scent already exists',
+    INVALID_INTENSITY: 'Invalid intensity of cartridge',
   },
   CARTRIDGE: {
     NOT_FOUND: 'Cartridge not found',

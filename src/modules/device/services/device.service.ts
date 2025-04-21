@@ -9,14 +9,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { orderBy } from 'lodash';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
-import { ILike, Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
+import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
-import { paginate } from '../../../common/utils/helper';
-import { ApiBaseGetListQueries } from '../../../core/types/apiQuery.type';
-import { CreateDeviceDto, RegisterDeviceDto, UpdateDeviceDto } from '../dto';
+import { Status, UserSession } from '../../../common/entities/user-session.entity';
+import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
+import { DeviceCommand } from '../entities/device-command.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
 
@@ -31,6 +32,12 @@ export class DeviceService {
     private certificateRepository: Repository<DeviceCertificate>,
     @InjectRepository(Space)
     private spaceRepository: Repository<Space>,
+    @InjectRepository(Scent)
+    private scentRepository: Repository<Scent>,
+    @InjectRepository(DeviceCommand)
+    private deviceCommandRepository: Repository<DeviceCommand>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
   ) {}
 
   /**
@@ -268,91 +275,56 @@ export class DeviceService {
     };
   }
 
-  async getAll(queries: ApiBaseGetListQueries) {
-    const search = queries.search;
-
-    const result = await paginate(this.repository, {
-      where: { ...(search ? { serialNumber: ILike(`%${search}%`) } : {}) },
-      params: queries,
-    });
-
-    return result;
-  }
-
-  async create(data: CreateDeviceDto) {
-    const { serialNumber } = data;
-
-    const existing = await this.repository.findOne({
-      where: { serialNumber },
-    });
-
-    if (existing) {
-      throw new HttpException(
-        'Device with this serial number already exists',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const device = this.repository.create(data);
-
-    return this.repository.save(device);
-  }
-
-  async update(id: string, data: UpdateDeviceDto) {
-    const device = await this.repository.findOne({
-      where: { id },
-      relations: ['product', 'space'],
-    });
-
+  async queueCommand(
+    deviceId: string,
+    userId: string,
+    commandType: 'play' | 'pause',
+    status: Status,
+    scentId: string,
+  ) {
+    const device = await this.findValidDevice(deviceId);
     if (!device) {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    // If updating the serial number, check if it exists
-    if (data.serialNumber && data.serialNumber !== device.serialNumber) {
-      const existingSerial = await this.repository.findOne({
-        where: { serialNumber: data.serialNumber },
-      });
-
-      if (existingSerial) {
-        throw new HttpException(
-          'Device with this serial number already exists',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    const scent = await this.scentRepository.findOne({
+      where: { id: scentId },
+    });
+    if (!scent) {
+      throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    // Handle space update if provided
-    if (data.spaceId) {
-      const space = await this.spaceRepository.findOne({
-        where: { id: data.spaceId },
-      });
-
-      if (!space) {
-        throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.BAD_REQUEST);
-      }
-
-      device.space = space;
-      delete data.spaceId; // Remove from update data as we've handled it
-    }
-
-    // Apply updates to the device
-    Object.assign(device, data);
-
-    return this.repository.save(device);
-  }
-
-  async delete(id: string) {
-    const device = await this.repository.findOne({
-      where: { id },
+    let command = await this.deviceCommandRepository.findOne({
+      where: {
+        device: { id: device.id },
+        isExecuted: false,
+        deletedAt: IsNull(),
+      },
+      order: { createdAt: 'DESC' },
     });
 
-    if (!device) {
-      throw new HttpException('Device not found', HttpStatus.NOT_FOUND);
+    if (command) {
+      command.command = commandType;
+      command.updatedAt = new Date();
+      await this.deviceCommandRepository.save(command);
+    } else {
+      command = this.deviceCommandRepository.create({
+        device: { id: device.id },
+        command: commandType,
+        isExecuted: false,
+      });
+      await this.deviceCommandRepository.save(command);
     }
 
-    const result = await this.repository.softDelete(id);
+    const userSession = this.userSessionRepository.create({
+      device: { id: device.id },
+      userId,
+      scent: { id: scent.id },
+      status,
+    });
 
-    return result;
+    await this.userSessionRepository.save(userSession);
+
+    return command;
   }
 }
