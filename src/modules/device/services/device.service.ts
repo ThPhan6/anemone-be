@@ -109,11 +109,6 @@ export class DeviceService {
     });
   }
 
-  // Core device operations
-  async createDevice() {}
-  async updateDevice() {}
-  async deleteDevice() {}
-
   async getDevice(deviceId: string) {
     const device = await this.repository.findOne({
       where: { product: { serialNumber: deviceId } },
