@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMaxSize, IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { IScenStory, IScentNote } from '../entities/scent-config.entity';
+import { ScentNoteDto, ScentStoryDto } from './scent-config.dto';
 
 export class UpdateScentConfigDto {
   @ApiProperty({ required: false })
@@ -24,21 +25,27 @@ export class UpdateScentConfigDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty()
   @IsString()
   @IsOptional()
-  story?: IScenStory;
+  background: string;
 
-  @ApiProperty({ required: false })
-  @IsString()
+  @ApiProperty({ type: [ScentStoryDto] })
+  @ValidateNested({ each: true })
+  @Type(() => ScentStoryDto)
   @IsOptional()
-  background?: string;
+  story: ScentStoryDto;
 
-  @ApiProperty({ required: false })
+  @ApiProperty()
   @IsOptional()
-  tags?: string[];
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  tags: string[];
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ type: [ScentNoteDto] })
+  @ValidateNested({ each: true })
+  @Type(() => ScentNoteDto)
   @IsOptional()
-  notes?: IScentNote[];
+  notes: ScentNoteDto[];
 }

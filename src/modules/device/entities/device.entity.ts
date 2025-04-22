@@ -48,9 +48,6 @@ export class Device extends BaseEntity {
   @Column({ name: 'registered_by', nullable: true })
   registeredBy: string;
 
-  @Column({ name: 'serial_number', unique: true, type: 'varchar' })
-  serialNumber: string;
-
   @ManyToOne(() => Space, (space) => space.devices)
   @JoinColumn({ name: 'space_id' })
   space: Space;
