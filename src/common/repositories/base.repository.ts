@@ -96,9 +96,17 @@ export class BaseRepository<T extends { id: string | number }> {
 
   update(
     criteria: string | number | FindOptionsWhere<T>,
-    partialEntity: QueryDeepPartialEntity<T>,
+    partialEntity?: QueryDeepPartialEntity<T>,
   ): Promise<UpdateResult> {
     return this.getRepository().update(criteria, partialEntity);
+  }
+
+  create(entities: DeepPartial<T>): T {
+    return this.getRepository().create(entities);
+  }
+
+  creates(entities: DeepPartial<T>[]): T[] {
+    return this.getRepository().create(entities);
   }
 
   updateMany(

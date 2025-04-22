@@ -12,17 +12,17 @@ export class CreateProductDto {
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
+  @IsNotEmpty({ message: 'SKU is required' })
   sku: string;
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
+  @IsNotEmpty({ message: 'Batch ID is required' })
   batchId: string;
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
+  @IsNotEmpty({ message: 'Manufacturer ID is required' })
   manufacturerId: string;
 
   @ApiProperty()
@@ -41,16 +41,19 @@ export class UpdateProductDto {
   @ApiProperty()
   @IsString()
   @IsOptional()
+  @IsNotEmpty({ message: 'SKU must not be empty' })
   sku: string;
 
   @ApiProperty()
   @IsString()
   @IsOptional()
+  @IsNotEmpty({ message: 'Batch ID must not be empty' })
   batchId: string;
 
   @ApiProperty()
   @IsString()
   @IsOptional()
+  @IsNotEmpty({ message: 'Manufacturer ID must not be empty' })
   manufacturerId: string;
 
   @ApiProperty()
