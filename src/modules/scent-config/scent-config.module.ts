@@ -5,10 +5,11 @@ import { ScentConfigRepository } from '../../common/repositories/scent-config.re
 import { ScentConfig } from './entities/scent-config.entity';
 import { ScentConfigController } from './scent-config.controller';
 import { ScentConfigService } from './scent-config.service';
+import { ScentConfigAdminController } from './scent-config-admin.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ScentConfig])],
-  controllers: [ScentConfigController],
+  controllers: [ScentConfigAdminController, ScentConfigController],
   providers: [ScentConfigService, ScentConfigRepository],
   exports: [ScentConfigService],
 })

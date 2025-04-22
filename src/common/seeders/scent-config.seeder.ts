@@ -21,6 +21,10 @@ const records = [
       image: '',
     },
     notes: [{ ingredients: ['Lavender'], type: EScentNoteType.TOP, image: '' }],
+    color: {
+      base: '#FF5733',
+      gradients: ['#FF5733', '#C70039'],
+    },
   },
   {
     code: 'R01',
@@ -36,6 +40,10 @@ const records = [
       image: '',
     },
     notes: [{ ingredients: ['Rose'], type: EScentNoteType.MIDDLE, image: '' }],
+    color: {
+      base: '#C70039',
+      gradients: ['#C70039', '#FF5733'],
+    },
   },
   {
     code: 'I01',
@@ -51,6 +59,10 @@ const records = [
       image: '',
     },
     notes: [{ ingredients: ['Mint'], type: EScentNoteType.TOP, image: '' }],
+    color: {
+      base: '#FF5733',
+      gradients: ['#FF5733', '#C70039'],
+    },
   },
   {
     code: 'H01',
@@ -69,6 +81,10 @@ const records = [
       { ingredients: ['Green Apple'], type: EScentNoteType.TOP, image: '' },
       { ingredients: ['Musk'], type: EScentNoteType.BASE, image: '' },
     ],
+    color: {
+      base: '#C70039',
+      gradients: ['#C70039', '#FF5733'],
+    },
   },
   {
     code: 'F01',
@@ -88,6 +104,10 @@ const records = [
       { ingredients: ['Cedarwood'], type: EScentNoteType.MIDDLE, image: '' },
       { ingredients: ['Orange'], type: EScentNoteType.TOP, image: '' },
     ],
+    color: {
+      base: '#FF5733',
+      gradients: ['#FF5733', '#C70039'],
+    },
   },
   {
     code: 'E01',
@@ -103,6 +123,10 @@ const records = [
       image: '',
     },
     notes: [{ ingredients: ['Spearmint'], type: EScentNoteType.TOP, image: '' }],
+    color: {
+      base: '#FF5733',
+      gradients: ['#FF5733', '#C70039'],
+    },
   },
 ];
 

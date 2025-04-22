@@ -19,6 +19,11 @@ export interface IScenStory {
   image: string;
 }
 
+export interface IScentColor {
+  base: string;
+  gradient: { color: string; percent: number }[];
+}
+
 @Entity('scent_configs')
 export class ScentConfig extends BaseEntity {
   @Column({ name: 'code', type: 'varchar' })
@@ -44,4 +49,7 @@ export class ScentConfig extends BaseEntity {
 
   @Column({ name: 'notes', type: 'json', nullable: true })
   notes: IScentNote[];
+
+  @Column({ name: 'color', type: 'json', nullable: true })
+  color: IScentColor;
 }
