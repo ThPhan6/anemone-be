@@ -10,7 +10,8 @@ import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
-import { Product, ProductType } from '../device/entities/product.entity';
+import { Product } from '../device/entities/product.entity';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,
@@ -35,6 +36,8 @@ export class ScentMobileService {
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     private readonly cognitoService: CognitoService,
+    @InjectRepository(ScentConfig)
+    private readonly scentConfigRepository: Repository<ScentConfig>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
@@ -91,25 +94,25 @@ export class ScentMobileService {
     };
   }
 
-  private async validateCartridges(cartridgeInfo: CartridgeInfoDto[], intensity: number) {
+  private async validateScentConfig(cartridgeInfo: CartridgeInfoDto[], intensity: number) {
     //check validate cartridges
     for (const cart of cartridgeInfo) {
-      // Validate intensity range for each cartridge
-      if (cart.intensity < 1 || cart.intensity > 5) {
+      //check scent config is exist
+      const scentConfig = await this.scentConfigRepository.findOne({
+        where: { id: cart.id },
+      });
+
+      if (!scentConfig) {
         throw new HttpException(
-          `Cartridge intensity for serial number ${cart.serialNumber} must be between 1 and 5`,
+          `Scent config with id ${cart.id} is not exist`,
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      // Check if the cartridge is a registered product
-      const product = await this.productRepository.findOne({
-        where: { serialNumber: cart.serialNumber, type: ProductType.CARTRIDGE },
-      });
-
-      if (!product) {
+      // Validate intensity range for each cartridge
+      if (cart.intensity < 1 || cart.intensity > 5) {
         throw new HttpException(
-          `Cartridge with serial number ${cart.serialNumber} is not registered as a product`,
+          `Intensity for serial number ${scentConfig.name} must be between 1 and 5`,
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -134,7 +137,7 @@ export class ScentMobileService {
     }
 
     //check validate cartridges
-    await this.validateCartridges(JSON.parse(bodyRequest.cartridgeInfo), bodyRequest.intensity);
+    await this.validateScentConfig(JSON.parse(bodyRequest.cartridgeInfo), bodyRequest.intensity);
 
     let uploadedImageUrl = '';
 
@@ -180,7 +183,7 @@ export class ScentMobileService {
 
     if (updateScentDto.cartridgeInfo) {
       //check validate cartridges
-      await this.validateCartridges(
+      await this.validateScentConfig(
         JSON.parse(updateScentDto.cartridgeInfo),
         updateScentDto.intensity,
       );

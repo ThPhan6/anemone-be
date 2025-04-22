@@ -6,6 +6,7 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { Device, DeviceProvisioningStatus } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product, ProductType } from '../device/entities/product.entity';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 @Injectable()
 export class MockService {
   constructor(
@@ -15,6 +16,8 @@ export class MockService {
     private readonly deviceRepository: Repository<Device>,
     @InjectRepository(DeviceCartridge)
     private readonly deviceCartridgeRepository: Repository<DeviceCartridge>,
+    @InjectRepository(ScentConfig)
+    private readonly scentConfigRepository: Repository<ScentConfig>,
   ) {}
 
   generateRandomSerialNumber(prefix = 'SN', digits = 9): string {
@@ -65,9 +68,25 @@ export class MockService {
       },
     ];
 
+    const scentConfigs = await this.scentConfigRepository.find();
+
+    let scentConfigIndex = 0;
+
     const savedProducts: Product[] = [];
     //create product
     for (const item of deviceOrCartridges) {
+      let scentConfig: ScentConfig | undefined = undefined;
+
+      if (item.type === ProductType.CARTRIDGE) {
+        scentConfig = scentConfigs[scentConfigIndex];
+        scentConfigIndex++;
+
+        // if out of scentConfigs, reset or stop
+        if (!scentConfig) {
+          throw new Error(`Not enough scentConfigs to assign to cartridges`);
+        }
+      }
+
       const product = this.productRepository.create({
         manufacturerId: item.manufacturerId || '',
         sku: item.sku || '',
@@ -77,6 +96,7 @@ export class MockService {
         type: item.type,
         configTemplate: {},
         supportedFeatures: [],
+        scentConfig,
       });
 
       await this.productRepository.save(product);
