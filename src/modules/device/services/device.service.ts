@@ -254,10 +254,24 @@ export class DeviceService {
     return updatedDevice;
   }
 
-  async removeDeviceFromSpace(userId: string, deviceId: string) {
+  async validateDeviceOwnership(deviceId: string, userId: string): Promise<Device> {
     const device = await this.repository.findOne({
-      where: { product: { serialNumber: deviceId }, registeredBy: userId },
+      where: { product: { serialNumber: deviceId } },
     });
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (device.registeredBy !== userId) {
+      throw new HttpException(MESSAGE.DEVICE.FORBIDDEN, HttpStatus.FORBIDDEN);
+    }
+
+    return device;
+  }
+
+  async removeDeviceFromSpace(userId: string, deviceId: string) {
+    const device = await this.validateDeviceOwnership(deviceId, userId);
 
     if (!device) {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
@@ -272,9 +286,7 @@ export class DeviceService {
   }
 
   async removeDevice(userId: string, deviceId: string) {
-    const device = await this.repository.findOne({
-      where: { product: { serialNumber: deviceId }, registeredBy: userId },
-    });
+    const device = await this.validateDeviceOwnership(deviceId, userId);
 
     if (!device) {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
@@ -286,9 +298,7 @@ export class DeviceService {
   }
 
   async switchSpace(userId: string, deviceId: string, spaceId: string) {
-    const device = await this.repository.findOne({
-      where: { product: { serialNumber: deviceId }, registeredBy: userId },
-    });
+    const device = await this.validateDeviceOwnership(deviceId, userId);
 
     if (!device) {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);

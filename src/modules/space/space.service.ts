@@ -146,7 +146,7 @@ export class SpaceService {
 
     return {
       ...found,
-      devices: devices.map((device) => ({ ...device, deviceId: device.product.serialNumber })),
+      devices,
     };
   }
 }

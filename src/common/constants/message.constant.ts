@@ -13,6 +13,7 @@ export const MESSAGE = {
     NOT_FOUND: 'Device not found',
     ALREADY_EXISTS: 'Device already exists',
     USED: 'Device is used',
+    FORBIDDEN: 'Device is not owned by the user',
   },
   PLAYLIST: {
     NOT_FOUND: 'Not found playlist',
