@@ -69,6 +69,7 @@ export class DeviceIotService {
     //get cartridges of device
     const cartridges = await this.cartridgeRepository.find({
       where: { device: { id: device.id } },
+      relations: ['product', 'product.scentConfig'],
     });
 
     //Get user session newest with device, include scent info
@@ -369,26 +370,28 @@ export class DeviceIotService {
     scent: Scent,
     cartridges: DeviceCartridge[],
   ): { position: number; uptime: number }[] {
-    // Create map to quickly lookup: serialNumber -> intensity
-    const scentMap = new Map<string, number>();
-
-    for (const info of scent.cartridgeInfo || []) {
-      const intensity = Number(info.intensity);
-      //check intensity valid range
-      if (intensity >= 1 && intensity <= 5) {
-        scentMap.set(info.serialNumber, intensity);
-      }
-    }
-    // intensity in each position from 1 to 6, if not, intensity = 0
+    // Build array of cartridge intensities with matching scentConfigId
     const cartridgeIntensities: { position: number; intensity: number }[] = [];
 
+    // Loop through positions 1–6
     for (let pos = 1; pos <= 6; pos++) {
-      //find cartridge corresponding to current position
-      const deviceCart = cartridges.find((c) => Number(c.position) === pos);
-      // If cartridge exists, get intensity from scentMap (if not, = 0)
-      const intensity = deviceCart ? (scentMap.get(deviceCart.serialNumber) ?? 0) : 0;
+      const cartridge = cartridges.find((c) => Number(c.position) === pos);
 
-      cartridgeIntensities.push({ position: pos, intensity });
+      // Check if cartridge has a scentConfig
+      const scentConfigId = cartridge?.product?.scentConfig?.id;
+
+      // Find matching intensity from scent.cartridgeInfo using scent_config_id
+      const matchingInfo = JSON.parse(scent.cartridgeInfo)?.find(
+        (info) => info.id === scentConfigId,
+      );
+
+      const intensity = matchingInfo ? Number(matchingInfo.intensity) : 0;
+
+      // Ensure intensity in valid range
+      cartridgeIntensities.push({
+        position: pos,
+        intensity,
+      });
     }
     //  Calculate total uptime = intensity sum of scent * 200ms (1 unit = 200ms)
     const totalIntensity = cartridgeIntensities.reduce((sum, c) => sum + c.intensity, 0);

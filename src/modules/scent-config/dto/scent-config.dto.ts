@@ -25,3 +25,11 @@ export class ScentStoryDto {
   @ApiProperty()
   image: string;
 }
+
+export class ScentColorDto {
+  @ApiProperty()
+  base: string;
+
+  @ApiProperty({ type: [Object], description: 'Array of gradient colors with percentages' })
+  gradient: { color: string; percent: number }[];
+}
