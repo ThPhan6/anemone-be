@@ -141,8 +141,12 @@ export class SpaceService {
           id,
         },
       },
+      relations: ['product'],
     });
 
-    return { ...found, devices };
+    return {
+      ...found,
+      devices: devices.map((device) => ({ ...device, deviceId: device.product.serialNumber })),
+    };
   }
 }

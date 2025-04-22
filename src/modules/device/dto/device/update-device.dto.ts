@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class UpdateDeviceDto {
   @ApiProperty({ required: false })
@@ -16,4 +16,11 @@ export class UpdateDeviceDto {
   @IsString()
   @IsOptional()
   status?: string;
+}
+
+export class DeviceSwitchSpaceDto {
+  @ApiProperty({ required: true })
+  @IsString()
+  @IsNotEmpty()
+  spaceId: string;
 }
