@@ -3,7 +3,7 @@ import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from '../../core/decorator/apiDoc.decorator';
-import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
+import { AdminRoleGuard, MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
 import { UpdateScentConfigDto } from './dto/update-scent-config.dto';
@@ -18,6 +18,7 @@ export class ScentConfigController extends BaseController {
     super();
   }
 
+  @MemberRoleGuard()
   @ApiBaseOkResponse({
     description: 'Get all scent configurations',
   })
@@ -26,6 +27,7 @@ export class ScentConfigController extends BaseController {
     return this.scentConfigService.findAll(queries);
   }
 
+  @MemberRoleGuard()
   @ApiBaseOkResponse({
     description: 'Get scent configuration by id',
   })
