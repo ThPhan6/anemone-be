@@ -1,7 +1,12 @@
 import 'dotenv/config';
 
-import { BadRequestException, INestApplication, ValidationPipe } from '@nestjs/common';
-import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import {
+  BadRequestException,
+  ClassSerializerInterceptor,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
+import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as Sentry from '@sentry/nestjs';
 import { AppModule } from 'modules/app.module';
@@ -48,6 +53,12 @@ class App {
 
   private configApp() {
     this.app.enableCors();
+
+    //add interceptor to transform the response
+    const reflector = this.app.get(Reflector);
+
+    this.app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
+
     const stopAtFirstError = process.env.STOP_AT_FIRST_VALIDATION_ERROR === 'YES';
     this.app.useGlobalPipes(
       new TrimPipe(),

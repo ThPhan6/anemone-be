@@ -1,3 +1,4 @@
+import { Expose, Transform } from 'class-transformer';
 import { BaseEntity } from 'common/entities/base.entity';
 import { Family } from 'common/entities/family.entity';
 import { Space } from 'common/entities/space.entity';
@@ -61,4 +62,10 @@ export class Device extends BaseEntity {
 
   @OneToMany(() => DeviceCertificate, (certificate) => certificate.device)
   certificates: DeviceCertificate[];
+
+  @Expose()
+  @Transform(({ obj }) => obj.product?.serialNumber)
+  get deviceId(): string {
+    return this.product?.serialNumber;
+  }
 }
