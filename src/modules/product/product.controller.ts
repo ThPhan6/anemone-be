@@ -23,7 +23,7 @@ export class ProductController extends BaseController {
   })
   @Get()
   getAll(@Query() queries: ApiBaseGetListQueries & { type: ProductType }) {
-    return this.productService.getAll(queries);
+    return this.productService.findAll(queries);
   }
 
   @ApiBaseOkResponse({
