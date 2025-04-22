@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { ScentConfigRepository } from 'common/repositories/scent-config.repository';
 import { BaseService } from 'core/services/base.service';
 import { ApiBaseGetListQueries } from 'core/types/apiQuery.type';
@@ -12,7 +13,7 @@ import { ScentConfig } from './entities/scent-config.entity';
 
 @Injectable()
 export class ScentConfigService extends BaseService<ScentConfig> {
-  constructor(private scentConfigRepository: ScentConfigRepository) {
+  constructor(@InjectRepository(ScentConfig) private scentConfigRepository: ScentConfigRepository) {
     super(scentConfigRepository);
   }
 
