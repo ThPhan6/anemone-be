@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { BaseRepository, SoftDeleteCriteria } from 'common/repositories/base.repository';
 import { ApiGetListQueries } from 'core/types/apiQuery.type';
 import { Pagination } from 'core/types/response.type';
-import { omit } from 'lodash';
 import {
   Brackets,
   DeepPartial,
@@ -21,7 +20,11 @@ export class BaseService<T extends { id: string | number }> {
     return this.repository.exist(options);
   }
 
-  async create(entities: DeepPartial<T>, options?: SaveOptions) {
+  async create(entities: DeepPartial<T> | DeepPartial<T>[], options?: SaveOptions) {
+    if (Array.isArray(entities)) {
+      return this.repository.bulkSave(entities, options);
+    }
+
     return this.repository.save(entities, options);
   }
 
@@ -67,14 +70,69 @@ export class BaseService<T extends { id: string | number }> {
   ): Promise<Pagination<T>> {
     const page = query.page || 1;
     const perPage = query.perPage || 10;
-    const orders = query.orders || [
-      {
-        name: 'createdAt',
-        isDesc: true,
-      },
-    ];
 
-    const restQuery = omit(query, ['page', 'perPage', 'orders', 'search']);
+    // Try to get orders from the query object first
+    let orders = query.orders || [];
+
+    // If no orders in the expected format, try to parse from bracket notation
+    if (orders.length === 0) {
+      // Extract orders from bracketed format (orders[0][name], orders[0][isDesc], etc.)
+      const orderEntries = Object.entries(query)
+        .filter(([key]) => key.startsWith('orders[') && key.includes(']['))
+        .map(([key, value]) => {
+          // Parse order index and property from key
+          const matches = key.match(/orders\[(\d+)\]\[(\w+)\]/);
+          if (matches) {
+            const [, index, prop] = matches;
+
+            return { index: parseInt(index), prop, value };
+          }
+
+          return null;
+        })
+        .filter((entry) => entry !== null);
+
+      if (orderEntries.length > 0) {
+        // Group by index to reconstruct order objects
+        const orderMap = {};
+        orderEntries.forEach((entry) => {
+          if (!orderMap[entry.index]) {
+            orderMap[entry.index] = {};
+          }
+
+          orderMap[entry.index][entry.prop] = entry.value;
+        });
+
+        // Convert to array and ensure boolean parsing for isDesc
+        orders = Object.values(orderMap).map((order: any) => ({
+          name: order.name || 'createdAt',
+          isDesc: order.isDesc === 'true' || order.isDesc === true,
+        }));
+      }
+    }
+
+    // Default order if no valid orders found
+    if (orders.length === 0) {
+      orders = [{ name: 'createdAt', isDesc: true }];
+    }
+
+    // Create a clean copy of query without pagination and search parameters
+    const restQuery = { ...query };
+    delete restQuery.page;
+    delete restQuery.perPage;
+    delete restQuery.search;
+
+    // Filter out bracket notation keys
+    const filteredQuery = {};
+    Object.keys(restQuery).forEach((key) => {
+      // Skip bracket notation keys
+      if (key.includes('[') || key.includes(']')) {
+        return;
+      }
+
+      // Keep other keys
+      filteredQuery[key] = restQuery[key];
+    });
 
     // Start building the query
     const qb = this.repository.createQueryBuilder('entity');
@@ -88,6 +146,10 @@ export class BaseService<T extends { id: string | number }> {
 
     // Add sorting
     orders.forEach((order, index) => {
+      if (!order || !order.name) {
+        return;
+      }
+
       const [table, column] = order.name.split('.');
       const alias = column ? table : 'entity';
       const orderColumn = `${alias}.${column || order.name}`;
@@ -99,20 +161,20 @@ export class BaseService<T extends { id: string | number }> {
       }
     });
 
-    // Add where
-    if (Object.keys(restQuery).length) {
-      Object.keys(restQuery).forEach((key) => {
-        if (restQuery[key] === undefined) {
+    // Add where conditions for filtered query parameters
+    if (Object.keys(filteredQuery).length) {
+      Object.keys(filteredQuery).forEach((key) => {
+        if (filteredQuery[key] === undefined) {
           return;
         }
 
-        if (Array.isArray(restQuery[key])) {
-          qb.andWhere(`${key} IN (:...${key})`, { [key]: restQuery[key] });
+        if (Array.isArray(filteredQuery[key])) {
+          qb.andWhere(`entity.${key} IN (:...${key})`, { [key]: filteredQuery[key] });
 
           return;
         }
 
-        qb.andWhere(`entity.${key} = :${key}`, { [key]: restQuery[key] });
+        qb.andWhere(`entity.${key} = :${key}`, { [key]: filteredQuery[key] });
       });
     }
 
