@@ -249,8 +249,39 @@ export class DeviceService {
     return updatedDevice;
   }
 
-  async removeSpace(deviceId: string) {
-    const device = await this.findValidDevice(deviceId);
+  async validateDeviceOwnership(deviceId: string, userId: string): Promise<Device> {
+    const device = await this.repository.findOne({
+      where: { product: { serialNumber: deviceId } },
+    });
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (device.registeredBy !== userId) {
+      throw new HttpException(MESSAGE.DEVICE.FORBIDDEN, HttpStatus.FORBIDDEN);
+    }
+
+    return device;
+  }
+
+  async removeDeviceFromSpace(userId: string, deviceId: string) {
+    const device = await this.validateDeviceOwnership(deviceId, userId);
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const removedDevice = await this.repository.update(device.id, {
+      space: null,
+      isConnected: false,
+    });
+
+    return removedDevice;
+  }
+
+  async removeDevice(userId: string, deviceId: string) {
+    const device = await this.validateDeviceOwnership(deviceId, userId);
 
     if (!device) {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
@@ -259,6 +290,28 @@ export class DeviceService {
     const removedDevice = await this.repository.softDelete(device.id);
 
     return removedDevice;
+  }
+
+  async switchSpace(userId: string, deviceId: string, spaceId: string) {
+    const device = await this.validateDeviceOwnership(deviceId, userId);
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const space = await this.spaceRepository.findOne({
+      where: { id: spaceId, createdBy: userId },
+    });
+
+    if (!space) {
+      throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const updatedDevice = await this.repository.update(device.id, {
+      space: { id: space.id },
+    });
+
+    return updatedDevice;
   }
 
   async getDeviceDetail(deviceId: string) {
