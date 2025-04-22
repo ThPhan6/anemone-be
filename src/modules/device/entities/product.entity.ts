@@ -1,7 +1,7 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { Category } from '../../../common/entities/category.entity';
+import { ScentConfig } from '../../../modules/scent-config/entities/scent-config.entity';
 import { Device } from './device.entity';
 import { DeviceCartridge } from './device-cartridge.entity';
 
@@ -27,12 +27,16 @@ export class Product extends BaseEntity {
   @Column({ name: 'name' })
   name: string;
 
-  @Column({ name: 'type', type: 'smallint' })
+  @Column({ name: 'type', type: 'smallint', enum: ProductType })
   type: ProductType;
 
-  @ManyToOne(() => Category)
-  @JoinColumn({ name: 'category_id' })
-  category: Category;
+  @OneToOne(() => ScentConfig)
+  @JoinColumn({ name: 'scent_config_id' })
+  scentConfig: ScentConfig;
+
+  // @ManyToOne(() => Category)
+  // @JoinColumn({ name: 'category_id' })
+  // category: Category;
 
   @Column({ name: 'config_template', type: 'json', nullable: true })
   configTemplate: Record<string, any>;

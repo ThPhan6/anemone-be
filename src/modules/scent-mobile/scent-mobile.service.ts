@@ -3,31 +3,33 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
-import { Category } from '../../common/entities/category.entity';
-import { Product } from '../../common/entities/product.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
-import { CategoryType } from '../../common/enum/category.enum';
 import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
-import { ProductType } from '../device/entities/product.entity';
+import { Product, ProductType } from '../device/entities/product.entity';
+import {
+  ESystemDefinitionType,
+  SettingDefinition,
+} from '../setting-definition/entities/setting-definition.entity';
 import { StorageService } from '../storage/storage.service';
 import {
   CartridgeInfoDto,
   CreateScentMobileDto,
   UpdateScentMobileDto,
 } from './dto/scent-mobile-request.dto';
+
 @Injectable()
 export class ScentMobileService {
   constructor(
     @InjectRepository(Scent)
     private readonly scentRepository: Repository<Scent>,
     private storageService: StorageService,
-    @InjectRepository(Category)
-    private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(SettingDefinition)
+    private readonly settingDefinitionRepository: Repository<SettingDefinition>,
     @InjectRepository(UserSetting)
     private readonly userSettingRepository: Repository<UserSetting>,
     @InjectRepository(Product)
@@ -70,8 +72,8 @@ export class ScentMobileService {
     }
 
     // Fetch the categories where type = ScentTag
-    const categories = await this.categoryRepository.find({
-      where: { type: CategoryType.ScentTag },
+    const categories = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
     });
 
     // Assuming `tags` in the Scent are category IDs, fetch the corresponding category names

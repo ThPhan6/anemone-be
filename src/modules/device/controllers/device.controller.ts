@@ -7,12 +7,13 @@ import { AuthUser } from 'core/decorator/auth-user.decorator';
 
 import { Status } from '../../../common/entities/user-session.entity';
 import { UserDto } from '../../user/dto/user.dto';
-import { DeviceSwitchSpaceDto, RegisterDeviceDto } from '../dto';
+import { RegisterDeviceDto } from '../dto';
 import { CommandDto } from '../dto/device/command.dto';
 import {
   DeviceConnectSpaceDto,
   DeviceUpdateStatusDto,
 } from '../dto/device/device-connect-space.dto';
+import { DeviceSwitchSpaceDto } from '../dto/device/update-device.dto';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
 

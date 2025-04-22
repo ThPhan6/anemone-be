@@ -4,14 +4,15 @@ import { MulterModule } from '@nestjs/platform-express';
 import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AuthModule } from './auth/auth.module';
-import { CategoryModule } from './category/category.module';
 import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
 import { MockModule } from './mock/mock.module';
 import { PlaylistModule } from './playlist/playlist.module';
 import { ProductModule } from './product/product.module';
 import { ScentModule } from './scent/scent.module';
+import { ScentConfigModule } from './scent-config/scent-config.module';
 import { ScentMobileModule } from './scent-mobile/scent-mobile.module';
+import { SettingDefinitionModule } from './setting-definition/setting-definition.module';
 import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
 import { UserModule } from './user/user.module';
@@ -26,7 +27,8 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     AuthModule,
     DeviceModule,
     ScentModule,
-    CategoryModule,
+    ScentConfigModule,
+    SettingDefinitionModule,
     SpaceModule,
     PlaylistModule,
     ScentMobileModule,

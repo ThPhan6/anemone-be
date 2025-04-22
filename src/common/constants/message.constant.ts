@@ -1,5 +1,5 @@
 export const MESSAGE = {
-  CATEGORY: {
+  SYSTEM_SETTINGS: {
     NOT_FOUND_QUESTION: 'Not found question',
     NOT_FOUND_USER_SETTING: 'Not found user setting',
     INVALID_MULTI_ANSWER_FOR_SINGLE_QUESTION: 'Invalid multi answer for single question',
@@ -30,5 +30,10 @@ export const MESSAGE = {
     NOT_FOUND: 'Cartridge not found',
     ALREADY_EXISTS: 'Cartridge already exists',
     USED: 'Cartridge is used',
+  },
+  SCENT_CONFIG: {
+    NOT_FOUND: 'Scent config not found',
+    ALREADY_EXISTS: 'Scent config already exists',
+    CODE_EXISTS: 'Scent config with this code already exists',
   },
 };

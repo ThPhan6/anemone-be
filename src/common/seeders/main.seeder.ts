@@ -5,13 +5,14 @@ import { runSeeder, SeederOptions } from 'typeorm-extension';
 
 import { PulicScentSeeder } from './public-scent.seeder';
 import { QuestionnaireSeeder } from './questionnaire.seeder';
+import { ScentConfigSeeder } from './scent-config.seeder';
 import { ScentTagSeeder } from './scent-tag.seeder';
 
 config();
 
 async function runSeeders() {
   const options: SeederOptions = {
-    seeds: [QuestionnaireSeeder, ScentTagSeeder, PulicScentSeeder],
+    seeds: [ScentConfigSeeder, QuestionnaireSeeder, ScentTagSeeder, PulicScentSeeder],
   };
 
   const dataSource = new DataSource({
