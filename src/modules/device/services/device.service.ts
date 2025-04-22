@@ -317,7 +317,13 @@ export class DeviceService {
   async getDeviceDetail(deviceId: string) {
     const device = await this.repository.findOne({
       where: { product: { serialNumber: deviceId } },
-      relations: ['product', 'cartridges', 'cartridges.product', 'space'],
+      relations: [
+        'product',
+        'cartridges',
+        'cartridges.product',
+        'cartridges.product.scentConfig',
+        'space',
+      ],
     });
 
     if (!device) {
@@ -338,7 +344,7 @@ export class DeviceService {
       cartridges: orderBy(
         device.cartridges.map((cartridge) => ({
           id: cartridge.id,
-          name: cartridge.product.name,
+          name: cartridge.product.scentConfig.code,
           percentage: Number(cartridge.percentage),
           position: Number(cartridge.position),
         })),

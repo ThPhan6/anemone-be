@@ -6,11 +6,14 @@ import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CognitoService } from '../auth/cognito.service';
 import { Product } from '../device/entities/product.entity';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import { SettingDefinition } from '../setting-definition/entities/setting-definition.entity';
 import { ScentMobileController } from './scent-mobile.controller';
 import { ScentMobileService } from './scent-mobile.service';
 @Module({
-  imports: [TypeOrmModule.forFeature([Scent, UserSetting, SettingDefinition, Product])],
+  imports: [
+    TypeOrmModule.forFeature([Scent, UserSetting, SettingDefinition, Product, ScentConfig]),
+  ],
   controllers: [ScentMobileController],
   providers: [ScentMobileService, CognitoService, AwsConfigService],
 })

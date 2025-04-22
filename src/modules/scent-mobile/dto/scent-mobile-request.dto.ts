@@ -15,7 +15,7 @@ export class CreateScentMobileDto {
   @Max(5)
   intensity: number;
 
-  @ApiProperty({ example: '[{ "serialNumber": "SN1234567890", "intensity": 1 }]' })
+  @ApiProperty({ example: '[{ "id": "dc27e054-5482-4e0e-bd14-59e72645425a", "intensity": 1 }]' })
   @IsString()
   @IsNotEmpty()
   cartridgeInfo: string;
@@ -70,10 +70,10 @@ export class UpdateScentMobileDto {
 }
 
 export class CartridgeInfoDto {
-  @ApiProperty({ example: 'SN1234567890' })
+  @ApiProperty({ example: 'dc27e054-5482-4e0e-bd14-59e72645425a' })
   @IsString()
   @IsNotEmpty()
-  serialNumber: string;
+  id: string;
 
   @ApiProperty({ example: 1 })
   @IsNumber()

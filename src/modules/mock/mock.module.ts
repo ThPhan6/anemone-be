@@ -4,11 +4,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Device } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import { MockController } from './mock.controller';
 import { MockService } from './mock.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Device, DeviceCartridge])],
+  imports: [TypeOrmModule.forFeature([Product, Device, DeviceCartridge, ScentConfig])],
   controllers: [MockController],
   providers: [MockService],
 })
