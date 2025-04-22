@@ -26,7 +26,7 @@ export class Product extends BaseEntity {
   @Column({ name: 'name' })
   name: string;
 
-  @Column({ name: 'type', type: 'smallint' })
+  @Column({ name: 'type', type: 'smallint', enum: ProductType })
   type: ProductType;
 
   // @ManyToOne(() => Category)
