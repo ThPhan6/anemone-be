@@ -34,10 +34,6 @@ export class Product extends BaseEntity {
   @JoinColumn({ name: 'scent_config_id' })
   scentConfig: ScentConfig;
 
-  // @ManyToOne(() => Category)
-  // @JoinColumn({ name: 'category_id' })
-  // category: Category;
-
   @Column({ name: 'config_template', type: 'json', nullable: true })
   configTemplate: Record<string, any>;
 

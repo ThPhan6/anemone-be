@@ -3,10 +3,11 @@ import { Get, Param, Query } from '@nestjs/common';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from '../../core/decorator/apiDoc.decorator';
+import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { ScentConfigService } from './scent-config.service';
 
-// @MemberRoleGuard()
+@MemberRoleGuard()
 @ApiController({
   name: 'scent-configs',
 })

@@ -1,40 +1,33 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
-import { v4 } from 'uuid';
 
 import { MESSAGE } from '../../common/constants/message.constant';
-import { paginate } from '../../common/utils/helper';
+import { ProductRepository } from '../../common/repositories/product.repository';
+import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
+import { generateNumericSerialNumber } from '../../common/utils/helper';
+import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Product, ProductType } from '../device/entities/product.entity';
 import { CreateProductDto } from './dto/product-request.dto';
 @Injectable()
-export class ProductService {
+export class ProductService extends BaseService<Product> {
   constructor(
     @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>,
-  ) {}
+    private readonly productRepository: ProductRepository,
+    private readonly scentConfigRepository: ScentConfigRepository,
+  ) {
+    super(productRepository);
+  }
 
-  async getAll(queries: ApiBaseGetListQueries & { type: ProductType }) {
-    const { search, type } = queries;
-
-    const result = await paginate(this.productRepository, {
-      where: { type, ...(search ? { name: ILike(`%${search}%`) } : {}) },
-      params: queries,
-    });
-
-    return result;
+  async findAll(query: ApiBaseGetListQueries & { type: ProductType }) {
+    return super.findAll(query, undefined, ['name', 'sku']);
   }
 
   async create(data: CreateProductDto) {
     const { type, name, sku } = data;
 
     const existingProduct = await this.productRepository.findOne({
-      where: [
-        { sku, type },
-        { name, type },
-        { sku, name, type },
-      ],
+      where: [{ sku, name, type }],
     });
 
     if (existingProduct) {
@@ -45,12 +38,19 @@ export class ProductService {
       throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
 
-    const product = this.productRepository.create({
+    const scentConfigs = await this.scentConfigRepository.find();
+    if (!scentConfigs.length) {
+      throw new HttpException('No scent configurations available', HttpStatus.BAD_REQUEST);
+    }
+    //TODO: validate scent config
+
+    const newProduct = this.productRepository.create({
       ...data,
-      serialNumber: v4(),
+      scentConfig: { id: scentConfigs[0].id },
+      serialNumber: type === ProductType.CARTRIDGE ? generateNumericSerialNumber() : null,
     });
 
-    return this.productRepository.save(product);
+    return super.create(newProduct);
   }
 
   async getById(id: string) {
@@ -126,9 +126,7 @@ export class ProductService {
       }
     }
 
-    Object.assign(product, data);
-
-    return this.productRepository.save(product);
+    return super.update(id, data);
   }
 
   async delete(id: string) {
@@ -149,8 +147,6 @@ export class ProductService {
       throw new HttpException(MESSAGE.CARTRIDGE.USED, HttpStatus.BAD_REQUEST);
     }
 
-    const result = await this.productRepository.softDelete(id);
-
-    return result;
+    return super.delete(id);
   }
 }
