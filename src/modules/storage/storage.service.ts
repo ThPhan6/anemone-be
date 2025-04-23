@@ -27,6 +27,7 @@ import {
 import { MessageCode } from '../../common/constants/messageCode';
 import { ApiBadRequestException } from '../../common/types/apiException.type';
 import { logger } from '../../core/logger/index.logger';
+import { StoreUploadPrefix } from './constant';
 import { UploadImageResDto } from './dto/storage.response';
 import { LocalStorage } from './util';
 
@@ -208,7 +209,7 @@ export class StorageService {
     }
   }
 
-  async uploadImages(file: Express.Multer.File) {
+  async uploadImages(file: Express.Multer.File, prefix?: StoreUploadPrefix) {
     try {
       const ext = extname(file.originalname);
       const contentType = file.mimetype;
@@ -273,8 +274,8 @@ export class StorageService {
         // Create a size-specific filename
         const sizeFileName =
           variation.name === 'original'
-            ? `${fileName}${ext}`
-            : `${fileName}-${variation.name}${ext}`;
+            ? `${this.keyPrefix}/${prefix}/${fileName}${ext}`
+            : `${this.keyPrefix}/${prefix}/${fileName}-${variation.name}${ext}`;
 
         // Upload the resized image
         const path = await this.uploadFile(
@@ -282,7 +283,7 @@ export class StorageService {
           sizeFileName,
           'public-read',
           contentType,
-          '',
+          `${this.keyPrefix}/${prefix}`,
         );
 
         // Generate signed URL for immediate access
@@ -329,7 +330,7 @@ export class StorageService {
     maxRetries = 0,
     retryDelayMs = 1000,
   ) {
-    const newKey = prefix ? `${prefix}/${key}` : key;
+    const newKey = `${prefix}/${key}`;
     let attempt = 0;
 
     while (attempt <= maxRetries) {
