@@ -2,8 +2,8 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { InjectRepository } from '@nestjs/typeorm';
 import * as AWS from 'aws-sdk';
 import * as forge from 'node-forge';
+import { Repository } from 'typeorm';
 
-import { DeviceRepository } from '../../common/repositories/device.repository';
 import { Device } from '../../modules/device/entities/device.entity';
 import { logger } from '../logger/index.logger';
 
@@ -13,7 +13,7 @@ export class IoTAuthGuard implements CanActivate {
 
   constructor(
     @InjectRepository(Device)
-    private deviceRepository: DeviceRepository,
+    private deviceRepository: Repository<Device>,
   ) {
     // Initialize AWS IoT client
     this.iotClient = new AWS.Iot({
