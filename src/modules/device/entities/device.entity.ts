@@ -33,6 +33,9 @@ export class Device extends BaseEntity {
   @Column({ name: 'firmware_version', nullable: true })
   firmwareVersion: string;
 
+  @Column({ name: 'serial_number', nullable: true })
+  serialNumber: string;
+
   @Column({ name: 'is_connected', default: false })
   isConnected: boolean;
 

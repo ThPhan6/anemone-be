@@ -102,7 +102,7 @@ export class IoTAuthGuard implements CanActivate {
 
       // First check device in your database
       const device = await this.deviceRepository.findOne({
-        where: { product: { serialNumber: deviceId } },
+        where: { serialNumber: deviceId },
         relations: ['product'],
       });
 
