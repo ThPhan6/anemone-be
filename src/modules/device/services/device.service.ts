@@ -384,13 +384,13 @@ export class DeviceService {
     });
 
     if (command) {
-      command.command = commandType;
+      command.command.type = commandType;
       command.updatedAt = new Date();
       await this.deviceCommandRepository.save(command);
     } else {
       command = this.deviceCommandRepository.create({
         device: { id: device.id },
-        command: commandType,
+        command: { type: commandType },
         isExecuted: false,
       });
       await this.deviceCommandRepository.save(command);

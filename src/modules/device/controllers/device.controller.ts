@@ -14,6 +14,7 @@ import {
   DeviceUpdateStatusDto,
 } from '../dto/device/device-connect-space.dto';
 import { DeviceSwitchSpaceDto } from '../dto/device/update-device.dto';
+import { CommandType } from '../entities/device-command.entity';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
 
@@ -198,7 +199,7 @@ export class DeviceController extends BaseController {
     const command = await this.deviceService.queueCommand(
       deviceId,
       user.sub,
-      'play',
+      CommandType.PLAY,
       Status.PLAYING,
       payload.scentId,
     );
@@ -217,7 +218,7 @@ export class DeviceController extends BaseController {
     const command = await this.deviceService.queueCommand(
       deviceId,
       user.sub,
-      'pause',
+      CommandType.PAUSE,
       Status.PAUSED,
       payload.scentId,
     );

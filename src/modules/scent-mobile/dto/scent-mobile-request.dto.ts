@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { IsString } from 'class-validator';
 
 export class CreateScentMobileDto {
@@ -81,4 +91,23 @@ export class CartridgeInfoDto {
   @Min(1)
   @Max(5)
   intensity: number;
+}
+
+export class TestScentDto {
+  @ApiProperty({ example: 'device-001' })
+  @IsString()
+  @IsNotEmpty()
+  deviceId: string;
+
+  @ApiProperty({ example: 1 })
+  @IsNumber()
+  @IsNotEmpty()
+  intensity: number;
+
+  @ApiProperty({ example: [{ id: 'dc27e054-5482-4e0e-bd14-59e72645425a', intensity: 1 }] })
+  @IsArray()
+  @IsNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => CartridgeInfoDto)
+  cartridgeInfo: CartridgeInfoDto[];
 }
