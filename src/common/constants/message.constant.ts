@@ -14,6 +14,7 @@ export const MESSAGE = {
     ALREADY_EXISTS: 'Device already exists',
     USED: 'Device is used',
     FORBIDDEN: 'Device is not owned by the user',
+    NOT_CONNECTED: 'Device is not connected',
   },
   PLAYLIST: {
     NOT_FOUND: 'Not found playlist',

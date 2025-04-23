@@ -10,7 +10,7 @@ import { UserSession } from '../../../common/entities/user-session.entity';
 import { Command } from '../../../common/enum/command.enum';
 import { DeviceCartridgesDto, DeviceHeartbeatDto } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
-import { DeviceCommand } from '../entities/device-command.entity';
+import { CommandType, DeviceCommand } from '../entities/device-command.entity';
 import { Product, ProductType } from '../entities/product.entity';
 
 @Injectable()
@@ -80,7 +80,7 @@ export class DeviceIotService {
     });
 
     // Pause command or no user session => return all uptime = 0
-    if (command.command === 'pause' || !userSession) {
+    if (command.command.type === CommandType.PAUSE || !userSession) {
       return {
         interval: parseInt(process.env.REPEAT_INTERVAL),
         cycle: -1,
@@ -91,7 +91,15 @@ export class DeviceIotService {
       };
     }
 
-    const cartridgeUptimes = this.calculateCartridgeUptimes(userSession.scent, cartridges);
+    const scent =
+      command.command.type === CommandType.TEST
+        ? ({
+            intensity: command.command.intensity,
+            cartridgeInfo: JSON.stringify(command.command.cartridgeInfo),
+          } as Scent)
+        : userSession.scent;
+
+    const cartridgeUptimes = this.calculateCartridgeUptimes(scent, cartridges);
 
     //mark command as executed
     await this.commandRepository.update(command.id, { isExecuted: true, deletedAt: new Date() });
@@ -162,7 +170,7 @@ export class DeviceIotService {
       //send command pause
       await this.commandRepository.save({
         device,
-        command: 'pause',
+        command: { type: CommandType.PAUSE },
         isExecuted: false,
       });
     }
@@ -295,7 +303,7 @@ export class DeviceIotService {
 
     const deviceCommand = this.commandRepository.create({
       device,
-      command,
+      command: { type: command },
     });
 
     return this.commandRepository.save(deviceCommand);

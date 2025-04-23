@@ -10,6 +10,8 @@ import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
+import { Device } from '../device/entities/device.entity';
+import { CommandType, DeviceCommand } from '../device/entities/device-command.entity';
 import { Product } from '../device/entities/product.entity';
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import {
@@ -20,6 +22,7 @@ import { StorageService } from '../storage/storage.service';
 import {
   CartridgeInfoDto,
   CreateScentMobileDto,
+  TestScentDto,
   UpdateScentMobileDto,
 } from './dto/scent-mobile-request.dto';
 
@@ -38,6 +41,10 @@ export class ScentMobileService {
     private readonly cognitoService: CognitoService,
     @InjectRepository(ScentConfig)
     private readonly scentConfigRepository: Repository<ScentConfig>,
+    @InjectRepository(DeviceCommand)
+    private readonly deviceCommandRepository: Repository<DeviceCommand>,
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
@@ -271,5 +278,51 @@ export class ScentMobileService {
       })),
       pagination: result.pagination,
     };
+  }
+
+  async testScent(dto: TestScentDto) {
+    const device = await this.deviceRepository.findOne({
+      where: { product: { serialNumber: dto.deviceId } },
+    });
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!device.isConnected) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_CONNECTED, HttpStatus.BAD_REQUEST);
+    }
+
+    //check validate scent config
+    await this.validateScentConfig(dto.cartridgeInfo, dto.intensity);
+
+    //update command
+    const commands = await this.deviceCommandRepository.find({
+      where: { device: { id: device.id }, isExecuted: false },
+    });
+
+    if (commands.length > 0) {
+      for (const command of commands) {
+        await this.deviceCommandRepository.update(command.id, {
+          isExecuted: true,
+          deletedAt: new Date(),
+        });
+      }
+    }
+
+    //send command to device
+    const command = await this.deviceCommandRepository.create({
+      device: { id: device.id },
+      command: {
+        type: CommandType.TEST,
+        intensity: dto.intensity,
+        cartridgeInfo: dto.cartridgeInfo,
+      },
+      isExecuted: false,
+    });
+
+    await this.deviceCommandRepository.save(command);
+
+    return true;
   }
 }

@@ -22,7 +22,11 @@ import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { UserDto } from '../auth/dto/auth-user.dto';
-import { CreateScentMobileDto, UpdateScentMobileDto } from './dto/scent-mobile-request.dto';
+import {
+  CreateScentMobileDto,
+  TestScentDto,
+  UpdateScentMobileDto,
+} from './dto/scent-mobile-request.dto';
 import { ScentMobileService } from './scent-mobile.service';
 
 @MemberRoleGuard()
@@ -73,6 +77,12 @@ export class ScentMobileController extends BaseController {
     const scent = await this.scentMobileService.create(user.sub, body, image);
 
     return scent;
+  }
+
+  @Post('test')
+  @ApiOperation({ summary: 'Test scent' })
+  async testScent(@Body() body: TestScentDto) {
+    return this.scentMobileService.testScent(body);
   }
 
   @Put(':id')
