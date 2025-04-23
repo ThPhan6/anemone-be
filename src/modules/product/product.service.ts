@@ -1,10 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { ProductRepository } from '../../common/repositories/product.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
-import { generateNumericSerialNumber } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Product, ProductType } from '../device/entities/product.entity';
@@ -12,7 +10,6 @@ import { CreateProductDto } from './dto/product-request.dto';
 @Injectable()
 export class ProductService extends BaseService<Product> {
   constructor(
-    @InjectRepository(Product)
     private readonly productRepository: ProductRepository,
     private readonly scentConfigRepository: ScentConfigRepository,
   ) {
@@ -44,10 +41,15 @@ export class ProductService extends BaseService<Product> {
     }
     //TODO: validate scent config
 
+    let serialNumber = null;
+    if (type === ProductType.CARTRIDGE) {
+      serialNumber = await this.productRepository.generateSerialNumber();
+    }
+
     const newProduct = this.productRepository.create({
       ...data,
       scentConfig: { id: scentConfigs[0].id },
-      serialNumber: type === ProductType.CARTRIDGE ? generateNumericSerialNumber() : null,
+      serialNumber,
     });
 
     return super.create(newProduct);
