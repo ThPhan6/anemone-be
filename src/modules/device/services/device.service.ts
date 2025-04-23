@@ -144,7 +144,10 @@ export class DeviceService {
       relations: ['product', 'space'],
     });
 
-    return devices;
+    return devices.map((el) => ({
+      ...el,
+      spaceName: el.space ? el.space.name : null,
+    }));
   }
 
   async registerDevice(dto: RegisterDeviceDto, userId: string) {
@@ -333,6 +336,11 @@ export class DeviceService {
       deviceId: device.product.serialNumber,
       isConnected: device.isConnected,
       warranty: device.warrantyExpirationDate,
+      productInfo: {
+        serialNumber: device.product.serialNumber,
+        sku: device.product.sku,
+        batch: device.product.batchId,
+      },
       cartridges: orderBy(
         device.cartridges.map((cartridge) => ({
           id: cartridge.id,
@@ -343,6 +351,7 @@ export class DeviceService {
         ['position'],
         ['asc'],
       ),
+      spaceName: device.space?.name,
     };
   }
 
