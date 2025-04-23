@@ -5,25 +5,30 @@ import { IsNotEmpty } from 'class-validator';
 import { ProductType } from '../../device/entities/product.entity';
 
 export class CreateProductDto {
-  @ApiProperty()
+  @ApiProperty({ required: true })
   @IsString()
   @IsNotEmpty({ message: 'Name is required' })
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: true })
   @IsString()
   @IsNotEmpty({ message: 'SKU is required' })
   sku: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: true })
   @IsString()
   @IsNotEmpty({ message: 'Batch ID is required' })
   batchId: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: true })
   @IsString()
   @IsNotEmpty({ message: 'Manufacturer ID is required' })
   manufacturerId: string;
+
+  @ApiProperty({ required: true })
+  @IsString()
+  @IsNotEmpty({ message: 'Scent configuration ID is required' })
+  scentConfigId: string;
 
   @ApiProperty()
   @IsEnum(ProductType, { message: 'Type is required and must be a valid ProductType' })
@@ -55,6 +60,12 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNotEmpty({ message: 'Manufacturer ID must not be empty' })
   manufacturerId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  @IsNotEmpty({ message: 'Scent configuration ID must not be empty' })
+  scentConfigId: string;
 
   @ApiProperty()
   @IsOptional()
