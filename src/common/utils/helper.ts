@@ -47,10 +47,3 @@ export async function paginate<T>(repo: Repository<T>, options: PaginationOption
     },
   };
 }
-
-export function generateNumericSerialNumber() {
-  const randomNumber = Math.floor(Math.random() * 1000000000); // Generates a random integer between 0 and 999999999
-  const formattedNumber = randomNumber.toString().padStart(9, '0'); // Pads with leading zeros to ensure 9 digits
-
-  return `SN${formattedNumber}`;
-}
