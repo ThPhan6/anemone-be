@@ -6,7 +6,7 @@ import { ScentConfigRepository } from '../../common/repositories/scent-config.re
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Product, ProductType } from '../device/entities/product.entity';
-import { CreateProductDto } from './dto/product-request.dto';
+import { CreateProductDto, UpdateProductDto } from './dto/product-request.dto';
 @Injectable()
 export class ProductService extends BaseService<Product> {
   constructor(
@@ -17,11 +17,11 @@ export class ProductService extends BaseService<Product> {
   }
 
   async findAll(query: ApiBaseGetListQueries & { type: ProductType }) {
-    return super.findAll(query, undefined, ['name', 'sku']);
+    return super.findAll(query, { scentConfig: true }, ['name', 'sku']);
   }
 
   async create(data: CreateProductDto) {
-    const { type, name, sku } = data;
+    const { type, name, sku, scentConfigId } = data;
 
     const existingProduct = await this.productRepository.findOne({
       where: [{ sku, name, type }],
@@ -35,11 +35,13 @@ export class ProductService extends BaseService<Product> {
       throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
 
-    const scentConfigs = await this.scentConfigRepository.find();
-    if (!scentConfigs.length) {
-      throw new HttpException('No scent configurations available', HttpStatus.BAD_REQUEST);
+    const scentConfig = await this.scentConfigRepository.findOne({
+      where: { id: scentConfigId },
+    });
+
+    if (!scentConfig) {
+      throw new HttpException('Scent configuration not found', HttpStatus.BAD_REQUEST);
     }
-    //TODO: validate scent config
 
     let serialNumber = null;
     if (type === ProductType.CARTRIDGE) {
@@ -48,7 +50,7 @@ export class ProductService extends BaseService<Product> {
 
     const newProduct = this.productRepository.create({
       ...data,
-      scentConfig: { id: scentConfigs[0].id },
+      scentConfig,
       serialNumber,
     });
 
@@ -58,7 +60,7 @@ export class ProductService extends BaseService<Product> {
   async getById(id: string) {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['devices', 'cartridges'],
+      relations: ['devices', 'cartridges', 'scentConfig'],
     });
 
     if (!product) {
@@ -83,10 +85,12 @@ export class ProductService extends BaseService<Product> {
       configTemplate: product.configTemplate,
       supportedFeatures: product.supportedFeatures,
       canEditManufacturerInfo,
+      scentConfig: product.scentConfig,
     };
   }
 
-  async update(id: string, data: Partial<Product>) {
+  async update(id: string, data: UpdateProductDto) {
+    const { type, name, sku, scentConfigId } = data;
     const product = await this.productRepository.findOne({
       where: { id },
       relations: ['devices', 'cartridges'],
@@ -101,7 +105,7 @@ export class ProductService extends BaseService<Product> {
 
     if (hasRelations) {
       // Check if restricted fields are being updated
-      const restrictedFields = ['manufacturerId', 'batchId', 'serialNumber'];
+      const restrictedFields = ['manufacturerId', 'batchId'];
 
       for (const field of restrictedFields) {
         if (field in data && data[field] !== product[field]) {
@@ -113,22 +117,35 @@ export class ProductService extends BaseService<Product> {
       }
     }
 
-    if (data.serialNumber && data.serialNumber !== product.serialNumber) {
-      const exists = await this.productRepository.findOne({
-        where: { serialNumber: data.serialNumber, type: product.type },
-      });
+    const existingProduct = await this.productRepository.findOne({
+      where: [{ sku, name, type }],
+    });
 
-      if (exists) {
-        throw new HttpException(
-          product.type === ProductType.CARTRIDGE
-            ? MESSAGE.CARTRIDGE.ALREADY_EXISTS
-            : MESSAGE.DEVICE.ALREADY_EXISTS,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    if (existingProduct && existingProduct.id !== id) {
+      const message =
+        type === ProductType.DEVICE
+          ? MESSAGE.DEVICE.ALREADY_EXISTS
+          : MESSAGE.CARTRIDGE.ALREADY_EXISTS;
+      throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
 
-    return super.update(id, data);
+    const updateData: Partial<Product> = { ...data };
+
+    if (scentConfigId) {
+      const scentConfig = await this.scentConfigRepository.findOne({
+        where: { id: scentConfigId },
+      });
+
+      if (!scentConfig) {
+        throw new HttpException('Scent configuration not found', HttpStatus.BAD_REQUEST);
+      }
+
+      delete (updateData as any).scentConfigId;
+
+      updateData.scentConfig = scentConfig;
+    }
+
+    return super.update(id, updateData);
   }
 
   async delete(id: string) {

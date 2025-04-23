@@ -1,5 +1,4 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { ScentConfigRepository } from 'common/repositories/scent-config.repository';
 import { BaseService } from 'core/services/base.service';
 import { ApiBaseGetListQueries } from 'core/types/apiQuery.type';
@@ -13,12 +12,16 @@ import { ScentConfig } from './entities/scent-config.entity';
 
 @Injectable()
 export class ScentConfigService extends BaseService<ScentConfig> {
-  constructor(@InjectRepository(ScentConfig) private scentConfigRepository: ScentConfigRepository) {
+  constructor(private scentConfigRepository: ScentConfigRepository) {
     super(scentConfigRepository);
   }
 
   async findAll(query: ApiBaseGetListQueries): Promise<Pagination<ScentConfig>> {
     return super.findAll(query);
+  }
+
+  async find(): Promise<ScentConfig[]> {
+    return super.findWithSelect({}, ['id', 'name', 'code', 'color', 'background']);
   }
 
   async findById(id: string): Promise<ScentConfig> {

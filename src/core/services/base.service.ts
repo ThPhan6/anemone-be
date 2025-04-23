@@ -63,6 +63,15 @@ export class BaseService<T extends { id: string | number }> {
     return this.repository.find(options);
   }
 
+  async findWithSelect(options?: FindManyOptions<T>, select?: (keyof T)[]) {
+    const newOptions = options ? { ...options } : {};
+    if (select && select.length > 0) {
+      newOptions.select = select;
+    }
+
+    return this.repository.find(newOptions);
+  }
+
   async findAll(
     query: ApiGetListQueries,
     relations?: FindManyOptions['relations'],
