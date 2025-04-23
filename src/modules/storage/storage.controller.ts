@@ -9,7 +9,7 @@ import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse, ApiUploadFile } from 'core/decorator/apiDoc.decorator';
 
-import { UploadImageResDto } from './dto/storage.response';
+import { ImageVariationsResDto, UploadImageResDto } from './dto/storage.response';
 import { StorageService } from './storage.service';
 
 @ApiController({
@@ -40,5 +40,27 @@ export class StorageController extends BaseController {
     file: Express.Multer.File,
   ) {
     return this.dataType(UploadImageResDto, await this.service.uploadImageFile(file));
+  }
+
+  @ApiBaseOkResponse({
+    description: 'upload image to get multiple sizes',
+    type: ImageVariationsResDto,
+  })
+  @ApiUploadFile({
+    path: 'upload-image-size',
+    bodyDescription: 'image file',
+  })
+  async uploadImage(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new FileTypeValidator({ fileType: MediaType.image }),
+          new MaxFileSizeValidator({ maxSize: MaxFileSize.image }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.dataType(ImageVariationsResDto, await this.service.uploadImages(file));
   }
 }

@@ -14,9 +14,16 @@ import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createReadStream, ReadStream } from 'fs';
 import { extname } from 'path';
+import * as sharp from 'sharp';
 import { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
+import {
+  ImageContentType,
+  ImageFit,
+  ImageQuality,
+  ImageSize,
+} from '../../common/constants/file.constant';
 import { MessageCode } from '../../common/constants/messageCode';
 import { ApiBadRequestException } from '../../common/types/apiException.type';
 import { logger } from '../../core/logger/index.logger';
@@ -179,8 +186,7 @@ export class StorageService {
     try {
       const ext = extname(file.originalname);
       const fullPathName = `${fileName}${ext}`;
-
-      const contentType = 'image/jpeg';
+      const contentType = file.mimetype;
 
       const calls = [];
 
@@ -202,6 +208,118 @@ export class StorageService {
     }
   }
 
+  async uploadImages(file: Express.Multer.File) {
+    try {
+      const ext = extname(file.originalname);
+      const contentType = file.mimetype;
+      const fileName = file.originalname.replace(ext, '');
+
+      // Define image size variations to generate
+      const sizeVariations = [
+        { name: 'original', size: null },
+        { name: 'large', size: ImageSize.large },
+        { name: 'medium', size: ImageSize.medium },
+        { name: 'small', size: ImageSize.small },
+        { name: 'thumbnail', size: ImageSize.thumbnail },
+      ];
+
+      // Process each size variation
+      const uploadPromises = sizeVariations.map(async (variation) => {
+        let processedBuffer: Buffer;
+
+        // For original, just use the original buffer
+        if (!variation.size) {
+          processedBuffer = file.buffer;
+        } else {
+          try {
+            // Use Sharp directly instead of the utility functions
+            const resizeOptions = {
+              width: variation.size,
+              height: undefined,
+              withoutEnlargement: true,
+              fit: ImageFit.cover,
+            };
+
+            // For other sizes, resize the image
+            switch (contentType) {
+              case ImageContentType.webp:
+                processedBuffer = await sharp(file.buffer)
+                  .resize(resizeOptions)
+                  .webp({ quality: ImageQuality.high })
+                  .toBuffer();
+                break;
+
+              case ImageContentType.png:
+                processedBuffer = await sharp(file.buffer)
+                  .resize(resizeOptions)
+                  .png({ quality: ImageQuality.high })
+                  .toBuffer();
+                break;
+
+              default:
+                // For JPEG and other formats
+                processedBuffer = await sharp(file.buffer)
+                  .resize(resizeOptions)
+                  .jpeg({ quality: ImageQuality.high })
+                  .toBuffer();
+            }
+          } catch (resizeError) {
+            this.logger.error(`Failed to resize image (${variation.name}): ${resizeError.message}`);
+            // If resizing fails, use original buffer as fallback
+            processedBuffer = file.buffer;
+          }
+        }
+
+        // Create a size-specific filename
+        const sizeFileName =
+          variation.name === 'original'
+            ? `${fileName}${ext}`
+            : `${fileName}-${variation.name}${ext}`;
+
+        // Upload the resized image
+        const path = await this.uploadFile(
+          processedBuffer,
+          sizeFileName,
+          'public-read',
+          contentType,
+          '',
+        );
+
+        // Generate signed URL for immediate access
+        const url = await this.getSignedUrl('getObject', { Key: path });
+
+        return {
+          size: variation.name,
+          path,
+          url,
+        };
+      });
+
+      // Wait for all uploads to complete
+      const results = await Promise.all(uploadPromises);
+
+      // Format the result as an object with size names as keys
+      const formattedResults = results.reduce((acc, result) => {
+        if (result && result.size) {
+          acc[result.size] = {
+            fileKey: result.path,
+            url: result.url,
+          };
+        }
+
+        return acc;
+      }, {});
+
+      return formattedResults;
+    } catch (error) {
+      this.logger.error(`Failed to upload images: ${error.message}`);
+      throw new ApiBadRequestException(
+        MessageCode.badRequest,
+        error.message || 'Upload images failed',
+      );
+    }
+  }
+
   async uploadFile(
     data: Buffer | string | ReadStream | ArrayBuffer,
     key: string,
@@ -211,7 +329,7 @@ export class StorageService {
     maxRetries = 0,
     retryDelayMs = 1000,
   ) {
-    const newKey = `${prefix}/${key}`;
+    const newKey = prefix ? `${prefix}/${key}` : key;
     let attempt = 0;
 
     while (attempt <= maxRetries) {

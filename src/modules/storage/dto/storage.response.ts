@@ -7,3 +7,22 @@ export class UploadImageResDto {
   @ExposeApi()
   url: string;
 }
+
+export class ImageVariationsResDto {
+  @ExposeApi()
+  original: UploadImageResDto;
+
+  @ExposeApi()
+  large: UploadImageResDto;
+
+  @ExposeApi()
+  medium: UploadImageResDto;
+
+  @ExposeApi()
+  small: UploadImageResDto;
+
+  @ExposeApi()
+  thumbnail: UploadImageResDto;
+
+  [key: string]: UploadImageResDto;
+}
