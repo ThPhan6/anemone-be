@@ -344,6 +344,7 @@ export class DeviceService {
       cartridges: orderBy(
         device.cartridges.map((cartridge) => ({
           id: cartridge.id,
+          scentConfigId: cartridge.product.scentConfig.id,
           name: cartridge.product.scentConfig.code,
           percentage: Number(cartridge.percentage),
           position: Number(cartridge.position),
