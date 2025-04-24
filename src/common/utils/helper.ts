@@ -1,6 +1,8 @@
 import { FindManyOptions, FindOptionsOrder, Repository } from 'typeorm';
 
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { ScentConfig } from '../../modules/scent-config/entities/scent-config.entity';
+import { convertURLToS3Readable } from './file';
 
 export const getSubStringBetween2Characters = (str: string, startChar: string, endChar: string) => {
   const startIndex = str.indexOf(startChar) + 1;
@@ -47,3 +49,22 @@ export async function paginate<T>(repo: Repository<T>, options: PaginationOption
     },
   };
 }
+
+export const transformScentConfig = (scentConfig: ScentConfig) => {
+  if (!scentConfig) {
+    return null;
+  }
+
+  return {
+    ...scentConfig,
+    background: convertURLToS3Readable(scentConfig.background),
+    notes: scentConfig.notes.map((note) => ({
+      ...note,
+      image: convertURLToS3Readable(note.image),
+    })),
+    story: {
+      ...scentConfig.story,
+      image: convertURLToS3Readable(scentConfig.story.image),
+    },
+  };
+};
