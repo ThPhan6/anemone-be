@@ -24,14 +24,14 @@ export class ScentConfigService extends BaseService<ScentConfig> {
       ...data,
       items: data.items.map((item) => ({
         ...item,
-        background: convertURLToS3Readable(item.background, true),
+        background: convertURLToS3Readable(item.background),
         notes: item.notes.map((note) => ({
           ...note,
-          image: convertURLToS3Readable(note.image, true),
+          image: convertURLToS3Readable(note.image),
         })),
         story: {
           ...item.story,
-          image: convertURLToS3Readable(item.story.image, true),
+          image: convertURLToS3Readable(item.story.image),
         },
       })),
     };

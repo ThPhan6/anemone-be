@@ -202,6 +202,7 @@ export class StorageService {
       return {
         origin: pathToOrigin,
         converted: pathToConverted,
+        fileName: fullPathName,
       };
     } catch (error) {
       throw new ApiBadRequestException(

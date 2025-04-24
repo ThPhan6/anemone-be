@@ -23,7 +23,7 @@ export const readFileExcel = (filePath: string) => {
   return data;
 };
 
-export function convertURLToS3Readable(url: string, hasPrefix = false) {
+export function convertURLToS3Readable(url: string, hasPrefix = true) {
   // check string is valid url or not
   if (!isValidURL(url)) {
     if (hasPrefix) {
