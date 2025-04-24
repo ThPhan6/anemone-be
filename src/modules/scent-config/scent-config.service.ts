@@ -7,7 +7,7 @@ import { FindOptionsWhere } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import { MESSAGE } from '../../common/constants/message.constant';
-import { convertURLToS3Readable } from '../../common/utils/file';
+import { transformScentConfig } from '../../common/utils/helper';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
 import { ScentConfig } from './entities/scent-config.entity';
 
@@ -22,23 +22,14 @@ export class ScentConfigService extends BaseService<ScentConfig> {
 
     return {
       ...data,
-      items: data.items.map((item) => ({
-        ...item,
-        background: convertURLToS3Readable(item.background),
-        notes: item.notes.map((note) => ({
-          ...note,
-          image: convertURLToS3Readable(note.image),
-        })),
-        story: {
-          ...item.story,
-          image: convertURLToS3Readable(item.story.image),
-        },
-      })),
+      items: data.items.map((item) => transformScentConfig(item)),
     };
   }
 
   async find(): Promise<ScentConfig[]> {
-    return super.findWithSelect({}, ['id', 'name', 'code', 'color', 'background']);
+    const data = await super.find();
+
+    return data.map((item) => transformScentConfig(item));
   }
 
   async findById(id: string): Promise<ScentConfig> {
