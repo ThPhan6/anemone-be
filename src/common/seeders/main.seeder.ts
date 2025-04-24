@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { runSeeder, SeederOptions } from 'typeorm-extension';
 
-import { PulicScentSeeder } from './public-scent.seeder';
+import { PublicScentSeeder } from './public-scent.seeder';
 import { QuestionnaireSeeder } from './questionnaire.seeder';
 import { ScentConfigSeeder } from './scent-config.seeder';
 import { ScentTagSeeder } from './scent-tag.seeder';
@@ -12,7 +12,7 @@ config();
 
 async function runSeeders() {
   const options: SeederOptions = {
-    seeds: [ScentConfigSeeder, QuestionnaireSeeder, ScentTagSeeder, PulicScentSeeder],
+    seeds: [ScentConfigSeeder, QuestionnaireSeeder, ScentTagSeeder, PublicScentSeeder],
   };
 
   const dataSource = new DataSource({

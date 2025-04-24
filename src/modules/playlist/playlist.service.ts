@@ -11,6 +11,11 @@ import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import {
+  ESystemDefinitionType,
+  SettingDefinition,
+} from '../setting-definition/entities/setting-definition.entity';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
@@ -24,6 +29,10 @@ export class PlaylistService {
     @InjectRepository(PlaylistScent)
     private playlistScentRepository: Repository<PlaylistScent>,
     private cognitoService: CognitoService,
+    @InjectRepository(ScentConfig)
+    private scentConfigRepository: Repository<ScentConfig>,
+    @InjectRepository(SettingDefinition)
+    private settingDefinitionRepository: Repository<SettingDefinition>,
   ) {}
 
   async get(
@@ -78,6 +87,45 @@ export class PlaylistService {
 
     const userInfo = await this.cognitoService.getUserByUserId(playlist.createdBy);
 
+    const scents = [];
+
+    for (const ps of playlist.playlistScents) {
+      const scent = ps.scent;
+
+      const cartridgeRaw = JSON.parse(scent.cartridgeInfo || '[]');
+
+      const cartridgeInfo = [];
+      for (const el of cartridgeRaw) {
+        const scentConfig = await this.scentConfigRepository.findOne({
+          where: { id: el.id },
+        });
+        cartridgeInfo.push(scentConfig);
+      }
+
+      const scentTags = await this.settingDefinitionRepository.find({
+        where: { type: ESystemDefinitionType.SCENT_TAG },
+      });
+
+      const tags = scentTags
+        .filter((tag) => JSON.parse(scent.tags).includes(tag.id))
+        .map((tag) => ({
+          id: tag.id,
+          name: tag.name,
+        }));
+
+      scents.push({
+        id: scent.id,
+        name: scent.name,
+        image: scent.image ? convertURLToS3Readable(scent.image) : '',
+        intensity: scent.intensity,
+        description: scent.description,
+        sequence: ps.sequence,
+        createdBy: userInfo,
+        tags,
+        cartridgeInfo,
+      });
+    }
+
     // Format the response to include the scents in the playlist
     const playlistDetail = {
       id: playlist.id,
@@ -87,15 +135,7 @@ export class PlaylistService {
           ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
           : '',
       createdBy: userInfo,
-      scents: playlist.playlistScents.map((ps) => ({
-        id: ps.scent.id,
-        name: ps.scent.name,
-        image: ps.scent.image ? convertURLToS3Readable(ps.scent.image) : '',
-        intensity: ps.scent.intensity,
-        description: ps.scent.description,
-        sequence: ps.sequence,
-        createdBy: userInfo,
-      })),
+      scents,
     };
 
     return playlistDetail;

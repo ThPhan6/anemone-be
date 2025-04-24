@@ -26,8 +26,19 @@ export class ScentTagSeeder extends BaseSeeder {
       'Aldehydic',
     ];
 
+    const existingRecords = await settingDefinition.find({
+      where: categories.map((c) => ({ name: c })),
+    });
+
     for (const name of categories) {
-      await settingDefinition.save({ name, type: ESystemDefinitionType.SCENT_TAG });
+      const existingRecord = existingRecords.find((r) => r.name === name);
+
+      if (!existingRecord) {
+        await settingDefinition.save({
+          name,
+          type: ESystemDefinitionType.SCENT_TAG,
+        });
+      }
     }
   }
 }
