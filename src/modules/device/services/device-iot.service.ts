@@ -79,6 +79,9 @@ export class DeviceIotService {
       relations: ['scent'],
     });
 
+    //mark command as executed
+    await this.commandRepository.update(command.id, { isExecuted: true, deletedAt: new Date() });
+
     // Pause command or no user session => return all uptime = 0
     if (command.command.type === CommandType.PAUSE || !userSession) {
       return {
@@ -100,9 +103,6 @@ export class DeviceIotService {
         : userSession.scent;
 
     const cartridgeUptimes = this.calculateCartridgeUptimes(scent, cartridges);
-
-    //mark command as executed
-    await this.commandRepository.update(command.id, { isExecuted: true, deletedAt: new Date() });
 
     return {
       interval: parseInt(process.env.REPEAT_INTERVAL),

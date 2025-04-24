@@ -161,6 +161,7 @@ export class DeviceService {
 
     const device = await this.repository.findOne({
       where: { product: { serialNumber: dto.deviceId } },
+      relations: ['product'],
     });
 
     if (!device) {

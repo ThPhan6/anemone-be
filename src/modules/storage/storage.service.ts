@@ -27,7 +27,6 @@ import {
 import { MessageCode } from '../../common/constants/messageCode';
 import { ApiBadRequestException } from '../../common/types/apiException.type';
 import { logger } from '../../core/logger/index.logger';
-import { StoreUploadPrefix } from './constant';
 import { UploadImageResDto } from './dto/storage.response';
 import { LocalStorage } from './util';
 
@@ -51,7 +50,10 @@ export class StorageService {
     const region = configService.get('AWS_REGION');
     const fileDir = configService.get('FILE_DIR') ?? 'files';
     this.bucket = configService.get('AWS_BUCKET');
-    this.keyPrefix = configService.get('AWS_BUCKET_KEY_PREFIX') || 'staging/color';
+    this.keyPrefix =
+      configService.get('AWS_BUCKET_KEY_PREFIX') ||
+      process.env.AWS_BUCKET_KEY_PREFIX ||
+      'staging/color';
     const config: S3ClientConfig = { region };
     if (accessKeyId && secretAccessKey) {
       config.credentials = { accessKeyId, secretAccessKey };
@@ -200,6 +202,7 @@ export class StorageService {
       return {
         origin: pathToOrigin,
         converted: pathToConverted,
+        fileName: fullPathName,
       };
     } catch (error) {
       throw new ApiBadRequestException(
@@ -209,7 +212,7 @@ export class StorageService {
     }
   }
 
-  async uploadImages(file: Express.Multer.File, prefix?: StoreUploadPrefix) {
+  async uploadImages(file: Express.Multer.File /* _prefix?: StoreUploadPrefix */) {
     try {
       const ext = extname(file.originalname);
       const contentType = file.mimetype;
@@ -274,8 +277,8 @@ export class StorageService {
         // Create a size-specific filename
         const sizeFileName =
           variation.name === 'original'
-            ? `${this.keyPrefix}/${prefix}/${fileName}${ext}`
-            : `${this.keyPrefix}/${prefix}/${fileName}-${variation.name}${ext}`;
+            ? `${fileName}${ext}`
+            : `${fileName}-${variation.name}${ext}`;
 
         // Upload the resized image
         const path = await this.uploadFile(
@@ -283,16 +286,12 @@ export class StorageService {
           sizeFileName,
           'public-read',
           contentType,
-          `${this.keyPrefix}/${prefix}`,
         );
-
-        // Generate signed URL for immediate access
-        const url = await this.getSignedUrl('getObject', { Key: path });
 
         return {
           size: variation.name,
           path,
-          url,
+          url: `${this.configService.get('AWS_PUBLIC_URL')}/${path}`,
         };
       });
 

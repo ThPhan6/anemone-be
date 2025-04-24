@@ -99,7 +99,7 @@ export class PlaylistService {
         const scentConfig = await this.scentConfigRepository.findOne({
           where: { id: el.id },
         });
-        cartridgeInfo.push(scentConfig);
+        cartridgeInfo.push({ ...scentConfig, intensity: el.intensity });
       }
 
       const scentTags = await this.settingDefinitionRepository.find({
