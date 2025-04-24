@@ -167,7 +167,7 @@ export class ScentMobileService {
     if (file) {
       const fileName = `scents/${Date.now()}`;
       const uploadedImage = await this.storageService.uploadImage(file, fileName);
-      uploadedImageUrl = uploadedImage.origin;
+      uploadedImageUrl = uploadedImage.fileName;
     }
 
     const scent = this.scentRepository.create({
@@ -220,7 +220,7 @@ export class ScentMobileService {
 
       const uploadedImage = await this.storageService.uploadImage(file, fileName);
 
-      image = uploadedImage.origin;
+      image = uploadedImage.fileName;
 
       delete updateScentDto.isRemoveImage;
     }

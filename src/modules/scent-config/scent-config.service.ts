@@ -7,6 +7,7 @@ import { FindOptionsWhere } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import { MESSAGE } from '../../common/constants/message.constant';
+import { convertURLToS3Readable } from '../../common/utils/file';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
 import { ScentConfig } from './entities/scent-config.entity';
 
@@ -17,7 +18,23 @@ export class ScentConfigService extends BaseService<ScentConfig> {
   }
 
   async findAll(query: ApiBaseGetListQueries): Promise<Pagination<ScentConfig>> {
-    return super.findAll(query);
+    const data = await super.findAll(query);
+
+    return {
+      ...data,
+      items: data.items.map((item) => ({
+        ...item,
+        background: convertURLToS3Readable(item.background),
+        notes: item.notes.map((note) => ({
+          ...note,
+          image: convertURLToS3Readable(note.image),
+        })),
+        story: {
+          ...item.story,
+          image: convertURLToS3Readable(item.story.image),
+        },
+      })),
+    };
   }
 
   async find(): Promise<ScentConfig[]> {
