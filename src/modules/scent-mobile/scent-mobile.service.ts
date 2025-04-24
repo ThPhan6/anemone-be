@@ -103,7 +103,7 @@ export class ScentMobileService {
         where: { id: el.id },
       });
 
-      cartridgeInfo.push(scentConfig);
+      cartridgeInfo.push({ ...scentConfig, intensity: el.intensity });
     }
 
     const userInfo = await this.cognitoService.getUserByUserId(scent.createdBy);
