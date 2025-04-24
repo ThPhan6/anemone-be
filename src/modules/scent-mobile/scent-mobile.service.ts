@@ -94,10 +94,26 @@ export class ScentMobileService {
         name: category.name,
       }));
 
+    const scentConfigs = JSON.parse(scent.cartridgeInfo || '[]');
+
+    const cartridgeInfo = [];
+
+    for (const el of scentConfigs) {
+      const scentConfig = await this.scentConfigRepository.findOne({
+        where: { id: el.id },
+      });
+
+      cartridgeInfo.push(scentConfig);
+    }
+
+    const userInfo = await this.cognitoService.getUserByUserId(scent.createdBy);
+
     return {
       ...scent,
       image: scent.image ? convertURLToS3Readable(scent.image) : '',
       tags: categoryTags,
+      cartridgeInfo,
+      createdBy: userInfo,
     };
   }
 
