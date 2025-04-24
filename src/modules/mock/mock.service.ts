@@ -6,6 +6,7 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { Device, DeviceProvisioningStatus } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product, ProductType } from '../device/entities/product.entity';
+import { ProductVariant } from '../product-variant/entities/product-variant.entity';
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 @Injectable()
 export class MockService {
@@ -18,6 +19,8 @@ export class MockService {
     private readonly deviceCartridgeRepository: Repository<DeviceCartridge>,
     @InjectRepository(ScentConfig)
     private readonly scentConfigRepository: Repository<ScentConfig>,
+    @InjectRepository(ProductVariant)
+    private readonly productVariantRepository: Repository<ProductVariant>,
   ) {}
 
   generateRandomSerialNumber(prefix = 'SN', digits = 9): string {
@@ -27,6 +30,14 @@ export class MockService {
   }
 
   async mockDeviceWithCartridges(userId: string, deviceName: string) {
+    const productVariants = await this.productVariantRepository.find();
+
+    // Get a random product variant for the device
+    const randomProductVariant =
+      productVariants.length > 0
+        ? productVariants[Math.floor(Math.random() * productVariants.length)]
+        : null;
+
     const deviceOrCartridges = [
       {
         manufacturerId: 'vitruvi',
@@ -34,6 +45,7 @@ export class MockService {
         batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         name: deviceName,
+        productVariantId: randomProductVariant?.id,
         type: ProductType.DEVICE,
       },
       {
@@ -97,6 +109,7 @@ export class MockService {
         configTemplate: {},
         supportedFeatures: [],
         scentConfig,
+        productVariant: { id: item.productVariantId },
       });
 
       await this.productRepository.save(product);
