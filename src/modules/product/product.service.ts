@@ -3,6 +3,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { MESSAGE } from '../../common/constants/message.constant';
 import { ProductRepository } from '../../common/repositories/product.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
+import { transformScentConfig } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Product, ProductType } from '../device/entities/product.entity';
@@ -17,7 +18,15 @@ export class ProductService extends BaseService<Product> {
   }
 
   async findAll(query: ApiBaseGetListQueries & { type: ProductType }) {
-    return super.findAll(query, { scentConfig: true }, ['name', 'sku']);
+    const data = await super.findAll(query, { scentConfig: true }, ['name', 'sku']);
+
+    return {
+      ...data,
+      items: data.items.map((item) => ({
+        ...item,
+        scentConfig: transformScentConfig(item.scentConfig),
+      })),
+    };
   }
 
   async create(data: CreateProductDto) {
@@ -85,7 +94,7 @@ export class ProductService extends BaseService<Product> {
       configTemplate: product.configTemplate,
       supportedFeatures: product.supportedFeatures,
       canEditManufacturerInfo,
-      scentConfig: product.scentConfig,
+      scentConfig: transformScentConfig(product.scentConfig),
     };
   }
 
