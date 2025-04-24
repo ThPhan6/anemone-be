@@ -9,6 +9,7 @@ import { DeviceModule } from './device/device.module';
 import { MockModule } from './mock/mock.module';
 import { PlaylistModule } from './playlist/playlist.module';
 import { ProductModule } from './product/product.module';
+import { ProductVariantModule } from './product-variant/product-variant.module';
 import { ScentModule } from './scent/scent.module';
 import { ScentConfigModule } from './scent-config/scent-config.module';
 import { ScentMobileModule } from './scent-mobile/scent-mobile.module';
@@ -35,6 +36,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     UserSettingsModule,
     MockModule,
     ProductModule,
+    ProductVariantModule,
     MulterModule.register({
       dest: './uploads',
     }),

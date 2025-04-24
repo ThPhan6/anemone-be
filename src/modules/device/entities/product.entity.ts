@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { ScentConfig } from '../../../modules/scent-config/entities/scent-config.entity';
+import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
 import { Device } from './device.entity';
 import { DeviceCartridge } from './device-cartridge.entity';
 
@@ -33,6 +34,10 @@ export class Product extends BaseEntity {
   @ManyToOne(() => ScentConfig)
   @JoinColumn({ name: 'scent_config_id' })
   scentConfig: ScentConfig;
+
+  @ManyToOne(() => ProductVariant)
+  @JoinColumn({ name: 'product_variant_id' })
+  productVariant: ProductVariant;
 
   @Column({ name: 'config_template', type: 'json', nullable: true })
   configTemplate: Record<string, any>;
