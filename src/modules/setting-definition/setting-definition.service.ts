@@ -1,13 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { omit } from 'lodash';
+import { omit, orderBy } from 'lodash';
 import { In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { transformImageUrls } from '../../common/utils/helper';
 import { QuestionnaireAnswerItem } from './dto/questionnaire-answer.dto';
-import { SettingDefinitionResDto } from './dto/questionnaire-with-answers.dto';
+import { SettingDefinitionResDto } from './dto/setting-definition.dto';
 import { ESystemDefinitionType, SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 
@@ -45,7 +45,9 @@ export class SettingDefinitionService {
       };
     });
 
-    return transformImageUrls(result);
+    const sortedResult = orderBy(result, [(item) => item.metadata?.index || 0], ['asc']);
+
+    return transformImageUrls(sortedResult);
   }
 
   async createQuestionnaireAnswer(userId: string, body: QuestionnaireAnswerItem[]) {
