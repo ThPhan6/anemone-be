@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Space } from '../../common/entities/space.entity';
+import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
@@ -141,12 +142,20 @@ export class SpaceService {
           id,
         },
       },
-      relations: ['product'],
+      relations: ['product', 'product.productVariant'],
     });
 
     return {
       ...found,
-      devices,
+      devices: devices.map((device) => ({
+        ...device,
+        product: {
+          ...device.product,
+          image: device.product.productVariant.image
+            ? convertURLToS3Readable(device.product.productVariant.image)
+            : null,
+        },
+      })),
     };
   }
 }

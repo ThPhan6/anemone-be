@@ -15,6 +15,7 @@ import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
+import { convertURLToS3Readable } from '../../../common/utils/file';
 import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { DeviceCommand } from '../entities/device-command.entity';
@@ -141,12 +142,18 @@ export class DeviceService {
   async getUserRegisteredDevices(userId: string) {
     const devices = await this.repository.find({
       where: { registeredBy: userId },
-      relations: ['product', 'space'],
+      relations: ['product', 'space', 'product.productVariant'],
     });
 
     return devices.map((el) => ({
       ...el,
       spaceName: el.space ? el.space.name : null,
+      product: {
+        ...el.product,
+        image: el.product.productVariant.image
+          ? convertURLToS3Readable(el.product.productVariant.image)
+          : null,
+      },
     }));
   }
 
@@ -324,6 +331,7 @@ export class DeviceService {
         'cartridges.product',
         'cartridges.product.scentConfig',
         'space',
+        'product.productVariant',
       ],
     });
 
@@ -341,6 +349,9 @@ export class DeviceService {
         serialNumber: device.product.serialNumber,
         sku: device.product.sku,
         batch: device.product.batchId,
+        image: device.product.productVariant.image
+          ? convertURLToS3Readable(device.product.productVariant.image)
+          : null,
       },
       cartridges: orderBy(
         device.cartridges.map((cartridge) => ({
