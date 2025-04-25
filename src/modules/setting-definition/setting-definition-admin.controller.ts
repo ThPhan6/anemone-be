@@ -3,15 +3,16 @@ import { ApiOperation } from '@nestjs/swagger';
 
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
-import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
+import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { UserDto } from '../auth/dto/auth-user.dto';
 import { QuestionnaireCreateDto } from './dto/questionnaire-answer.dto';
 import { SettingDefinitionService } from './setting-definition.service';
 
-@MemberRoleGuard()
+@AdminRoleGuard()
 @ApiController({
   name: 'setting-definitions',
+  admin: true,
 })
 export class SettingDefinitionController extends BaseController {
   constructor(private readonly settingDefinitionService: SettingDefinitionService) {
