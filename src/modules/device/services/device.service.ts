@@ -431,9 +431,12 @@ export class DeviceService {
 
     if (!device.isConnected) {
       return {
-        status: PingDeviceStatus.DISCONNECTED,
+        deviceStatus: PingDeviceStatus.DISCONNECTED,
+        scentStatus: null,
       };
     }
+
+    let scentStatus = null;
 
     if (scentId) {
       const scent = await this.scentRepository.findOne({
@@ -450,14 +453,13 @@ export class DeviceService {
       });
 
       if (userSession) {
-        return {
-          status: userSession.status,
-        };
+        scentStatus = userSession.status;
       }
     }
 
     return {
-      status: PingDeviceStatus.CONNECTED,
+      deviceStatus: PingDeviceStatus.CONNECTED,
+      scentStatus,
     };
   }
 }
