@@ -4,7 +4,9 @@ import { In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { UserSetting } from '../../common/entities/user-setting.entity';
+import { transformImageUrls } from '../../common/utils/helper';
 import { QuestionnaireAnswerItem } from './dto/questionnaire-answer.dto';
+import { SettingWithAnswersDto } from './dto/questionnaire-with-answers.dto';
 import { ESystemDefinitionType, SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 
@@ -19,69 +21,49 @@ export class SettingDefinitionService {
     private userSettingRepository: Repository<UserSetting>,
   ) {}
 
-  async get(type: string[]) {
-    const settings = await this.settingDefinitionRepository.find({
+  async get(type: string[]): Promise<SettingWithAnswersDto[]> {
+    // Get all questions that match the specified types
+    const questions = await this.settingDefinitionRepository.find({
       where: {
         type: In(type),
       },
     });
 
-    const settingIds = settings.map((setting) => setting.id);
-
-    const settingValues = await this.settingValueRepository.find({
+    // Get all answers related to these questions
+    const answers = await this.settingValueRepository.find({
       where: {
-        settingDefinition: In(settingIds),
+        settingDefinition: In(questions.map((question) => question.id)),
       },
       relations: ['settingDefinition'],
     });
 
-    const result = settings.map((setting) => {
-      const settingValue = settingValues.find((value) => value.settingDefinition.id === setting.id);
-
-      return {
-        id: setting.id,
-        name: setting.name,
-        answers: settingValue?.value?.split('//') ?? [],
-      };
-    });
-
-    return result;
-  }
-
-  async getQuestionnaires() {
-    const questionnaires = await this.settingDefinitionRepository.find({
-      where: {
-        type: ESystemDefinitionType.QUESTIONNAIRE,
-      },
-    });
-
-    const settingIds = questionnaires.map((questionnaire) => questionnaire.id);
-
-    const settingValues = await this.settingValueRepository.find({
-      where: {
-        settingDefinition: In(settingIds),
-      },
-      relations: ['settingDefinition'],
-    });
-
-    const questionnaire = questionnaires.map((questionnaire) => {
-      const settingValue = settingValues.find(
-        (value) => value.settingDefinition.id === questionnaire.id,
+    // Map questions to include their answers
+    const result: SettingWithAnswersDto[] = questions.map((question) => {
+      // Find all answers that belong to this question
+      const questionAnswers = answers.filter(
+        (answer) => answer.settingDefinition.id === question.id,
       );
 
+      // Return the question with its answers
       return {
-        id: questionnaire.id,
-        question: questionnaire.name,
-        answers: settingValue?.value?.split('//') ?? [],
+        id: question.id,
+        name: question.name,
+        metadata: question.metadata,
+        answers: questionAnswers.map((answer) => ({
+          id: answer.id,
+          value: answer.value,
+          metadata: answer.metadata,
+        })),
       };
     });
 
-    return questionnaire;
+    // Transform all image URLs in the result and return as the proper type
+    return transformImageUrls(result);
   }
 
-  async createQuestionnaireAnswer(userId: string, bodyRequest: QuestionnaireAnswerItem[]) {
+  async createQuestionnaireAnswer(userId: string, body: QuestionnaireAnswerItem[]) {
     // Check all questions before saving to database
-    for (const el of bodyRequest) {
+    for (const el of body) {
       if (!Array.isArray(el.answers)) {
         throw new HttpException(MESSAGE.SYSTEM_SETTINGS.INVALID_ANSWER, HttpStatus.BAD_REQUEST);
       }
@@ -101,7 +83,7 @@ export class SettingDefinitionService {
     // If all questions are valid, save data to database
     const answer = await this.userSettingRepository.create({
       userId,
-      system: bodyRequest,
+      system: body,
     });
 
     await this.userSettingRepository.save(answer);
