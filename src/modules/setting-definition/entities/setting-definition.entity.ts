@@ -9,9 +9,11 @@ export enum ESystemDefinitionType {
   SCENT_NOTES = 3,
 }
 
-interface IMetadata {
-  name: string;
-  type: string;
+export interface IMetadata {
+  name?: string | null;
+  image?: string | null;
+  index?: number | null;
+  max?: number | null;
 }
 
 @Entity('setting_definitions')

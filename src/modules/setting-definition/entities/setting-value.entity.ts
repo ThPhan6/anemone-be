@@ -3,9 +3,10 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SettingDefinition } from './setting-definition.entity';
 
-interface SystemSettingMetadata {
-  name: string;
-  type: string;
+export interface SystemSettingMetadata {
+  name?: string | null;
+  type?: string | null;
+  image?: string | null;
 }
 
 @Entity('setting_values')

@@ -5,7 +5,7 @@ import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { UserDto } from '../auth/dto/auth-user.dto';
-import { QuestionnaireAnswerDto } from './dto/questionnaire-answer.dto';
+import { QuestionnaireCreateDto } from './dto/questionnaire-answer.dto';
 import { SettingDefinitionService } from './setting-definition.service';
 // @MemberRoleGuard()
 // @AdminRoleGuard()
@@ -23,13 +23,6 @@ export class SettingDefinitionController extends BaseController {
     const settings = await this.settingDefinitionService.get(type);
 
     return settings;
-  }
-
-  @Get('/questionnaire')
-  async getQuestionnaires() {
-    const questionnaires = await this.settingDefinitionService.getQuestionnaires();
-
-    return questionnaires;
   }
 
   @Get('scent-tag')
@@ -50,12 +43,8 @@ export class SettingDefinitionController extends BaseController {
   }
 
   @Post('/questionnaire')
-  async createQuestionnaireAnswer(
-    @AuthUser() user: UserDto,
-    @Body() bodyRequest: QuestionnaireAnswerDto,
-  ) {
-    const { answers } = bodyRequest;
-
+  async createQuestionnaireAnswer(@AuthUser() user: UserDto, @Body() body: QuestionnaireCreateDto) {
+    const { answers } = body;
     const questionnaireAnswer = await this.settingDefinitionService.createQuestionnaireAnswer(
       user.sub,
       answers,

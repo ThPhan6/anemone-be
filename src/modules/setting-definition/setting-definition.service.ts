@@ -1,10 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { omit, orderBy } from 'lodash';
 import { In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { UserSetting } from '../../common/entities/user-setting.entity';
+import { transformImageUrls } from '../../common/utils/helper';
 import { QuestionnaireAnswerItem } from './dto/questionnaire-answer.dto';
+import { SettingDefinitionResDto } from './dto/setting-definition.dto';
 import { ESystemDefinitionType, SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 
@@ -19,69 +22,37 @@ export class SettingDefinitionService {
     private userSettingRepository: Repository<UserSetting>,
   ) {}
 
-  async get(type: string[]) {
+  async get(type: string[]): Promise<SettingDefinitionResDto[]> {
     const settings = await this.settingDefinitionRepository.find({
       where: {
         type: In(type),
       },
     });
 
-    const settingIds = settings.map((setting) => setting.id);
-
-    const settingValues = await this.settingValueRepository.find({
+    const values = await this.settingValueRepository.find({
       where: {
-        settingDefinition: In(settingIds),
+        settingDefinition: In(settings.map((setting) => setting.id)),
       },
       relations: ['settingDefinition'],
     });
 
-    const result = settings.map((setting) => {
-      const settingValue = settingValues.find((value) => value.settingDefinition.id === setting.id);
+    const result = settings.map((question) => {
+      const data = values.filter((value) => value.settingDefinition.id === question.id);
 
       return {
-        id: setting.id,
-        name: setting.name,
-        answers: settingValue?.value?.split('//') ?? [],
+        ...omit(question, ['deletedAt', 'values', 'type']),
+        settingDefinition: data.map((item) => omit(item, ['deletedAt', 'settingDefinition'])),
       };
     });
 
-    return result;
+    const sortedResult = orderBy(result, [(item) => item.metadata?.index || 0], ['asc']);
+
+    return transformImageUrls(sortedResult);
   }
 
-  async getQuestionnaires() {
-    const questionnaires = await this.settingDefinitionRepository.find({
-      where: {
-        type: ESystemDefinitionType.QUESTIONNAIRE,
-      },
-    });
-
-    const settingIds = questionnaires.map((questionnaire) => questionnaire.id);
-
-    const settingValues = await this.settingValueRepository.find({
-      where: {
-        settingDefinition: In(settingIds),
-      },
-      relations: ['settingDefinition'],
-    });
-
-    const questionnaire = questionnaires.map((questionnaire) => {
-      const settingValue = settingValues.find(
-        (value) => value.settingDefinition.id === questionnaire.id,
-      );
-
-      return {
-        id: questionnaire.id,
-        question: questionnaire.name,
-        answers: settingValue?.value?.split('//') ?? [],
-      };
-    });
-
-    return questionnaire;
-  }
-
-  async createQuestionnaireAnswer(userId: string, bodyRequest: QuestionnaireAnswerItem[]) {
+  async createQuestionnaireAnswer(userId: string, body: QuestionnaireAnswerItem[]) {
     // Check all questions before saving to database
-    for (const el of bodyRequest) {
+    for (const el of body) {
       if (!Array.isArray(el.answers)) {
         throw new HttpException(MESSAGE.SYSTEM_SETTINGS.INVALID_ANSWER, HttpStatus.BAD_REQUEST);
       }
@@ -101,7 +72,7 @@ export class SettingDefinitionService {
     // If all questions are valid, save data to database
     const answer = await this.userSettingRepository.create({
       userId,
-      system: bodyRequest,
+      system: body,
     });
 
     await this.userSettingRepository.save(answer);

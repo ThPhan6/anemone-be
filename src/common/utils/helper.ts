@@ -68,3 +68,48 @@ export const transformScentConfig = (scentConfig: ScentConfig) => {
     },
   };
 };
+
+/**
+ * Recursively transforms all image URLs in a nested JSON structure
+ * while preserving Date objects and entity relationships
+ * @param data Any JSON object or array that might contain image URLs
+ * @returns A new object with all image URLs transformed
+ */
+export const transformImageUrls = <T>(data: T): T => {
+  // Handle null or undefined values
+  if (data === null || data === undefined) {
+    return data;
+  }
+
+  // Handle arrays
+  if (Array.isArray(data)) {
+    return data.map((item) => transformImageUrls(item)) as unknown as T;
+  }
+
+  // Handle objects (but avoid modifying Date objects)
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    // Create a shallow copy to avoid modifying the original
+    const result = { ...data } as any;
+
+    // Process each key in the object
+    for (const key in result) {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
+        const value = result[key];
+
+        // Transform image URLs
+        if (key === 'image' && typeof value === 'string') {
+          result[key] = convertURLToS3Readable(value);
+        }
+        // Recursively process nested objects if they're not Dates
+        else if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+          result[key] = transformImageUrls(value);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // Return primitive values and Date objects as is
+  return data;
+};
