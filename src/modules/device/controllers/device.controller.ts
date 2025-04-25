@@ -7,7 +7,7 @@ import { AuthUser } from 'core/decorator/auth-user.decorator';
 
 import { Status } from '../../../common/entities/user-session.entity';
 import { UserDto } from '../../user/dto/user.dto';
-import { RegisterDeviceDto } from '../dto';
+import { DevicePingDto, RegisterDeviceDto } from '../dto';
 import { CommandDto } from '../dto/device/command.dto';
 import {
   DeviceConnectSpaceDto,
@@ -224,5 +224,16 @@ export class DeviceController extends BaseController {
     );
 
     return command;
+  }
+
+  @MemberRoleGuard()
+  @Post(':deviceId/ping')
+  @ApiOperation({ summary: 'Ping status with device' })
+  async pingStatus(
+    @AuthUser() user: UserDto,
+    @Param('deviceId') deviceId: string,
+    @Body() bodyRequest: DevicePingDto,
+  ) {
+    return await this.deviceService.pingStatus(deviceId, user.sub, bodyRequest.scentId);
   }
 }

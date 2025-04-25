@@ -17,3 +17,10 @@ export class DeviceStatusDto {
   @IsOptional()
   scentId?: string;
 }
+
+export class DevicePingDto {
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  scentId?: string;
+}

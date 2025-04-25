@@ -16,6 +16,7 @@ import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../../common/utils/file';
+import { PingDeviceStatus } from '../device.enum';
 import { RegisterDeviceDto } from '../dto';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { DeviceCommand } from '../entities/device-command.entity';
@@ -419,5 +420,46 @@ export class DeviceService {
     await this.userSessionRepository.save(userSession);
 
     return command;
+  }
+
+  async pingStatus(deviceId: string, userId: string, scentId: string) {
+    const device = await this.validateDeviceOwnership(deviceId, userId);
+
+    if (!device) {
+      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!device.isConnected) {
+      return {
+        deviceStatus: PingDeviceStatus.DISCONNECTED,
+        scentStatus: null,
+      };
+    }
+
+    let scentStatus = null;
+
+    if (scentId) {
+      const scent = await this.scentRepository.findOne({
+        where: { id: scentId },
+      });
+
+      if (!scent) {
+        throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
+      }
+
+      const userSession = await this.userSessionRepository.findOne({
+        where: { device: { id: device.id }, userId, scent: { id: scentId } },
+        order: { createdAt: 'DESC' },
+      });
+
+      if (userSession) {
+        scentStatus = userSession.status;
+      }
+    }
+
+    return {
+      deviceStatus: PingDeviceStatus.CONNECTED,
+      scentStatus,
+    };
   }
 }
