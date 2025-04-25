@@ -8,7 +8,7 @@ import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
 import { UserSession } from '../../../common/entities/user-session.entity';
 import { Command } from '../../../common/enum/command.enum';
-import { DeviceCartridgesDto, DeviceHeartbeatDto } from '../dto';
+import { DeviceCartridgesDto, DeviceHeartbeatDto, DeviceStatus } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../entities/device-command.entity';
 import { Product, ProductType } from '../entities/product.entity';
@@ -335,10 +335,11 @@ export class DeviceIotService {
     await this.updateLastPing(deviceId);
 
     //  Update device status
-    if (dto.deviceStatus) {
+    if (dto.deviceStatus === DeviceStatus.PLAY || dto.deviceStatus === DeviceStatus.IDLE) {
       //check user session
       const userSession = await this.userSessionRepository.findOne({
         where: { device: { id: device.id } },
+        order: { createdAt: 'DESC' },
       });
 
       if (userSession) {
@@ -363,6 +364,8 @@ export class DeviceIotService {
       const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
 
       if (secondsSinceLastPing > parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)) {
+        await this.repository.update(device.id, { isConnected: false });
+
         return {
           command: Command.REQUEST_AUTH,
         };

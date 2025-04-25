@@ -5,8 +5,8 @@ import { IsArray, IsEnum, IsNotEmpty, IsOptional, ValidateNested } from 'class-v
 import { DeviceCartridgeDto } from './device-cartridges.dto';
 
 export enum DeviceStatus {
-  idle,
-  play,
+  IDLE,
+  PLAY,
 }
 
 export class DeviceHeartbeatDto {
