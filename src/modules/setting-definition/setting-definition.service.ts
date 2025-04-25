@@ -1,12 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { omit } from 'lodash';
 import { In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { transformImageUrls } from '../../common/utils/helper';
 import { QuestionnaireAnswerItem } from './dto/questionnaire-answer.dto';
-import { SettingWithAnswersDto } from './dto/questionnaire-with-answers.dto';
+import { SettingDefinitionResDto } from './dto/questionnaire-with-answers.dto';
 import { ESystemDefinitionType, SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 
@@ -21,43 +22,29 @@ export class SettingDefinitionService {
     private userSettingRepository: Repository<UserSetting>,
   ) {}
 
-  async get(type: string[]): Promise<SettingWithAnswersDto[]> {
-    // Get all questions that match the specified types
-    const questions = await this.settingDefinitionRepository.find({
+  async get(type: string[]): Promise<SettingDefinitionResDto[]> {
+    const settings = await this.settingDefinitionRepository.find({
       where: {
         type: In(type),
       },
     });
 
-    // Get all answers related to these questions
-    const answers = await this.settingValueRepository.find({
+    const values = await this.settingValueRepository.find({
       where: {
-        settingDefinition: In(questions.map((question) => question.id)),
+        settingDefinition: In(settings.map((setting) => setting.id)),
       },
       relations: ['settingDefinition'],
     });
 
-    // Map questions to include their answers
-    const result: SettingWithAnswersDto[] = questions.map((question) => {
-      // Find all answers that belong to this question
-      const questionAnswers = answers.filter(
-        (answer) => answer.settingDefinition.id === question.id,
-      );
+    const result = settings.map((question) => {
+      const data = values.filter((value) => value.settingDefinition.id === question.id);
 
-      // Return the question with its answers
       return {
-        id: question.id,
-        name: question.name,
-        metadata: question.metadata,
-        answers: questionAnswers.map((answer) => ({
-          id: answer.id,
-          value: answer.value,
-          metadata: answer.metadata,
-        })),
+        ...omit(question, ['deletedAt', 'values', 'type']),
+        settingDefinition: data.map((item) => omit(item, ['deletedAt', 'settingDefinition'])),
       };
     });
 
-    // Transform all image URLs in the result and return as the proper type
     return transformImageUrls(result);
   }
 
