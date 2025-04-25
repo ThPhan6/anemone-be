@@ -1,7 +1,6 @@
 import { FindManyOptions, FindOptionsOrder, Repository } from 'typeorm';
 
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
-import { ScentConfig } from '../../modules/scent-config/entities/scent-config.entity';
 import { convertURLToS3Readable } from './file';
 
 export const getSubStringBetween2Characters = (str: string, startChar: string, endChar: string) => {
@@ -50,32 +49,14 @@ export async function paginate<T>(repo: Repository<T>, options: PaginationOption
   };
 }
 
-export const transformScentConfig = (scentConfig: ScentConfig) => {
-  if (!scentConfig) {
-    return null;
-  }
-
-  return {
-    ...scentConfig,
-    background: convertURLToS3Readable(scentConfig.background),
-    notes: scentConfig.notes.map((note) => ({
-      ...note,
-      image: convertURLToS3Readable(note.image),
-    })),
-    story: {
-      ...scentConfig.story,
-      image: convertURLToS3Readable(scentConfig.story.image),
-    },
-  };
-};
-
 /**
- * Recursively transforms all image URLs in a nested JSON structure
+ * Recursively transforms image URLs in a nested JSON structure
  * while preserving Date objects and entity relationships
  * @param data Any JSON object or array that might contain image URLs
- * @returns A new object with all image URLs transformed
+ * @param imageKeys Array of key names to look for when transforming URLs (default: ['image'])
+ * @returns A new object with all specified image URLs transformed
  */
-export const transformImageUrls = <T>(data: T): T => {
+export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']): T => {
   // Handle null or undefined values
   if (data === null || data === undefined) {
     return data;
@@ -83,7 +64,7 @@ export const transformImageUrls = <T>(data: T): T => {
 
   // Handle arrays
   if (Array.isArray(data)) {
-    return data.map((item) => transformImageUrls(item)) as unknown as T;
+    return data.map((item) => transformImageUrls(item, imageKeys)) as unknown as T;
   }
 
   // Handle objects (but avoid modifying Date objects)
@@ -96,13 +77,13 @@ export const transformImageUrls = <T>(data: T): T => {
       if (Object.prototype.hasOwnProperty.call(result, key)) {
         const value = result[key];
 
-        // Transform image URLs
-        if (key === 'image' && typeof value === 'string') {
+        // Transform image URLs if the key is in the imageKeys array
+        if (imageKeys.includes(key) && typeof value === 'string') {
           result[key] = convertURLToS3Readable(value);
         }
         // Recursively process nested objects if they're not Dates
         else if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
-          result[key] = transformImageUrls(value);
+          result[key] = transformImageUrls(value, imageKeys);
         }
       }
     }

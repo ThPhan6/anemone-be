@@ -1,4 +1,6 @@
 export const MESSAGE = {
+  NOT_FOUND: 'Not found',
+
   SYSTEM_SETTINGS: {
     NOT_FOUND_QUESTION: 'Not found question',
     NOT_FOUND_USER_SETTING: 'Not found user setting',
@@ -36,5 +38,15 @@ export const MESSAGE = {
     NOT_FOUND: 'Scent config not found',
     ALREADY_EXISTS: 'Scent config already exists',
     CODE_EXISTS: 'Scent config with this code already exists',
+  },
+  PRODUCT: {
+    NOT_FOUND: 'Product not found',
+    ALREADY_EXISTS: 'Product already exists',
+    USED: 'Product is used',
+  },
+  PRODUCT_VARIANT: {
+    NOT_FOUND: 'Product variant not found',
+    ALREADY_EXISTS: 'Product variant already exists',
+    USED: 'Product variant is used',
   },
 };
