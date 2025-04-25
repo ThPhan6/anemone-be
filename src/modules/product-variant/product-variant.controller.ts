@@ -21,10 +21,8 @@ export class ProductVariantController extends BaseController {
     description: 'Get all product variants',
   })
   @Get()
-  getAll(@Query() queries: ApiBaseGetListQueries & { productId?: string }) {
-    const { productId, ...restQueries } = queries;
-
-    return this.productVariantService.findVariants(restQueries, productId);
+  getAll(@Query() queries?: ApiBaseGetListQueries & { productId?: string }) {
+    return this.productVariantService.findVariants(queries);
   }
 
   @ApiBaseOkResponse({

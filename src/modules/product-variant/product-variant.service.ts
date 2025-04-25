@@ -1,7 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { isEmpty } from 'lodash';
 
 import { ProductRepository } from '../../common/repositories/product.repository';
 import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
+import { transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
@@ -22,13 +24,11 @@ export class ProductVariantService extends BaseService<ProductVariant> {
   }
 
   async findVariants(
-    query: ApiBaseGetListQueries,
-    productId?: string,
-  ): Promise<Pagination<ProductVariant>> {
-    // Search columns
-    const searchColumns = ['name'];
-
-    // If productId is provided, find the variant associated with the product
+    query?: ApiBaseGetListQueries & {
+      productId?: string;
+    },
+  ): Promise<ProductVariant | ProductVariant[] | Pagination<ProductVariant>> {
+    const { productId, ...restQuery } = query || {};
     if (productId) {
       const product = await this.productRepository.findOne({
         where: { id: productId },
@@ -36,21 +36,22 @@ export class ProductVariantService extends BaseService<ProductVariant> {
       });
 
       if (!product || !product.productVariant) {
-        return {
-          items: [],
-          pagination: { total: 0, page: 1, perPage: 10 },
-        };
+        return [];
       }
 
-      // Return just the variant for this product
+      return transformImageUrls(product.productVariant);
+    }
+
+    if (!isEmpty(restQuery)) {
+      const data = await super.findAll(restQuery, {}, ['name']);
+
       return {
-        items: [product.productVariant],
-        pagination: { total: 1, page: 1, perPage: 10 },
+        ...data,
+        items: transformImageUrls(data.items),
       };
     }
 
-    // If no productId, use the standard findAll method to get all variants
-    return super.findAll(query, {}, searchColumns);
+    return transformImageUrls(await super.find());
   }
 
   async createForProduct(productId: string, data: CreateProductVariantDto) {
