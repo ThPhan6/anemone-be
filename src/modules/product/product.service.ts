@@ -24,6 +24,7 @@ export class ProductService extends BaseService<Product> {
     const data = await super.findAll(query, { scentConfig: true, productVariant: true }, [
       'name',
       'sku',
+      'serialNumber',
     ]);
 
     return {
