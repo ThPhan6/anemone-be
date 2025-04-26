@@ -6,11 +6,14 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
+import { UserSession } from '../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
+import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
+import { Product } from '../device/entities/product.entity';
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
@@ -33,6 +36,12 @@ export class PlaylistService {
     private scentConfigRepository: Repository<ScentConfig>,
     @InjectRepository(SettingDefinition)
     private settingDefinitionRepository: Repository<SettingDefinition>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
+    @InjectRepository(DeviceCartridge)
+    private deviceCartridgeRepository: Repository<DeviceCartridge>,
   ) {}
 
   async get(
@@ -99,7 +108,23 @@ export class PlaylistService {
         const scentConfig = await this.scentConfigRepository.findOne({
           where: { id: el.id },
         });
-        cartridgeInfo.push({ ...scentConfig, intensity: el.intensity });
+        const product = await this.productRepository.findOne({
+          where: { scentConfig: { id: el.id } },
+        });
+
+        const userSession = await this.userSessionRepository.findOne({
+          where: { scent: { id: scent.id } },
+          order: { createdAt: 'DESC' },
+          relations: ['device'],
+        });
+
+        const cartridge = await this.deviceCartridgeRepository.findOne({
+          where: { product: { id: product.id }, device: { id: userSession?.device?.id } },
+        });
+
+        const position = Number(cartridge?.position);
+
+        cartridgeInfo.push({ ...scentConfig, intensity: el.intensity, position });
       }
 
       const scentTags = await this.settingDefinitionRepository.find({
