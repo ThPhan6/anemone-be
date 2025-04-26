@@ -10,6 +10,7 @@ import { SettingValue } from '../setting-definition/entities/setting-value.entit
 import { StorageModule } from '../storage/storage.module';
 import { DeviceController } from './controllers/device.controller';
 import { DeviceIotController } from './controllers/device-iot.controller';
+import { DeviceOfflineCron } from './device-offline.cron';
 import { Device } from './entities/device.entity';
 import { DeviceCartridge } from './entities/device-cartridge.entity';
 import { DeviceCertificate } from './entities/device-certificate.entity';
@@ -37,7 +38,13 @@ import { DeviceIotService } from './services/device-iot.service';
     ]),
   ],
   controllers: [DeviceController, DeviceIotController],
-  providers: [AwsIotCoreService, DeviceIotService, DeviceCertificateService, DeviceService],
+  providers: [
+    AwsIotCoreService,
+    DeviceIotService,
+    DeviceCertificateService,
+    DeviceService,
+    DeviceOfflineCron,
+  ],
   exports: [DeviceService, DeviceCertificateService],
 })
 export class DeviceModule {}
