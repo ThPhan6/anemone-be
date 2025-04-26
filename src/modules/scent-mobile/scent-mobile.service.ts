@@ -1,9 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { sortBy } from 'lodash';
 import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Scent } from '../../common/entities/scent.entity';
+import { UserSession } from '../../common/entities/user-session.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
@@ -11,6 +13,7 @@ import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
 import { Device } from '../device/entities/device.entity';
+import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../device/entities/device-command.entity';
 import { Product } from '../device/entities/product.entity';
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
@@ -45,6 +48,10 @@ export class ScentMobileService {
     private readonly deviceCommandRepository: Repository<DeviceCommand>,
     @InjectRepository(Device)
     private readonly deviceRepository: Repository<Device>,
+    @InjectRepository(DeviceCartridge)
+    private readonly deviceCartridgeRepository: Repository<DeviceCartridge>,
+    @InjectRepository(UserSession)
+    private readonly userSessionRepository: Repository<UserSession>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
@@ -96,14 +103,55 @@ export class ScentMobileService {
 
     const scentConfigs = JSON.parse(scent.cartridgeInfo || '[]');
 
+    const scentConfigIds = scentConfigs.map((el) => el.id);
+
     const cartridgeInfo = [];
+
+    const userSession = await this.userSessionRepository.findOne({
+      where: { scent: { id: scentId } },
+      order: { createdAt: 'DESC' },
+      relations: ['device'],
+    });
+
+    // Get all products by scentConfig ids
+    const products = await this.productRepository.find({
+      where: {
+        scentConfig: { id: In(scentConfigIds) },
+      },
+      relations: ['scentConfig'],
+    });
+
+    const productIds = products.map((p) => p.id);
+
+    // Get all deviceCartridges matching deviceId and productId
+    const deviceCartridges = await this.deviceCartridgeRepository.find({
+      where: {
+        device: { id: userSession?.device?.id },
+        product: { id: In(productIds) },
+      },
+      relations: ['product'],
+    });
+
+    // Map productId -> position
+    const cartridgeMap = new Map<string, number>();
+    for (const cartridge of deviceCartridges) {
+      cartridgeMap.set(cartridge.product.id, Number(cartridge.position));
+    }
 
     for (const el of scentConfigs) {
       const scentConfig = await this.scentConfigRepository.findOne({
         where: { id: el.id },
       });
 
-      cartridgeInfo.push({ ...scentConfig, intensity: el.intensity });
+      const product = products.find((p) => p.scentConfig.id === el.id);
+
+      const position = cartridgeMap.get(product?.id);
+
+      cartridgeInfo.push({
+        ...scentConfig,
+        intensity: el.intensity,
+        position,
+      });
     }
 
     const userInfo = await this.cognitoService.getUserByUserId(scent.createdBy);
@@ -112,7 +160,7 @@ export class ScentMobileService {
       ...scent,
       image: scent.image ? convertURLToS3Readable(scent.image) : '',
       tags: categoryTags,
-      cartridgeInfo,
+      cartridgeInfo: sortBy(cartridgeInfo, 'position'),
       createdBy: userInfo,
     };
   }
