@@ -192,10 +192,17 @@ export class BaseService<T extends { id: string | number }> {
       qb.andWhere(
         new Brackets((qb) => {
           searchColumns.forEach((column, index) => {
+            // Ensure column name is properly qualified with entity alias if not already qualified
+            const qualifiedColumn = column.includes('.') ? column : `entity.${column}`;
+
             if (index === 0) {
-              qb.where(`${column} LIKE :search`, { search: `%${query.search}%` });
+              qb.where(`${qualifiedColumn} ILIKE :search`, {
+                search: `%${query.search}%`,
+              });
             } else {
-              qb.orWhere(`${column} LIKE :search`, { search: `%${query.search}%` });
+              qb.orWhere(`${qualifiedColumn} ILIKE :search`, {
+                search: `%${query.search}%`,
+              });
             }
           });
         }),
