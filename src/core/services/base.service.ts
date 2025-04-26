@@ -194,16 +194,14 @@ export class BaseService<T extends { id: string | number }> {
           searchColumns.forEach((column, index) => {
             // Ensure column name is properly qualified with entity alias if not already qualified
             const qualifiedColumn = column.includes('.') ? column : `entity.${column}`;
-            // Convert both column and search term to lowercase for case-insensitive search
-            const lowercaseSearch = query.search.toLowerCase();
 
             if (index === 0) {
-              qb.where(`LOWER(${qualifiedColumn}) LIKE :search`, {
-                search: `%${lowercaseSearch}%`,
+              qb.where(`${qualifiedColumn} ILIKE :search`, {
+                search: `%${query.search}%`,
               });
             } else {
-              qb.orWhere(`LOWER(${qualifiedColumn}) LIKE :search`, {
-                search: `%${lowercaseSearch}%`,
+              qb.orWhere(`${qualifiedColumn} ILIKE :search`, {
+                search: `%${query.search}%`,
               });
             }
           });
