@@ -29,7 +29,10 @@ export class DeviceIotService {
   ) {}
 
   async findByDeviceId(deviceId: string): Promise<Device> {
-    return this.repository.findOne({ where: { product: { serialNumber: deviceId } } });
+    return this.repository.findOne({
+      where: { product: { serialNumber: deviceId } },
+      relations: ['cartridges'],
+    });
   }
 
   async updateDeviceHeartbeat(deviceId: string, heartbeatDto: DeviceHeartbeatDto): Promise<void> {
@@ -331,6 +334,19 @@ export class DeviceIotService {
       throw new NotFoundException('Device not found');
     }
 
+    //Check lastPingAt — if > 15s ago, return command: "request auth"
+    if (device.lastPingAt) {
+      const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
+
+      if (secondsSinceLastPing > parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)) {
+        await this.repository.update(device.id, { isConnected: false });
+
+        return {
+          command: Command.REQUEST_AUTH,
+        };
+      }
+    }
+
     // Update last ping
     await this.updateLastPing(deviceId);
 
@@ -349,8 +365,19 @@ export class DeviceIotService {
     }
 
     if (dto.cartridges) {
-      // Sync cartridges
-      await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
+      // Check if any cartridge has percent = 0
+      const hasEmptyCartridge = device.cartridges.some((c) => Number(c.percentage) === 0);
+
+      if (hasEmptyCartridge) {
+        await this.commandRepository.save({
+          device,
+          command: { type: CommandType.PAUSE },
+          isExecuted: false,
+        });
+      } else {
+        // Sync cartridges
+        await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
+      }
     }
 
     // Check if there is any pending command for the device
@@ -358,19 +385,6 @@ export class DeviceIotService {
       where: { device: { id: device.id }, deletedAt: IsNull() },
       order: { createdAt: 'DESC' }, // if you want to get the latest command
     });
-
-    // Check lastPingAt — if > 15s ago, return command: "request auth"
-    if (device.lastPingAt) {
-      const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
-
-      if (secondsSinceLastPing > parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)) {
-        await this.repository.update(device.id, { isConnected: false });
-
-        return {
-          command: Command.REQUEST_AUTH,
-        };
-      }
-    }
 
     return {
       command: pendingCommand ? Command.PENDING_COMMAND : Command.NONE,

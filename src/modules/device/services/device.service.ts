@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { orderBy } from 'lodash';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
@@ -18,8 +18,9 @@ import { Status, UserSession } from '../../../common/entities/user-session.entit
 import { convertURLToS3Readable } from '../../../common/utils/file';
 import { PingDeviceStatus } from '../device.enum';
 import { RegisterDeviceDto } from '../dto';
+import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
-import { DeviceCommand } from '../entities/device-command.entity';
+import { CommandType, DeviceCommand } from '../entities/device-command.entity';
 import { Product } from '../entities/product.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
@@ -43,6 +44,8 @@ export class DeviceService {
     private userSessionRepository: Repository<UserSession>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(DeviceCartridge)
+    private deviceCartridgeRepository: Repository<DeviceCartridge>,
   ) {}
 
   /**
@@ -376,16 +379,39 @@ export class DeviceService {
     status: Status,
     scentId: string,
   ) {
-    const device = await this.findValidDevice(deviceId);
-    if (!device) {
-      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
+    const device = await this.validateDeviceOwnership(deviceId, userId);
 
     const scent = await this.scentRepository.findOne({
       where: { id: scentId },
     });
     if (!scent) {
       throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (commandType === CommandType.PLAY) {
+      const scentConfigIds = JSON.parse(scent.cartridgeInfo).map((cartridge) => cartridge.id);
+
+      const products = await this.productRepository.find({
+        where: { scentConfig: { id: In(scentConfigIds) } },
+      });
+
+      const deviceCartridges = await this.deviceCartridgeRepository.find({
+        where: {
+          product: { id: In(products.map((product) => product.id)) },
+          device: { id: device.id },
+        },
+      });
+
+      const hasEmptyCartridge = deviceCartridges.some(
+        (cartridge) => Number(cartridge.percentage) === 0,
+      );
+
+      if (hasEmptyCartridge) {
+        throw new HttpException(
+          'Some cartridges are empty, so the device will not play',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     let command = await this.deviceCommandRepository.findOne({

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as moment from 'moment';
 import { Repository } from 'typeorm';
 
 import { Device } from './entities/device.entity';
@@ -14,15 +15,17 @@ export class DeviceOfflineCron {
 
   @Cron(CronExpression.EVERY_30_SECONDS)
   async handleDeviceOfflineCheck() {
-    const now = new Date();
-
     // Get connected devices
     const connectedDevices = await this.deviceRepository.find({
       where: { isConnected: true },
     });
 
     const devicesToUpdate = connectedDevices.filter((device) => {
-      return device.lastPingAt && now.getTime() - device.lastPingAt.getTime() > 15 * 1000;
+      return (
+        device.lastPingAt &&
+        moment().diff(moment(device.lastPingAt), 'seconds') >
+          parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)
+      );
     });
 
     if (devicesToUpdate.length === 0) {
