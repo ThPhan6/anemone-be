@@ -99,6 +99,8 @@ export class ScentMobileService {
       .map((category) => ({
         id: category.id,
         name: category.name,
+        image: category.metadata.image ? convertURLToS3Readable(category.metadata.image) : '',
+        description: category.metadata.name,
       }));
 
     const scentConfigs = JSON.parse(scent.cartridgeInfo || '[]');
