@@ -91,7 +91,7 @@ const records = [
       {
         value: 'working out',
         metadata: {
-          image: 'Mask Group 41.png',
+          image: 'Mask Group 42.png',
           type: 'image-card',
         },
       },
@@ -155,21 +155,21 @@ const records = [
       {
         value: 'calm & relaxed',
         metadata: {
-          image: 'Mask Group 41.png',
+          image: 'Mask Group 44.png',
           type: 'image-card',
         },
       },
       {
         value: 'energized & focused',
         metadata: {
-          image: 'Mask Group 44.png',
+          image: 'Mask Group 45.png',
           type: 'image-card',
         },
       },
       {
         value: 'adventurous & curious',
         metadata: {
-          image: 'Mask Group 45.png',
+          image: 'Mask Group 41.png',
           type: 'image-card',
         },
       },
