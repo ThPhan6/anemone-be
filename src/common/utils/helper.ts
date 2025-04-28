@@ -78,11 +78,11 @@ export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']):
         const value = result[key];
 
         // Transform image URLs if the key is in the imageKeys array
-        if (imageKeys.includes(key) && typeof value === 'string') {
+        if (imageKeys.includes(key) && typeof value === 'string' && value) {
           result[key] = convertURLToS3Readable(value);
         }
         // Recursively process nested objects if they're not Dates
-        else if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+        else if (value !== null && typeof value === 'object' && !(value instanceof Date && value)) {
           result[key] = transformImageUrls(value, imageKeys);
         }
       }

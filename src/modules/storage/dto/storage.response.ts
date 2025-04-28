@@ -6,6 +6,9 @@ export class UploadImageResDto {
 
   @ExposeApi()
   url: string;
+
+  @ExposeApi()
+  fileName: string;
 }
 
 export class ImageVariationsResDto {
