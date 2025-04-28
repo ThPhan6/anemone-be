@@ -23,6 +23,7 @@ import {
   ImageFit,
   ImageQuality,
   ImageSize,
+  ImageSizeType,
 } from '../../common/constants/file.constant';
 import { MessageCode } from '../../common/constants/messageCode';
 import { ApiBadRequestException } from '../../common/types/apiException.type';
@@ -212,7 +213,16 @@ export class StorageService {
     }
   }
 
-  async uploadImages(file: Express.Multer.File /* _prefix?: StoreUploadPrefix */) {
+  async uploadImages(file: Express.Multer.File /* _prefix?: StoreUploadPrefix */): Promise<
+    Record<
+      ImageSizeType,
+      {
+        fileKey: string;
+        url: string;
+        fileName: string;
+      }
+    >
+  > {
     try {
       const ext = extname(file.originalname);
       const contentType = file.mimetype;
@@ -304,13 +314,18 @@ export class StorageService {
           acc[result.size] = {
             fileKey: result.path,
             url: result.url,
+            fileName:
+              result.size === 'original' ? `${fileName}${ext}` : `${fileName}-${result.size}${ext}`,
           };
         }
 
         return acc;
       }, {});
 
-      return formattedResults;
+      return formattedResults as Record<
+        ImageSizeType,
+        { fileKey: string; url: string; fileName: string }
+      >;
     } catch (error) {
       this.logger.error(`Failed to upload images: ${error.message}`);
       throw new ApiBadRequestException(
@@ -377,7 +392,11 @@ export class StorageService {
     await this.uploadTempFile(file.buffer, key);
     const tempKey = this.getKeyTempFile(key);
 
-    return { fileKey: tempKey, url: await this.getSignedUrl('getObject', { Key: tempKey }) };
+    return {
+      fileKey: tempKey,
+      url: await this.getSignedUrl('getObject', { Key: tempKey }),
+      fileName: file.filename || file.originalname,
+    };
   }
 
   async uploadObject({ Key, Body, ContentType }: UploadObjectParams) {

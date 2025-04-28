@@ -3,9 +3,14 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SettingDefinition } from './setting-definition.entity';
 
+export enum QuestionnaireAnswerType {
+  IMAGE_CARD = 'image-card',
+  TAG = 'tag',
+}
+
 export interface SystemSettingMetadata {
   name?: string | null;
-  type?: string | null;
+  type?: QuestionnaireAnswerType | string | null;
   image?: string | null;
 }
 

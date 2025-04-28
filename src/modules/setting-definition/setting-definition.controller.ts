@@ -6,7 +6,7 @@ import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { UserDto } from '../auth/dto/auth-user.dto';
-import { QuestionnaireCreateDto } from './dto/questionnaire-answer.dto';
+import { QuestionnaireCreateDto } from './dto/questionnaire.dto';
 import { SettingDefinitionService } from './setting-definition.service';
 
 @MemberRoleGuard()
