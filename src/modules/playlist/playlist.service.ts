@@ -136,6 +136,8 @@ export class PlaylistService {
         .map((tag) => ({
           id: tag.id,
           name: tag.name,
+          image: tag.metadata.image ? convertURLToS3Readable(tag.metadata.image) : '',
+          description: tag.metadata.name,
         }));
 
       scents.push({
