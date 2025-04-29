@@ -130,17 +130,70 @@ export class BaseService<T extends { id: string | number }> {
     delete restQuery.page;
     delete restQuery.perPage;
     delete restQuery.search;
+    delete restQuery.orders;
 
-    // Filter out bracket notation keys
+    // Process additional query parameters
     const filteredQuery = {};
-    Object.keys(restQuery).forEach((key) => {
-      // Skip bracket notation keys
-      if (key.includes('[') || key.includes(']')) {
+
+    // Extract and process all query parameters that aren't part of the standard pagination, search, or orders
+    Object.entries(restQuery).forEach(([key, value]) => {
+      // Skip bracket notation keys that are part of orders
+      if (key.includes('[') && key.includes(']') && key.startsWith('orders')) {
         return;
       }
 
-      // Keep other keys
-      filteredQuery[key] = restQuery[key];
+      // Handle array-like query parameters (e.g., type=[2])
+      if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+        try {
+          // Parse array values from string like [2] or [1,2,3]
+          const arrayValue = JSON.parse(value);
+
+          // Convert array items if needed (strings to numbers if they're numeric)
+          if (Array.isArray(arrayValue)) {
+            filteredQuery[key] = arrayValue.map((item) => {
+              if (typeof item === 'string' && !isNaN(Number(item)) && !isNaN(parseFloat(item))) {
+                return Number(item);
+              }
+
+              return item;
+            });
+          } else {
+            // If the parsing succeeded but didn't result in an array, use as-is
+            filteredQuery[key] = arrayValue;
+          }
+        } catch (e) {
+          // If parsing fails, treat it as a regular string
+          filteredQuery[key] = value;
+        }
+
+        return;
+      }
+
+      // Handle type conversion for common value types (numbers, booleans)
+      if (typeof value === 'string') {
+        if (value.toLowerCase() === 'true') {
+          filteredQuery[key] = true;
+        } else if (value.toLowerCase() === 'false') {
+          filteredQuery[key] = false;
+        } else if (!isNaN(Number(value)) && !isNaN(parseFloat(value))) {
+          // Convert numeric strings to numbers
+          filteredQuery[key] = Number(value);
+        } else {
+          filteredQuery[key] = value;
+        }
+      } else if (Array.isArray(value)) {
+        // Handle native array values (already parsed by framework)
+        filteredQuery[key] = value.map((item) => {
+          if (typeof item === 'string' && !isNaN(Number(item)) && !isNaN(parseFloat(item))) {
+            return Number(item);
+          }
+
+          return item;
+        });
+      } else {
+        // Keep as-is for non-string values
+        filteredQuery[key] = value;
+      }
     });
 
     // Start building the query
@@ -172,18 +225,54 @@ export class BaseService<T extends { id: string | number }> {
 
     // Add where conditions for filtered query parameters
     if (Object.keys(filteredQuery).length) {
-      Object.keys(filteredQuery).forEach((key) => {
-        if (filteredQuery[key] === undefined) {
+      Object.entries(filteredQuery).forEach(([key, value]) => {
+        if (value === undefined) {
           return;
         }
 
-        if (Array.isArray(filteredQuery[key])) {
-          qb.andWhere(`entity.${key} IN (:...${key})`, { [key]: filteredQuery[key] });
+        if (Array.isArray(value)) {
+          qb.andWhere(`entity.${key} IN (:...${key})`, { [key]: value });
 
           return;
         }
 
-        qb.andWhere(`entity.${key} = :${key}`, { [key]: filteredQuery[key] });
+        // Handle special operators in key names (e.g., $gt, $lt, etc.)
+        if (key.includes('$')) {
+          const [fieldName, operator] = key.split('$');
+
+          switch (operator) {
+            case 'gt':
+              qb.andWhere(`entity.${fieldName} > :${key}`, { [key]: value });
+              break;
+
+            case 'gte':
+              qb.andWhere(`entity.${fieldName} >= :${key}`, { [key]: value });
+              break;
+
+            case 'lt':
+              qb.andWhere(`entity.${fieldName} < :${key}`, { [key]: value });
+              break;
+
+            case 'lte':
+              qb.andWhere(`entity.${fieldName} <= :${key}`, { [key]: value });
+              break;
+
+            case 'ne':
+              qb.andWhere(`entity.${fieldName} != :${key}`, { [key]: value });
+              break;
+
+            case 'like':
+              qb.andWhere(`entity.${fieldName} LIKE :${key}`, { [key]: `%${value}%` });
+              break;
+
+            default:
+              // Default to equality for unknown operators
+              qb.andWhere(`entity.${key} = :${key}`, { [key]: value });
+          }
+        } else {
+          // Standard equality check for regular fields
+          qb.andWhere(`entity.${key} = :${key}`, { [key]: value });
+        }
       });
     }
 

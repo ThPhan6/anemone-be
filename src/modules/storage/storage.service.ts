@@ -186,17 +186,31 @@ export class StorageService {
     });
   }
 
-  async uploadImage(file: Express.Multer.File, fileName: string) {
+  async uploadImage(file: Express.Multer.File, fileName?: string) {
     try {
       const ext = extname(file.originalname);
-      const fullPathName = `${fileName}${ext}`;
+      const fullPathName = fileName ? `${fileName}${ext}` : file.filename || file.originalname;
       const contentType = file.mimetype;
 
       const calls = [];
 
-      calls.push(
-        this.uploadFile(createReadStream(file.path), `${fullPathName}`, 'public-read', contentType),
-      );
+      // Check if file is a buffer or has a path
+      if (file.buffer) {
+        // Handle file with buffer (memory upload)
+        calls.push(this.uploadFile(file.buffer, `${fullPathName}`, 'public-read', contentType));
+      } else if (file.path) {
+        // Handle file with path (disk upload)
+        calls.push(
+          this.uploadFile(
+            createReadStream(file.path),
+            `${fullPathName}`,
+            'public-read',
+            contentType,
+          ),
+        );
+      } else {
+        throw new Error('File has neither buffer nor path');
+      }
 
       const [pathToOrigin, pathToConverted] = await Promise.all(calls);
 
@@ -206,6 +220,7 @@ export class StorageService {
         fileName: fullPathName,
       };
     } catch (error) {
+      this.logger.error(`Failed to upload image: ${error.message}`);
       throw new ApiBadRequestException(
         MessageCode.badRequest,
         error.message || 'Upload image failed.',
