@@ -72,6 +72,107 @@ export class BaseService<T extends { id: string | number }> {
     return this.repository.find(newOptions);
   }
 
+  // Helper methods for query parameter processing
+  private isNumericString(value: string): boolean {
+    return !isNaN(Number(value)) && !isNaN(parseFloat(value));
+  }
+
+  private convertToAppropriateType(value: any): any {
+    // Handle string values
+    if (typeof value === 'string') {
+      // Boolean conversion
+      if (value.toLowerCase() === 'true') {
+        return true;
+      }
+
+      if (value.toLowerCase() === 'false') {
+        return false;
+      }
+
+      // Number conversion
+      if (this.isNumericString(value)) {
+        return Number(value);
+      }
+
+      // Keep other strings as-is
+      return value;
+    }
+
+    // Handle arrays - convert numeric strings within arrays to numbers
+    if (Array.isArray(value)) {
+      return value.map((item) =>
+        typeof item === 'string' && this.isNumericString(item) ? Number(item) : item,
+      );
+    }
+
+    // Return other types unchanged
+    return value;
+  }
+
+  /**
+   * Process a query parameter that might be an array in string format
+   * @param value The string value that might be JSON array
+   * @param key The parameter key
+   * @returns Processed value if it's array-like, or null if not array-like
+   */
+  private processArrayLikeParameter(value: string): any | null {
+    if (typeof value !== 'string' || !value.startsWith('[') || !value.endsWith(']')) {
+      return null;
+    }
+
+    try {
+      const parsedValue = JSON.parse(value);
+
+      if (Array.isArray(parsedValue)) {
+        return parsedValue.map((item) => this.convertToAppropriateType(item));
+      }
+
+      return parsedValue; // Parsed JSON that's not an array
+    } catch (e) {
+      return value; // If parsing fails, return original value
+    }
+  }
+
+  /**
+   * Checks if a key is a bracket notation for orders
+   * @param key The parameter key to check
+   * @returns True if the key is an orders bracket notation
+   */
+  private isOrdersBracketNotation(key: string): boolean {
+    return key.includes('[') && key.includes(']') && key.startsWith('orders');
+  }
+
+  /**
+   * Process query parameters for filtering
+   * @param params Object containing query parameters
+   * @returns Filtered and converted query parameters
+   */
+  private processQueryParameters(params: Record<string, any>): Record<string, any> {
+    const filteredQuery = {};
+
+    Object.entries(params).forEach(([key, value]) => {
+      // Skip bracket notation keys that are part of orders
+      if (this.isOrdersBracketNotation(key)) {
+        return;
+      }
+
+      // Handle array-like query parameters
+      if (typeof value === 'string') {
+        const processedArray = this.processArrayLikeParameter(value);
+        if (processedArray !== null) {
+          filteredQuery[key] = processedArray;
+
+          return;
+        }
+      }
+
+      // Convert values to appropriate types
+      filteredQuery[key] = this.convertToAppropriateType(value);
+    });
+
+    return filteredQuery;
+  }
+
   async findAll(
     query: ApiGetListQueries,
     relations?: FindManyOptions['relations'],
@@ -133,68 +234,7 @@ export class BaseService<T extends { id: string | number }> {
     delete restQuery.orders;
 
     // Process additional query parameters
-    const filteredQuery = {};
-
-    // Extract and process all query parameters that aren't part of the standard pagination, search, or orders
-    Object.entries(restQuery).forEach(([key, value]) => {
-      // Skip bracket notation keys that are part of orders
-      if (key.includes('[') && key.includes(']') && key.startsWith('orders')) {
-        return;
-      }
-
-      // Handle array-like query parameters (e.g., type=[2])
-      if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
-        try {
-          // Parse array values from string like [2] or [1,2,3]
-          const arrayValue = JSON.parse(value);
-
-          // Convert array items if needed (strings to numbers if they're numeric)
-          if (Array.isArray(arrayValue)) {
-            filteredQuery[key] = arrayValue.map((item) => {
-              if (typeof item === 'string' && !isNaN(Number(item)) && !isNaN(parseFloat(item))) {
-                return Number(item);
-              }
-
-              return item;
-            });
-          } else {
-            // If the parsing succeeded but didn't result in an array, use as-is
-            filteredQuery[key] = arrayValue;
-          }
-        } catch (e) {
-          // If parsing fails, treat it as a regular string
-          filteredQuery[key] = value;
-        }
-
-        return;
-      }
-
-      // Handle type conversion for common value types (numbers, booleans)
-      if (typeof value === 'string') {
-        if (value.toLowerCase() === 'true') {
-          filteredQuery[key] = true;
-        } else if (value.toLowerCase() === 'false') {
-          filteredQuery[key] = false;
-        } else if (!isNaN(Number(value)) && !isNaN(parseFloat(value))) {
-          // Convert numeric strings to numbers
-          filteredQuery[key] = Number(value);
-        } else {
-          filteredQuery[key] = value;
-        }
-      } else if (Array.isArray(value)) {
-        // Handle native array values (already parsed by framework)
-        filteredQuery[key] = value.map((item) => {
-          if (typeof item === 'string' && !isNaN(Number(item)) && !isNaN(parseFloat(item))) {
-            return Number(item);
-          }
-
-          return item;
-        });
-      } else {
-        // Keep as-is for non-string values
-        filteredQuery[key] = value;
-      }
-    });
+    const filteredQuery = this.processQueryParameters(restQuery);
 
     // Start building the query
     const qb = this.repository.createQueryBuilder('entity');
@@ -236,39 +276,13 @@ export class BaseService<T extends { id: string | number }> {
           return;
         }
 
-        // Handle special operators in key names (e.g., $gt, $lt, etc.)
-        if (key.includes('$')) {
-          const [fieldName, operator] = key.split('$');
-
-          switch (operator) {
-            case 'gt':
-              qb.andWhere(`entity.${fieldName} > :${key}`, { [key]: value });
-              break;
-
-            case 'gte':
-              qb.andWhere(`entity.${fieldName} >= :${key}`, { [key]: value });
-              break;
-
-            case 'lt':
-              qb.andWhere(`entity.${fieldName} < :${key}`, { [key]: value });
-              break;
-
-            case 'lte':
-              qb.andWhere(`entity.${fieldName} <= :${key}`, { [key]: value });
-              break;
-
-            case 'ne':
-              qb.andWhere(`entity.${fieldName} != :${key}`, { [key]: value });
-              break;
-
-            case 'like':
-              qb.andWhere(`entity.${fieldName} LIKE :${key}`, { [key]: `%${value}%` });
-              break;
-
-            default:
-              // Default to equality for unknown operators
-              qb.andWhere(`entity.${key} = :${key}`, { [key]: value });
-          }
+        // Handle different data types appropriately for PostgreSQL
+        if (typeof value === 'string' && value.includes('%')) {
+          // If the value already contains wildcard characters, use ILIKE for pattern matching
+          qb.andWhere(`entity.${key} ILIKE :${key}`, { [key]: value });
+        } else if (value === null) {
+          // Handle null values with IS NULL
+          qb.andWhere(`entity.${key} IS NULL`);
         } else {
           // Standard equality check for regular fields
           qb.andWhere(`entity.${key} = :${key}`, { [key]: value });
