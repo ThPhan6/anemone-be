@@ -1,5 +1,5 @@
-import { Body, Get, Post, Query } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { Body, Get, Param, Post, Query } from '@nestjs/common';
+import { ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
@@ -21,7 +21,7 @@ export class SettingDefinitionController extends BaseController {
   @Get('/')
   @ApiOperation({ summary: 'Get all setting definitions' })
   async get(@Query('type') type: string[]) {
-    const settings = await this.settingDefinitionService.get(type);
+    const settings = await this.settingDefinitionService.getAll(type);
 
     return settings;
   }
@@ -52,5 +52,12 @@ export class SettingDefinitionController extends BaseController {
     );
 
     return questionnaireAnswer;
+  }
+
+  @Get('/:id')
+  @ApiOperation({ summary: 'Get a single setting definition by ID' })
+  @ApiParam({ name: 'id', description: 'Setting definition ID' })
+  async findOne(@Param('id') id: string) {
+    return this.settingDefinitionService.findById(id);
   }
 }

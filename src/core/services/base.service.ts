@@ -72,6 +72,107 @@ export class BaseService<T extends { id: string | number }> {
     return this.repository.find(newOptions);
   }
 
+  // Helper methods for query parameter processing
+  private isNumericString(value: string): boolean {
+    return !isNaN(Number(value)) && !isNaN(parseFloat(value));
+  }
+
+  private convertToAppropriateType(value: any): any {
+    // Handle string values
+    if (typeof value === 'string') {
+      // Boolean conversion
+      if (value.toLowerCase() === 'true') {
+        return true;
+      }
+
+      if (value.toLowerCase() === 'false') {
+        return false;
+      }
+
+      // Number conversion
+      if (this.isNumericString(value)) {
+        return Number(value);
+      }
+
+      // Keep other strings as-is
+      return value;
+    }
+
+    // Handle arrays - convert numeric strings within arrays to numbers
+    if (Array.isArray(value)) {
+      return value.map((item) =>
+        typeof item === 'string' && this.isNumericString(item) ? Number(item) : item,
+      );
+    }
+
+    // Return other types unchanged
+    return value;
+  }
+
+  /**
+   * Process a query parameter that might be an array in string format
+   * @param value The string value that might be JSON array
+   * @param key The parameter key
+   * @returns Processed value if it's array-like, or null if not array-like
+   */
+  private processArrayLikeParameter(value: string): any | null {
+    if (typeof value !== 'string' || !value.startsWith('[') || !value.endsWith(']')) {
+      return null;
+    }
+
+    try {
+      const parsedValue = JSON.parse(value);
+
+      if (Array.isArray(parsedValue)) {
+        return parsedValue.map((item) => this.convertToAppropriateType(item));
+      }
+
+      return parsedValue; // Parsed JSON that's not an array
+    } catch (e) {
+      return value; // If parsing fails, return original value
+    }
+  }
+
+  /**
+   * Checks if a key is a bracket notation for orders
+   * @param key The parameter key to check
+   * @returns True if the key is an orders bracket notation
+   */
+  private isOrdersBracketNotation(key: string): boolean {
+    return key.includes('[') && key.includes(']') && key.startsWith('orders');
+  }
+
+  /**
+   * Process query parameters for filtering
+   * @param params Object containing query parameters
+   * @returns Filtered and converted query parameters
+   */
+  private processQueryParameters(params: Record<string, any>): Record<string, any> {
+    const filteredQuery = {};
+
+    Object.entries(params).forEach(([key, value]) => {
+      // Skip bracket notation keys that are part of orders
+      if (this.isOrdersBracketNotation(key)) {
+        return;
+      }
+
+      // Handle array-like query parameters
+      if (typeof value === 'string') {
+        const processedArray = this.processArrayLikeParameter(value);
+        if (processedArray !== null) {
+          filteredQuery[key] = processedArray;
+
+          return;
+        }
+      }
+
+      // Convert values to appropriate types
+      filteredQuery[key] = this.convertToAppropriateType(value);
+    });
+
+    return filteredQuery;
+  }
+
   async findAll(
     query: ApiGetListQueries,
     relations?: FindManyOptions['relations'],
@@ -130,18 +231,10 @@ export class BaseService<T extends { id: string | number }> {
     delete restQuery.page;
     delete restQuery.perPage;
     delete restQuery.search;
+    delete restQuery.orders;
 
-    // Filter out bracket notation keys
-    const filteredQuery = {};
-    Object.keys(restQuery).forEach((key) => {
-      // Skip bracket notation keys
-      if (key.includes('[') || key.includes(']')) {
-        return;
-      }
-
-      // Keep other keys
-      filteredQuery[key] = restQuery[key];
-    });
+    // Process additional query parameters
+    const filteredQuery = this.processQueryParameters(restQuery);
 
     // Start building the query
     const qb = this.repository.createQueryBuilder('entity');
@@ -172,18 +265,28 @@ export class BaseService<T extends { id: string | number }> {
 
     // Add where conditions for filtered query parameters
     if (Object.keys(filteredQuery).length) {
-      Object.keys(filteredQuery).forEach((key) => {
-        if (filteredQuery[key] === undefined) {
+      Object.entries(filteredQuery).forEach(([key, value]) => {
+        if (value === undefined) {
           return;
         }
 
-        if (Array.isArray(filteredQuery[key])) {
-          qb.andWhere(`entity.${key} IN (:...${key})`, { [key]: filteredQuery[key] });
+        if (Array.isArray(value)) {
+          qb.andWhere(`entity.${key} IN (:...${key})`, { [key]: value });
 
           return;
         }
 
-        qb.andWhere(`entity.${key} = :${key}`, { [key]: filteredQuery[key] });
+        // Handle different data types appropriately for PostgreSQL
+        if (typeof value === 'string' && value.includes('%')) {
+          // If the value already contains wildcard characters, use ILIKE for pattern matching
+          qb.andWhere(`entity.${key} ILIKE :${key}`, { [key]: value });
+        } else if (value === null) {
+          // Handle null values with IS NULL
+          qb.andWhere(`entity.${key} IS NULL`);
+        } else {
+          // Standard equality check for regular fields
+          qb.andWhere(`entity.${key} = :${key}`, { [key]: value });
+        }
       });
     }
 
