@@ -9,14 +9,11 @@ import { Status } from '../../../common/entities/user-session.entity';
 import { UserDto } from '../../user/dto/user.dto';
 import { DevicePingDto, RegisterDeviceDto } from '../dto';
 import { CommandDto } from '../dto/device/command.dto';
-import {
-  DeviceConnectSpaceDto,
-  DeviceUpdateStatusDto,
-} from '../dto/device/device-connect-space.dto';
-import { DeviceSwitchSpaceDto } from '../dto/device/update-device.dto';
+import { UpdateDeviceDto } from '../dto/device/update-device.dto';
 import { CommandType } from '../entities/device-command.entity';
 import { DeviceService } from '../services/device.service';
 import { DeviceCertificateService } from '../services/device-certificate.service';
+import { DeviceIotService } from '../services/device-iot.service';
 
 @ApiController({
   name: 'devices',
@@ -25,6 +22,7 @@ export class DeviceController extends BaseController {
   constructor(
     private readonly deviceService: DeviceService,
     private readonly deviceCertificateService: DeviceCertificateService,
+    private readonly deviceIotService: DeviceIotService,
   ) {
     super();
   }
@@ -133,35 +131,14 @@ export class DeviceController extends BaseController {
   // }
 
   @MemberRoleGuard()
-  @Patch(':deviceId/connect')
-  @ApiOperation({ summary: 'Connect a device to a space' })
-  async connectSpace(
+  @Patch(':deviceId')
+  @ApiOperation({ summary: 'Partially update device data' })
+  async updateDevice(
     @AuthUser() user: UserDto,
     @Param('deviceId') deviceId: string,
-    @Body() bodyRequest: DeviceConnectSpaceDto,
+    @Body() bodyRequest: UpdateDeviceDto,
   ) {
-    const result = await this.deviceService.connectSpace(user.sub, deviceId, bodyRequest.spaceId);
-
-    return { success: true, data: result };
-  }
-
-  @MemberRoleGuard()
-  @Patch(':deviceId/status')
-  @ApiOperation({ summary: 'Update device status' })
-  async updateDeviceStatus(
-    @Param('deviceId') deviceId: string,
-    @Body() bodyRequest: DeviceUpdateStatusDto,
-  ) {
-    const result = await this.deviceService.updateDeviceStatus(deviceId, bodyRequest.isConnected);
-
-    return result;
-  }
-
-  @MemberRoleGuard()
-  @Delete(':deviceId/space')
-  @ApiOperation({ summary: 'Remove a device from a space' })
-  async removeDeviceFromSpace(@AuthUser() user: UserDto, @Param('deviceId') deviceId: string) {
-    const result = await this.deviceService.removeDeviceFromSpace(user.sub, deviceId);
+    const result = await this.deviceService.updateDevice(user.sub, deviceId, bodyRequest);
 
     return result;
   }
@@ -176,50 +153,20 @@ export class DeviceController extends BaseController {
   }
 
   @MemberRoleGuard()
-  @Patch(':deviceId/switch-space')
-  @ApiOperation({ summary: 'Switch space of a device' })
-  async switchSpace(
-    @AuthUser() user: UserDto,
-    @Param('deviceId') deviceId: string,
-    @Body() bodyRequest: DeviceSwitchSpaceDto,
-  ) {
-    const result = await this.deviceService.switchSpace(user.sub, deviceId, bodyRequest.spaceId);
-
-    return result;
-  }
-
-  @MemberRoleGuard()
-  @Post(':deviceId/commands/play')
-  @ApiOperation({ summary: 'Send play command to a device' })
-  async sendPlayCommand(
+  @Post(':deviceId/commands')
+  @ApiOperation({ summary: 'Send command to a device' })
+  async sendCommand(
     @Param('deviceId') deviceId: string,
     @Body() payload: CommandDto,
     @AuthUser() user: UserDto,
   ) {
+    const status = payload.type === CommandType.PLAY ? Status.PLAYING : Status.PAUSED;
+
     const command = await this.deviceService.queueCommand(
       deviceId,
       user.sub,
-      CommandType.PLAY,
-      Status.PLAYING,
-      payload.scentId,
-    );
-
-    return command;
-  }
-
-  @MemberRoleGuard()
-  @Post(':deviceId/commands/pause')
-  @ApiOperation({ summary: 'Send pause command to a device' })
-  async sendPauseCommand(
-    @Param('deviceId') deviceId: string,
-    @AuthUser() user: UserDto,
-    @Body() payload: CommandDto,
-  ) {
-    const command = await this.deviceService.queueCommand(
-      deviceId,
-      user.sub,
-      CommandType.PAUSE,
-      Status.PAUSED,
+      payload.type,
+      status,
       payload.scentId,
     );
 

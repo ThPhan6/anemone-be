@@ -13,10 +13,10 @@ import { ProductModule } from './product/product.module';
 import { ProductVariantModule } from './product-variant/product-variant.module';
 import { ScentModule } from './scent/scent.module';
 import { ScentConfigModule } from './scent-config/scent-config.module';
-import { ScentMobileModule } from './scent-mobile/scent-mobile.module';
 import { SettingDefinitionModule } from './setting-definition/setting-definition.module';
 import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
+import { SystemSettingsModule } from './system/system-settings.module';
 import { UserModule } from './user/user.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 @Module({
@@ -34,11 +34,11 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     SettingDefinitionModule,
     SpaceModule,
     PlaylistModule,
-    ScentMobileModule,
     UserSettingsModule,
     MockModule,
     ProductModule,
     ProductVariantModule,
+    SystemSettingsModule,
     MulterModule.register({
       dest: './uploads',
     }),

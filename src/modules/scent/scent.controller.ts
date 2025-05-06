@@ -1,93 +1,110 @@
-import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
-import { MessageCode } from 'common/constants/messageCode';
-import { BaseController } from 'core/controllers/base.controller';
-import { ApiController } from 'core/decorator/apiController.decorator';
-import { ApiBaseOkResponse, ApiDataWrapType } from 'core/decorator/apiDoc.decorator';
-import { AdminRoleGuard } from 'core/decorator/auth.decorator';
-
-import { CreateScentDto, ScentGetListQueries, UpdateScentDto } from './dto/scent.request';
 import {
-  ScentCreateResDto,
-  ScentDeleteResDto,
-  ScentDetailResDto,
-  ScentListItemDto,
-  ScentListResDto,
-  ScentUpdateResDto,
-} from './dto/scent.response';
+  Body,
+  Delete,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiOperation } from '@nestjs/swagger';
+
+import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
+import { BaseController } from '../../core/controllers/base.controller';
+import { ApiController } from '../../core/decorator/apiController.decorator';
+import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
+import { AuthUser } from '../../core/decorator/auth-user.decorator';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { UserDto } from '../auth/dto/auth-user.dto';
+import { CreateScentDto, TestScentDto, UpdateScentDto } from './dto/scent-request.dto';
 import { ScentService } from './scent.service';
 
+@MemberRoleGuard()
 @ApiController({
   name: 'scents',
 })
-@AdminRoleGuard()
 export class ScentController extends BaseController {
-  constructor(private readonly service: ScentService) {
+  constructor(private readonly scentService: ScentService) {
     super();
   }
 
-  @ApiBaseOkResponse({
-    description: 'create a item',
-    type: ScentCreateResDto,
-    messageCodeRemark: `
-    ${MessageCode.permissionDenied}
-    `,
-  })
-  @Post()
-  async create(@Body() body: CreateScentDto) {
-    return this.dataType(ScentCreateResDto, await this.service.create(body));
-  }
-
-  @ApiBaseOkResponse({
-    description: 'Get list items',
-    type: ScentListItemDto,
-    wrapType: ApiDataWrapType.pagination,
-    messageCodeRemark: `
-    ${MessageCode.notFound}
-    `,
-  })
   @Get()
-  async list(@Query() queries: ScentGetListQueries) {
-    return this.dataType(ScentListResDto, await this.service.findAll(queries, undefined, ['name']));
+  @ApiOperation({ summary: 'Get all scents' })
+  async get(
+    @AuthUser() user: UserDto,
+    @Query() queries: ApiBaseGetListQueries,
+    @Query('isPublic') isPublic: boolean,
+  ) {
+    return isPublic
+      ? this.scentService.getPublic(queries)
+      : this.scentService.get(user.sub, queries);
   }
 
-  @ApiBaseOkResponse({
-    description: 'Get item detail',
-    type: ScentDetailResDto,
-    messageCodeRemark: `
-    ${MessageCode.notFound}
-    ${MessageCode.permissionDenied}
-    `,
-  })
   @Get(':id')
-  async detail(@Param('id') id: string) {
-    return this.dataType(ScentDetailResDto, await this.service.findById(id));
+  @ApiOperation({ summary: 'Get a scent by id' })
+  async getById(@Param('id') id: string) {
+    return this.scentService.getById(id);
   }
 
-  @ApiBaseOkResponse({
-    description: 'update a item',
-    type: ScentUpdateResDto,
-    messageCodeRemark: `
-    ${MessageCode.notFound}
-    `,
-  })
+  @Post()
+  @ApiOperation({ summary: 'Create a new scent' })
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async create(
+    @AuthUser() user: UserDto,
+    @Body()
+    body: CreateScentDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    image: Express.Multer.File,
+  ) {
+    const scent = await this.scentService.create(user.sub, body, image);
+
+    return scent;
+  }
+
+  @Post('test')
+  @ApiOperation({ summary: 'Test scent' })
+  async testScent(@Body() body: TestScentDto) {
+    return this.scentService.testScent(body);
+  }
+
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateScentDto) {
-    await this.service.update(id, body);
-
-    return this.dataType(ScentUpdateResDto, this.service.findById(id));
+  @ApiOperation({ summary: 'Update a scent by id' })
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async update(
+    @AuthUser() user: UserDto,
+    @Param('id') id: string,
+    @Body() body: UpdateScentDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    image: Express.Multer.File,
+  ) {
+    return this.scentService.update(user.sub, id, body, image);
   }
 
-  @ApiBaseOkResponse({
-    description: 'Delete a item',
-    type: ScentDeleteResDto,
-    messageCodeRemark: `
-    ${MessageCode.notFound}
-    `,
-  })
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    const result = await this.service.delete(id);
-
-    return this.dataType(ScentDeleteResDto, result);
+  @ApiOperation({ summary: 'Delete a scent by id' })
+  async delete(@AuthUser() user: UserDto, @Param('id') id: string) {
+    return this.scentService.delete(user.sub, id);
   }
 }
