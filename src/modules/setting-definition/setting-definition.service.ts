@@ -1,37 +1,46 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isNil, omit, orderBy } from 'lodash';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Not, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { MESSAGE } from '../../common/constants/message.constant';
+import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
+import { SettingDefinitionRepository } from '../../common/repositories/setting-definition.repository';
 import { transformImageUrls } from '../../common/utils/helper';
+import { BaseService } from '../../core/services/base.service';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { Pagination } from '../../core/types/response.type';
 import { StorageService } from '../storage/storage.service';
 import {
   QuestionnaireAdminCreateDto,
   QuestionnaireAdminUpdateDto,
 } from './dto/questionnaire-admin.dto';
-import { SettingDefinitionResDto } from './dto/setting-definition.dto';
+import { CreateScentTagDto, UpdateScentTagDto } from './dto/scent-tag.dto';
 import { ESystemDefinitionType, SettingDefinition } from './entities/setting-definition.entity';
 import { QuestionnaireAnswerType, SettingValue } from './entities/setting-value.entity';
 import { base64ToFile, isBase64Image } from './utils/image.utils';
 
 @Injectable()
-export class SettingDefinitionService {
+export class SettingDefinitionService extends BaseService<SettingDefinition> {
   private readonly logger = new Logger(SettingDefinitionService.name);
 
   constructor(
-    @InjectRepository(SettingDefinition)
-    private settingDefinitionRepository: Repository<SettingDefinition>,
+    private readonly settingDefinitionRepository: SettingDefinitionRepository,
     @InjectRepository(SettingValue)
-    private settingValueRepository: Repository<SettingValue>,
+    private readonly settingValueRepository: Repository<SettingValue>,
     @InjectRepository(UserSetting)
-    private userSettingRepository: Repository<UserSetting>,
+    private readonly userSettingRepository: Repository<UserSetting>,
+    @InjectRepository(Scent)
+    private readonly scentRepository: Repository<Scent>,
     private readonly storageService: StorageService,
-  ) {}
+    private readonly dataSource: DataSource,
+  ) {
+    super(settingDefinitionRepository);
+  }
 
-  async get(type: string[]): Promise<SettingDefinitionResDto[]> {
+  async getAll(type: string[]): Promise<SettingDefinition[]> {
     const settings = await this.settingDefinitionRepository.find({
       where: {
         type: In(type),
@@ -54,9 +63,39 @@ export class SettingDefinitionService {
       };
     });
 
-    const sortedResult = orderBy(result, [(item) => item.metadata?.index || 0], ['asc']);
+    const sortedResult: any = orderBy(result, [(item) => item.metadata?.index || 0], ['asc']);
 
     return transformImageUrls(sortedResult);
+  }
+
+  async getAllWithPagination(
+    queries: ApiBaseGetListQueries & { [key: string]: any },
+  ): Promise<Pagination<SettingDefinition>> {
+    // Process type parameter specifically if it's in array string format
+    if (
+      queries.type &&
+      typeof queries.type === 'string' &&
+      queries.type.startsWith('[') &&
+      queries.type.endsWith(']')
+    ) {
+      try {
+        // Parse array values from string like [2] or [1,2,3]
+        const typeArray = JSON.parse(queries.type);
+        if (Array.isArray(typeArray)) {
+          // Replace the string representation with the actual array
+          queries.type = typeArray;
+        }
+      } catch (e) {
+        // If parsing fails, keep as is
+      }
+    }
+
+    const data = await super.findAll(queries, {}, ['name']);
+
+    return {
+      ...data,
+      items: transformImageUrls(data.items),
+    };
   }
 
   async getQuestionnaireResultByUserId(userId: string) {
@@ -162,7 +201,7 @@ export class SettingDefinitionService {
       }
 
       // Create the setting definition (question) transaction
-      const queryRunner = this.settingDefinitionRepository.manager.connection.createQueryRunner();
+      const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
       await queryRunner.startTransaction();
 
@@ -493,7 +532,7 @@ export class SettingDefinitionService {
       }
 
       // Start transaction for updating the question and answers
-      const queryRunner = this.settingDefinitionRepository.manager.connection.createQueryRunner();
+      const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
       await queryRunner.startTransaction();
 
@@ -645,7 +684,7 @@ export class SettingDefinitionService {
       this.logger.log(`About to delete question at index ${deletedQuestionIndex}`);
 
       // Start a transaction
-      const queryRunner = this.settingDefinitionRepository.manager.connection.createQueryRunner();
+      const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
       await queryRunner.startTransaction();
 
@@ -797,5 +836,160 @@ export class SettingDefinitionService {
       this.logger.error(`Error reindexing questions: ${error.message}`);
       throw error; // Let the calling function handle the error
     }
+  }
+
+  /**
+   * Creates a new scent tag
+   */
+  async createScentTag(data: CreateScentTagDto, file?: Express.Multer.File) {
+    // Check if name is unique
+    const existingTag = await this.settingDefinitionRepository.findOne({
+      where: {
+        name: data.name,
+        type: ESystemDefinitionType.SCENT_TAG,
+      },
+    });
+
+    if (existingTag) {
+      throw new HttpException('Scent tag with this name already exists', HttpStatus.BAD_REQUEST);
+    }
+
+    // Upload image if provided
+    let imageName = null;
+    if (file) {
+      const uploadResult = await this.storageService.uploadImageFile(file);
+      imageName = uploadResult.fileName;
+    }
+
+    // Create tag entity
+    const tag = this.settingDefinitionRepository.create({
+      name: data.name,
+      type: ESystemDefinitionType.SCENT_TAG,
+      metadata: {
+        name: data.description || null,
+        image: imageName,
+      },
+    });
+
+    const savedTag = await this.settingDefinitionRepository.save(tag);
+
+    return {
+      id: savedTag.id,
+      name: savedTag.name,
+      description: savedTag.metadata?.name || null,
+      image: savedTag.metadata?.image || null,
+    };
+  }
+
+  /**
+   * Updates an existing scent tag
+   */
+  async updateScentTag(
+    id: string,
+    data: UpdateScentTagDto,
+    file?: Express.Multer.File,
+  ): Promise<boolean> {
+    // Find the tag to update
+    const existingTag = await this.settingDefinitionRepository.findOne({
+      where: {
+        id,
+        type: ESystemDefinitionType.SCENT_TAG,
+      },
+    });
+
+    if (!existingTag) {
+      throw new HttpException('Scent tag not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Check if name is unique (if name is changed)
+    if (data.name !== existingTag.name) {
+      const duplicateTag = await this.settingDefinitionRepository.findOne({
+        where: {
+          name: data.name,
+          type: ESystemDefinitionType.SCENT_TAG,
+          id: Not(id), // Exclude current tag
+        },
+      });
+
+      if (duplicateTag) {
+        throw new HttpException('Scent tag with this name already exists', HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    // Upload new image if provided
+    let imageName = existingTag.metadata?.image || null;
+    if (file) {
+      const uploadResult = await this.storageService.uploadImage(file);
+      imageName = uploadResult.fileName;
+    }
+
+    // Update tag
+    existingTag.name = data.name;
+    existingTag.metadata = {
+      ...existingTag.metadata,
+      name: data.description || existingTag.metadata?.name || null,
+      image: imageName,
+    };
+
+    await this.settingDefinitionRepository.save(existingTag);
+
+    return true;
+  }
+
+  /**
+   * Deletes a scent tag even if it's used in scents
+   */
+  async deleteScentTag(id: string): Promise<boolean> {
+    // Find the tag to delete
+    const existingTag = await this.settingDefinitionRepository.findOne({
+      where: {
+        id,
+        type: ESystemDefinitionType.SCENT_TAG,
+      },
+    });
+
+    if (!existingTag) {
+      throw new HttpException('Scent tag not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Find scents that use this tag
+    const scents = await this.scentRepository.find();
+
+    // Check if any scent contains this tag ID in their tags array
+    const scentsUsingTag = scents.filter((scent) => {
+      try {
+        const tagIds = JSON.parse(scent.tags);
+
+        return Array.isArray(tagIds) && tagIds.includes(id);
+      } catch (e) {
+        // If JSON.parse fails, this scent doesn't have valid tags
+        return false;
+      }
+    });
+
+    if (scentsUsingTag.length > 0) {
+      throw new HttpException(
+        'Cannot delete tag as it is used in one or more scents',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Delete the tag
+    await super.delete(id);
+
+    return true;
+  }
+
+  async findById(id: string): Promise<SettingDefinition> {
+    const settingDefinition = await this.findOne({
+      where: { id },
+      relations: ['values'],
+    });
+
+    if (!settingDefinition) {
+      throw new HttpException('Setting definition not found', HttpStatus.NOT_FOUND);
+    }
+
+    return transformImageUrls(settingDefinition);
   }
 }

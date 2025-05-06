@@ -1,7 +1,10 @@
 import { DataSource } from 'typeorm';
 
 import { ScentConfig } from '../../modules/scent-config/entities/scent-config.entity';
-import { SettingDefinition } from '../../modules/setting-definition/entities/setting-definition.entity';
+import {
+  ESystemDefinitionType,
+  SettingDefinition,
+} from '../../modules/setting-definition/entities/setting-definition.entity';
 import { Scent } from '../entities/scent.entity';
 import { UserSetting } from '../entities/user-setting.entity';
 import { BaseSeeder } from './base.seeder';
@@ -14,7 +17,11 @@ export class PublicScentSeeder extends BaseSeeder {
 
     const scentConfigs = await dataSource.getRepository(ScentConfig).find();
 
-    const settingDefinitions = await dataSource.getRepository(SettingDefinition).find();
+    const settingDefinitions = await dataSource.getRepository(SettingDefinition).find({
+      where: {
+        type: ESystemDefinitionType.SCENT_TAG,
+      },
+    });
 
     const scentConfigIds = scentConfigs.map((c) => ({ id: c.id }));
 

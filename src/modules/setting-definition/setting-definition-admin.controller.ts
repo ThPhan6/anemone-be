@@ -22,6 +22,7 @@ import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
 import { AuthUser } from '../../core/decorator/auth-user.decorator';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { UserDto } from '../auth/dto/auth-user.dto';
 import {
   QuestionnaireAdminCreateDto,
@@ -42,10 +43,12 @@ export class SettingDefinitionAdminController extends BaseController {
 
   @Get('/')
   @ApiOperation({ summary: 'Get all setting definitions' })
-  async get(@Query('type') type: string[]) {
-    const settings = await this.settingDefinitionService.get(type);
+  async get(@Query() queries: ApiBaseGetListQueries & { type: string[] }) {
+    if (queries.page && queries.perPage) {
+      return this.settingDefinitionService.getAllWithPagination(queries);
+    }
 
-    return settings;
+    return this.settingDefinitionService.getAll(queries.type);
   }
 
   @Post('/questionnaires')
@@ -264,5 +267,12 @@ export class SettingDefinitionAdminController extends BaseController {
     await this.settingDefinitionService.deleteQuestionnaire(id);
 
     return { success: true };
+  }
+
+  @Get('/:id')
+  @ApiOperation({ summary: 'Get a single setting definition by ID' })
+  @ApiParam({ name: 'id', description: 'Setting definition ID' })
+  async findOne(@Param('id') id: string) {
+    return this.settingDefinitionService.findById(id);
   }
 }

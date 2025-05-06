@@ -23,6 +23,8 @@ export class ApiBaseGetListQueries {
 
   @ExposeApiOptional()
   search?: string;
+
+  [key: string]: any;
 }
 
 export class ApiGetListQueries extends ApiBaseGetListQueries {}
