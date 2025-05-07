@@ -49,4 +49,8 @@ export const MESSAGE = {
     ALREADY_EXISTS: 'Product variant already exists',
     USED: 'Product variant is used',
   },
+  ALBUM: {
+    NOT_FOUND: 'Album not found',
+    ALREADY_EXISTS: 'Album already exists',
+  },
 };
