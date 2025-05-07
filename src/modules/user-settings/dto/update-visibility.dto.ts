@@ -1,11 +1,37 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
-export class UpdateVisibilityDto {
+export class UpdateUserSettingsDto {
+  @IsOptional()
+  @IsBoolean()
+  wifiEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  personalise?: boolean;
+
+  @IsOptional()
+  scheduleTimer?: any;
+
+  @IsOptional()
+  system?: any;
+
+  @IsOptional()
+  device?: any;
+
+  @IsOptional()
+  network?: any;
+
+  @IsOptional()
+  systemUpdate?: any;
+
+  @IsOptional()
+  wifiConnections?: any;
+
   @ApiProperty({
     example: true,
   })
+  @IsOptional()
   @IsBoolean()
-  @IsNotEmpty()
   isPublic: boolean;
 }

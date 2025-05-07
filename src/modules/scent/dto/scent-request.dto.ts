@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import { IsString } from 'class-validator';
 
-export class CreateScentMobileDto {
+export class CreateScentDto {
   @ApiProperty({ example: 'Scent name' })
   @IsString()
   @IsNotEmpty()
@@ -43,7 +43,7 @@ export class CreateScentMobileDto {
   description: string;
 }
 
-export class UpdateScentMobileDto {
+export class UpdateScentDto {
   @ApiProperty({ example: 'Scent name' })
   @IsString()
   @IsOptional()

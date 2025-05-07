@@ -17,7 +17,7 @@ import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../../common/utils/file';
 import { PingDeviceStatus } from '../device.enum';
-import { RegisterDeviceDto } from '../dto';
+import { RegisterDeviceDto, UpdateDeviceDto } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { CommandType, DeviceCommand } from '../entities/device-command.entity';
@@ -223,44 +223,6 @@ export class DeviceService {
     return Object.assign(device, { registeredBy: null });
   }
 
-  async connectSpace(userId: string, deviceId: string, spaceId: string) {
-    const device = await this.findValidDevice(deviceId);
-
-    if (!device) {
-      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    const space = await this.spaceRepository.findOne({
-      where: { id: spaceId },
-    });
-
-    if (!space) {
-      throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    const connectedDevice = await this.repository.update(device.id, {
-      space: { id: space.id },
-      isConnected: true,
-      registeredBy: userId,
-    });
-
-    return connectedDevice;
-  }
-
-  async updateDeviceStatus(deviceId: string, isConnected: boolean) {
-    const device = await this.findValidDevice(deviceId);
-
-    if (!device) {
-      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    const updatedDevice = await this.repository.update(device.id, {
-      isConnected,
-    });
-
-    return updatedDevice;
-  }
-
   async validateDeviceOwnership(deviceId: string, userId: string): Promise<Device> {
     const device = await this.repository.findOne({
       where: { product: { serialNumber: deviceId } },
@@ -277,21 +239,6 @@ export class DeviceService {
     return device;
   }
 
-  async removeDeviceFromSpace(userId: string, deviceId: string) {
-    const device = await this.validateDeviceOwnership(deviceId, userId);
-
-    if (!device) {
-      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    const removedDevice = await this.repository.update(device.id, {
-      space: null,
-      isConnected: false,
-    });
-
-    return removedDevice;
-  }
-
   async removeDevice(userId: string, deviceId: string) {
     const device = await this.validateDeviceOwnership(deviceId, userId);
 
@@ -304,26 +251,36 @@ export class DeviceService {
     return removedDevice;
   }
 
-  async switchSpace(userId: string, deviceId: string, spaceId: string) {
+  async updateDevice(userId: string, deviceId: string, dto: UpdateDeviceDto) {
     const device = await this.validateDeviceOwnership(deviceId, userId);
 
-    if (!device) {
-      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    const updatePayload: Partial<Device> = {};
+
+    //check if spaceId is in the dto (includes null)
+    if ('spaceId' in dto) {
+      if (dto.spaceId) {
+        const space = await this.spaceRepository.findOne({
+          where: { id: dto.spaceId, createdBy: userId },
+        });
+
+        if (!space) {
+          throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
+        updatePayload.space = space;
+        updatePayload.registeredBy = userId;
+        updatePayload.isConnected = true;
+      } else {
+        updatePayload.space = null;
+        updatePayload.isConnected = false;
+      }
     }
 
-    const space = await this.spaceRepository.findOne({
-      where: { id: spaceId, createdBy: userId },
-    });
-
-    if (!space) {
-      throw new HttpException(MESSAGE.SPACE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    if ('isConnected' in dto) {
+      updatePayload.isConnected = dto.isConnected;
     }
 
-    const updatedDevice = await this.repository.update(device.id, {
-      space: { id: space.id },
-    });
-
-    return updatedDevice;
+    return this.repository.update(device.id, updatePayload);
   }
 
   async getDeviceDetail(deviceId: string) {
@@ -375,7 +332,7 @@ export class DeviceService {
   async queueCommand(
     deviceId: string,
     userId: string,
-    commandType: 'play' | 'pause',
+    commandType: CommandType,
     status: Status,
     scentId: string,
   ) {

@@ -1,38 +1,61 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { MESSAGE } from '../../common/constants/message.constant';
 import { UserSetting } from '../../common/entities/user-setting.entity';
-import { UpdateVisibilityDto } from './dto/update-visibility.dto';
+import { SettingDefinition } from '../setting-definition/entities/setting-definition.entity';
+import { QuestionnaireAnswerItem } from './dto/questionnaire.dto';
+import { UpdateUserSettingsDto } from './dto/update-visibility.dto';
 
 @Injectable()
 export class UserSettingsService {
   constructor(
     @InjectRepository(UserSetting)
     private readonly userSettingsRepository: Repository<UserSetting>,
+    @InjectRepository(SettingDefinition)
+    private readonly settingDefinitionRepository: Repository<SettingDefinition>,
   ) {}
 
-  async updateVisibility(userId: string, dto: UpdateVisibilityDto) {
-    const found = await this.userSettingsRepository.findOne({ where: { userId } });
+  async update(userId: string, dto: UpdateUserSettingsDto) {
+    let settings = await this.userSettingsRepository.findOne({ where: { userId } });
 
-    if (found) {
-      found.isPublic = dto.isPublic;
+    if (!settings) {
+      settings = this.userSettingsRepository.create({ userId });
+    }
 
-      await this.userSettingsRepository.update(found.id, {
-        isPublic: dto.isPublic,
+    Object.assign(settings, dto);
+
+    return await this.userSettingsRepository.save(settings);
+  }
+
+  async createQuestionnaireAnswer(userId: string, body: QuestionnaireAnswerItem[]) {
+    // Check all questions before saving to database
+    for (const el of body) {
+      if (!Array.isArray(el.answers)) {
+        throw new HttpException(MESSAGE.SYSTEM_SETTINGS.INVALID_ANSWER, HttpStatus.BAD_REQUEST);
+      }
+
+      const question = await this.settingDefinitionRepository.findOne({
+        where: {
+          id: el.questionId,
+        },
       });
 
-      return true;
-    } else {
-      const newUserSetting = new UserSetting();
-
-      newUserSetting.userId = userId;
-
-      newUserSetting.isPublic = dto.isPublic;
-
-      await this.userSettingsRepository.save(newUserSetting);
-
-      return true;
+      // If a question does not exist, throw an error immediately
+      if (!question) {
+        throw new HttpException(MESSAGE.SYSTEM_SETTINGS.NOT_FOUND_QUESTION, HttpStatus.NOT_FOUND);
+      }
     }
+
+    // If all questions are valid, save data to database
+    const answer = await this.userSettingsRepository.create({
+      userId,
+      system: body,
+    });
+
+    await this.userSettingsRepository.save(answer);
+
+    return answer;
   }
 }

@@ -13,7 +13,6 @@ import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { StorageService } from '../storage/storage.service';
-import { QuestionnaireAnswerItem } from './dto/questionnaire.dto';
 import {
   QuestionnaireAdminCreateDto,
   QuestionnaireAdminUpdateDto,
@@ -97,36 +96,6 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
       ...data,
       items: transformImageUrls(data.items),
     };
-  }
-
-  async createQuestionnaireAnswer(userId: string, body: QuestionnaireAnswerItem[]) {
-    // Check all questions before saving to database
-    for (const el of body) {
-      if (!Array.isArray(el.answers)) {
-        throw new HttpException(MESSAGE.SYSTEM_SETTINGS.INVALID_ANSWER, HttpStatus.BAD_REQUEST);
-      }
-
-      const question = await this.settingDefinitionRepository.findOne({
-        where: {
-          id: el.questionId,
-        },
-      });
-
-      // If a question does not exist, throw an error immediately
-      if (!question) {
-        throw new HttpException(MESSAGE.SYSTEM_SETTINGS.NOT_FOUND_QUESTION, HttpStatus.NOT_FOUND);
-      }
-    }
-
-    // If all questions are valid, save data to database
-    const answer = await this.userSettingRepository.create({
-      userId,
-      system: body,
-    });
-
-    await this.userSettingRepository.save(answer);
-
-    return answer;
   }
 
   async getQuestionnaireResultByUserId(userId: string) {

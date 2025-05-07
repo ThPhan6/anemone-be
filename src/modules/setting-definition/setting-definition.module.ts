@@ -7,17 +7,12 @@ import { SettingDefinitionRepository } from '../../common/repositories/setting-d
 import { SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 import { ScentTagAdminController } from './scent-tag-admin.controller';
-import { SettingDefinitionController } from './setting-definition.controller';
 import { SettingDefinitionService } from './setting-definition.service';
 import { SettingDefinitionAdminController } from './setting-definition-admin.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([SettingDefinition, SettingValue, UserSetting, Scent])],
-  controllers: [
-    SettingDefinitionController,
-    SettingDefinitionAdminController,
-    ScentTagAdminController,
-  ],
+  controllers: [SettingDefinitionAdminController, ScentTagAdminController],
   providers: [SettingDefinitionService, SettingDefinitionRepository],
   exports: [SettingDefinitionService],
 })
