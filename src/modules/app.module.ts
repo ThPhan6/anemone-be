@@ -4,6 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SentryModule } from '@sentry/nestjs/setup';
 
+import { AlbumModule } from './album/album.module';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
@@ -39,6 +40,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     MockModule,
     ProductModule,
     ProductVariantModule,
+    AlbumModule,
     MulterModule.register({
       dest: './uploads',
     }),
