@@ -109,7 +109,7 @@ export class DeviceIotService {
 
     return {
       interval: parseInt(process.env.REPEAT_INTERVAL),
-      cycle: -1,
+      cycle: command.command.type === CommandType.TEST ? 1 : -1,
       cartridges: cartridgeUptimes,
     };
   }
