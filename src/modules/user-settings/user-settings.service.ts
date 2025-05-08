@@ -17,6 +17,30 @@ export class UserSettingsService {
     private readonly settingDefinitionRepository: Repository<SettingDefinition>,
   ) {}
 
+  async get(userId: string) {
+    const settings = await this.userSettingsRepository.findOne({
+      where: { userId },
+    });
+
+    if (!settings) {
+      return {
+        onboarded: false,
+        isPublic: false,
+        followerAccess: false,
+        wifiEnabled: false,
+        personalise: false,
+        scheduleTimer: null,
+        system: null,
+        device: null,
+        network: null,
+        systemUpdate: null,
+        wifiConnections: null,
+      };
+    }
+
+    return settings;
+  }
+
   async update(userId: string, dto: UpdateUserSettingsDto) {
     let settings = await this.userSettingsRepository.findOne({ where: { userId } });
 
@@ -51,7 +75,8 @@ export class UserSettingsService {
     // If all questions are valid, save data to database
     const answer = await this.userSettingsRepository.create({
       userId,
-      system: body,
+      questionnaire: body,
+      onboarded: true,
     });
 
     await this.userSettingsRepository.save(answer);

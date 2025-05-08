@@ -36,4 +36,10 @@ export class UserSetting extends BaseEntity {
 
   @Column({ name: 'follower_access', default: false })
   followerAccess: boolean;
+
+  @Column({ name: 'onboarded', default: false })
+  onboarded: boolean;
+
+  @Column({ name: 'questionnaire', type: 'json', nullable: true })
+  questionnaire: any;
 }
