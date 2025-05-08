@@ -6,6 +6,7 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { Album } from '../../common/entities/album.entity';
 import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
+import { FavoriteType, UserFavorites } from '../../common/entities/user-favorites.entity';
 import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
@@ -22,6 +23,8 @@ export class AlbumService {
     @InjectRepository(Playlist)
     private readonly playlistRepository: Repository<Playlist>,
     private cognitoService: CognitoService,
+    @InjectRepository(UserFavorites)
+    private readonly userFavoritesRepository: Repository<UserFavorites>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries) {
@@ -86,12 +89,21 @@ export class AlbumService {
 
     const userInfo = await this.cognitoService.getUserByUserId(album.createdBy);
 
+    const favorite = await this.userFavoritesRepository.findOne({
+      where: {
+        userId: album.createdBy,
+        type: FavoriteType.ALBUM,
+        relationId: album.id,
+      },
+    });
+
     return {
       id: album.id,
       name: album.name,
       image: albumImage ? convertURLToS3Readable(albumImage) : '',
       createdBy: userInfo,
       playlists,
+      isFavorite: !!favorite,
     };
   }
 

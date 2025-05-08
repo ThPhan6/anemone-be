@@ -19,6 +19,7 @@ import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
 import { SystemSettingsModule } from './system/system-settings.module';
 import { UserModule } from './user/user.module';
+import { UserFavoritesModule } from './user-favorites/user-favorites.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     ProductVariantModule,
     SystemSettingsModule,
     AlbumModule,
+    UserFavoritesModule,
     MulterModule.register({
       dest: './uploads',
     }),
