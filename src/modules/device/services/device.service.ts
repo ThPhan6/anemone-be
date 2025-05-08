@@ -198,9 +198,17 @@ export class DeviceService {
       throw new ForbiddenException('Device is already registered to another user');
     }
 
+    const lastPing = device.lastPingAt;
+
+    if (!lastPing) {
+      throw new BadRequestException('Device is not responding');
+    }
+    // if (!lastPing || Date.now() - lastPing.getTime() > 10 * 60 * 1000) {
+    //   throw new BadRequestException('Device is not responding');
+    // }
+
     await this.repository.update(device.id, {
       registeredBy: userId,
-      lastPingAt: new Date(),
       createdAt: new Date(),
     });
 
