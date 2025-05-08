@@ -1,6 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { orderBy } from 'lodash';
+import { In } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
+import { DeviceCartridgeRepository } from '../../common/repositories/device-cartridge.repository';
 import { ProductRepository } from '../../common/repositories/product.repository';
 import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
@@ -16,33 +19,94 @@ export class ProductService extends BaseService<Product> {
     private readonly productRepository: ProductRepository,
     private readonly scentConfigRepository: ScentConfigRepository,
     private readonly productVariantRepository: ProductVariantRepository,
+    private readonly deviceCartridgeRepository: DeviceCartridgeRepository,
   ) {
     super(productRepository);
   }
 
   async findAll(query: ApiBaseGetListQueries & { type: ProductType }) {
-    const data = await super.findAll(query, { scentConfig: true, productVariant: true }, [
-      'name',
-      'sku',
-      'serialNumber',
-    ]);
+    // Get all products with their device relationship
+    const data = await super.findAll(
+      query,
+      {
+        scentConfig: true,
+        productVariant: true,
+        device: true,
+        cartridges: true,
+      },
+      ['name', 'sku', 'serialNumber'],
+    );
 
-    return {
-      ...data,
-      items: data.items.map((item) => ({
+    // First, extract all device IDs from products that are of type DEVICE
+    const deviceIds = data.items
+      .filter((item) => item.type === ProductType.DEVICE && item.device)
+      .map((item) => item.device.id);
+
+    // Get all device cartridges in a single database call
+    let deviceCartridgesMap = {};
+
+    const allCartridges = await this.deviceCartridgeRepository.find({
+      where: { device: { id: In(deviceIds) } },
+      relations: { device: true },
+    });
+
+    // Create a map of device ID to its cartridges for quick lookup
+    deviceCartridgesMap = allCartridges.reduce((map, cartridge) => {
+      const deviceId = cartridge.device?.id;
+      if (!deviceId) {
+        return map;
+      }
+
+      if (!map[deviceId]) {
+        map[deviceId] = [];
+      }
+
+      map[deviceId].push({
+        id: cartridge.id,
+        serialNumber: cartridge.serialNumber,
+        position: cartridge.position,
+        percentage: cartridge.percentage,
+        eot: cartridge.eot,
+        ert: cartridge.ert,
+      });
+
+      return map;
+    }, {});
+
+    // Transform the products with device and cartridge info
+    const transformedItems = data.items.map((item) => {
+      const result = {
         ...item,
         scentConfig: transformImageUrls(item.scentConfig, ['background', 'image']),
         productVariant: transformImageUrls(item.productVariant),
-      })),
+      };
+
+      if (item.type === ProductType.DEVICE) {
+        result['device'] = item?.device || null;
+        result['registeredBy'] = item?.device?.registeredBy || null;
+        result['deviceCartridges'] = item?.device?.id
+          ? orderBy(deviceCartridgesMap[item.device.id], 'position', 'asc')
+          : [];
+      }
+
+      if (item.type === ProductType.CARTRIDGE) {
+        result['activatedQuantity'] = item.cartridges?.length || 0;
+      }
+
+      return result;
+    });
+
+    return {
+      ...data,
+      items: transformedItems,
     };
   }
 
   async create(data: CreateProductDto) {
-    const { type, name, sku, scentConfigId, productVariantId } = data;
+    const { type, name, sku, scentConfigId, productVariantId, batchId } = data;
 
-    // Check if product already exists
-    const existingProduct = await this.productRepository.findOne({
-      where: [{ sku }, { name, type }],
+    const existingProduct = await this.findOne({
+      where: [{ sku, name, type }],
     });
 
     if (existingProduct) {
@@ -81,22 +145,22 @@ export class ProductService extends BaseService<Product> {
       newProduct.scentConfig = scentConfig;
     }
 
-    newProduct.serialNumber = await this.productRepository.generateSerialNumber();
+    newProduct.serialNumber = await this.productRepository.generateSerialNumber(type, sku, batchId);
 
-    return super.create(newProduct as Product);
+    return super.create(newProduct);
   }
 
   async getById(id: string) {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['devices', 'cartridges', 'scentConfig', 'productVariant'],
+      relations: ['device', 'cartridges', 'scentConfig', 'productVariant'],
     });
 
     if (!product) {
       throw new HttpException(MESSAGE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const canEditManufacturerInfo = product.devices.length === 0 && product.cartridges.length === 0;
+    const canEditManufacturerInfo = product.device?.id && product.cartridges.length === 0;
 
     // Create base response object
     const result = {
@@ -119,11 +183,18 @@ export class ProductService extends BaseService<Product> {
       case ProductType.DEVICE:
         // For DEVICE type, focus on product variant
         result.productVariant = transformImageUrls(product.productVariant);
+        // Include registeredBy field for DEVICE type products
+        if (product.device) {
+          result['registeredBy'] = product.device.registeredBy || null;
+        }
+
         break;
 
       case ProductType.CARTRIDGE:
         // For CARTRIDGE type, focus on scent config with specific image fields
         result.scentConfig = transformImageUrls(product.scentConfig, ['background', 'image']);
+        // Add activatedQuantity - number of cartridges connected to devices
+        result['activatedQuantity'] = product?.cartridges?.length || 0;
         break;
     }
 
@@ -139,7 +210,24 @@ export class ProductService extends BaseService<Product> {
 
     const updateData = await this.prepareProductUpdateData(data, product);
 
-    return super.update(id, updateData);
+    // Update serial number for cartridges if relevant fields are changed
+    if (
+      product.type === ProductType.CARTRIDGE &&
+      (data.sku || data.manufacturerId || data.batchId)
+    ) {
+      // Use current values for any fields that aren't being updated
+      const sku = data.sku || product.sku;
+      const batchId = data.batchId || product.batchId;
+
+      // Generate the new serial number using the format: <sku>-<batchID>
+      updateData.serialNumber = await this.productRepository.generateSerialNumber(
+        ProductType.CARTRIDGE,
+        sku,
+        batchId,
+      );
+    }
+
+    return this.repository.update(id, updateData);
   }
 
   /**
@@ -148,7 +236,7 @@ export class ProductService extends BaseService<Product> {
   private async getProductForUpdate(id: string): Promise<Product> {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['devices', 'cartridges'],
+      relations: ['device'],
     });
 
     if (!product) {
@@ -162,18 +250,17 @@ export class ProductService extends BaseService<Product> {
    * Validate if restricted fields can be updated based on product relationships
    */
   private validateRestrictedFieldsUpdate(product: Product, data: UpdateProductDto): void {
-    const hasRelations = product.devices.length > 0 || product.cartridges.length > 0;
+    if (!product.device?.id) {
+      return;
+    }
 
-    if (hasRelations) {
-      const restrictedFields = ['manufacturerId', 'batchId'];
-
-      for (const field of restrictedFields) {
-        if (field in data && data[field] !== product[field]) {
-          throw new HttpException(
-            `Cannot update "${field}" for a product already in use`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
+    const restrictedFields = ['manufacturerId', 'batchId'];
+    for (const field of restrictedFields) {
+      if (field in data && data[field] !== product[field]) {
+        throw new HttpException(
+          `Cannot update "${field}" for a product already in use`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
     }
   }
@@ -280,7 +367,7 @@ export class ProductService extends BaseService<Product> {
   async delete(id: string) {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['devices', 'cartridges'],
+      relations: ['device', 'cartridges'],
     });
 
     if (!product) {
@@ -290,7 +377,7 @@ export class ProductService extends BaseService<Product> {
     switch (product.type) {
       case ProductType.DEVICE:
         // For DEVICE type, check if it's connected to any devices
-        if (product.devices.length > 0) {
+        if (product.device?.id) {
           throw new HttpException(
             'Cannot delete device product that is in use',
             HttpStatus.BAD_REQUEST,

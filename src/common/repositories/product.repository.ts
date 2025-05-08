@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { Product } from '../../modules/device/entities/product.entity';
+import { Product, ProductType } from '../../modules/device/entities/product.entity';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -12,9 +12,33 @@ export class ProductRepository extends BaseRepository<Product> {
 
   /**
    * Generates a unique diffuser serial number with format ANE-YYYYMM-XXXX
+   * For cartridges, uses format <sku>-<batchID>
    * @returns A promise that resolves to a unique diffuser serial number
    */
-  async generateSerialNumber(): Promise<string> {
+  async generateSerialNumber(
+    productType?: ProductType,
+    sku?: string,
+    batchId?: string,
+  ): Promise<string> {
+    // For cartridge type products, use the format: <sku>-<batchID>
+    if (productType === ProductType.CARTRIDGE && sku && batchId) {
+      const serialNumber = `${sku}-${batchId}`;
+
+      // Check if this serial number already exists in the database
+      const exists = await this.findOne({
+        where: { serialNumber },
+      });
+
+      if (exists) {
+        throw new Error(
+          `Serial number ${serialNumber} already exists. Please use a different batch ID.`,
+        );
+      }
+
+      return serialNumber;
+    }
+
+    // For device type products or when required fields for cartridges are missing, use the original format
     const now = new Date();
     const year = now.getFullYear().toString();
     const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Ensure two digits
