@@ -23,19 +23,9 @@ export class UserSettingsService {
     });
 
     if (!settings) {
-      return {
-        onboarded: false,
-        isPublic: false,
-        followerAccess: false,
-        wifiEnabled: false,
-        personalise: false,
-        scheduleTimer: null,
-        system: null,
-        device: null,
-        network: null,
-        systemUpdate: null,
-        wifiConnections: null,
-      };
+      const defaultSettings = await this.userSettingsRepository.create({ userId });
+
+      return this.userSettingsRepository.save(defaultSettings);
     }
 
     return settings;
