@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { ScentConfig } from '../../../modules/scent-config/entities/scent-config.entity';
@@ -22,7 +22,7 @@ export class Product extends BaseEntity {
   @Column({ name: 'batch_id' })
   batchId: string;
 
-  @Column({ name: 'serial_number', unique: true, type: 'varchar' })
+  @Column({ name: 'serial_number', type: 'varchar', unique: true })
   serialNumber: string;
 
   @Column({ name: 'name' })
@@ -48,6 +48,6 @@ export class Product extends BaseEntity {
   @OneToMany(() => DeviceCartridge, (cartridge) => cartridge.product)
   cartridges: DeviceCartridge[];
 
-  @OneToMany(() => Device, (device) => device.product)
-  devices: Device[];
+  @OneToOne(() => Device, (device) => device.product)
+  device: Device;
 }
