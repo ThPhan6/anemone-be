@@ -89,7 +89,7 @@ export class DeviceIotService {
     if (command.command.type === CommandType.PAUSE || !userSession) {
       return {
         interval: parseInt(process.env.REPEAT_INTERVAL),
-        cycle: -1,
+        cycle: 0,
         cartridges: Array.from({ length: 6 }, (_, i) => ({
           position: i + 1,
           uptime: 0,
@@ -109,12 +109,7 @@ export class DeviceIotService {
 
     return {
       interval: parseInt(process.env.REPEAT_INTERVAL),
-      cycle:
-        command.command.type === CommandType.TEST
-          ? 1
-          : command.command.type === CommandType.PAUSE
-            ? 0
-            : -1,
+      cycle: command.command.type === CommandType.TEST ? 1 : -1,
       cartridges: cartridgeUptimes,
     };
   }
