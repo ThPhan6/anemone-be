@@ -1,4 +1,4 @@
-import { Body, Patch, Post } from '@nestjs/common';
+import { Body, Get, Patch, Post } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 
 import { BaseController } from '../../core/controllers/base.controller';
@@ -17,6 +17,12 @@ import { UserSettingsService } from './user-settings.service';
 export class UserSettingsController extends BaseController {
   constructor(private readonly userSettingsService: UserSettingsService) {
     super();
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get user settings data' })
+  async get(@AuthUser() user: UserDto) {
+    return this.userSettingsService.get(user.sub);
   }
 
   @Patch()
