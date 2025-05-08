@@ -147,6 +147,7 @@ export class DeviceService {
     const devices = await this.repository.find({
       where: { registeredBy: userId },
       relations: ['product', 'space', 'product.productVariant'],
+      order: { createdAt: 'DESC' },
     });
 
     return devices.map((el) => ({
@@ -206,7 +207,10 @@ export class DeviceService {
     //   throw new BadRequestException('Device is not responding');
     // }
 
-    await this.repository.update(device.id, { registeredBy: userId });
+    await this.repository.update(device.id, {
+      registeredBy: userId,
+      createdAt: new Date(),
+    });
 
     return Object.assign(device, { registeredBy: userId });
   }
@@ -242,11 +246,14 @@ export class DeviceService {
   async removeDevice(userId: string, deviceId: string) {
     const device = await this.validateDeviceOwnership(deviceId, userId);
 
-    if (!device) {
-      throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
+    const updatePayload = {
+      isConnected: false,
+      registeredBy: null,
+      space: null,
+      lastPingAt: null,
+    };
 
-    const removedDevice = await this.repository.softDelete(device.id);
+    const removedDevice = await this.repository.update(device.id, updatePayload);
 
     return removedDevice;
   }
