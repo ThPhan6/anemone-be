@@ -23,27 +23,27 @@ export class UserSessionsService {
       relations: ['device', 'playlist', 'scent', 'album'],
     });
 
-    const device = await this.deviceRepository.findOne({
+    const devices = await this.deviceRepository.find({
       where: {
         registeredBy: userId,
-        isConnected: true,
       },
     });
 
-    if (!userSession && !device) {
-      return {
-        deviceStatus: null,
-        scentStatus: null,
-        userSession: null,
-      };
-    }
-
-    const deviceStatus = (userSession?.device || device)?.isConnected
-      ? PingDeviceStatus.CONNECTED
-      : PingDeviceStatus.DISCONNECTED;
-
     return {
-      deviceStatus,
+      devices:
+        devices.length > 0
+          ? devices.map((device) => ({
+              id: device.id,
+              status: device.isConnected
+                ? PingDeviceStatus.CONNECTED
+                : PingDeviceStatus.DISCONNECTED,
+            }))
+          : [],
+      deviceStatus: userSession
+        ? userSession?.device?.isConnected
+          ? PingDeviceStatus.CONNECTED
+          : PingDeviceStatus.DISCONNECTED
+        : null,
       scentStatus: userSession?.status ?? null,
       userSession: userSession ?? null,
     };
