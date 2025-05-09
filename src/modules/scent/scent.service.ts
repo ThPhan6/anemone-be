@@ -4,6 +4,7 @@ import { sortBy } from 'lodash';
 import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
+import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
@@ -52,6 +53,8 @@ export class ScentService {
     private readonly deviceCartridgeRepository: Repository<DeviceCartridge>,
     @InjectRepository(UserSession)
     private readonly userSessionRepository: Repository<UserSession>,
+    @InjectRepository(PlaylistScent)
+    private readonly playlistScentRepository: Repository<PlaylistScent>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
@@ -300,7 +303,9 @@ export class ScentService {
       throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return await this.scentRepository.delete(scentId);
+    await this.playlistScentRepository.softDelete({ scent: { id: scentId } });
+
+    return await this.scentRepository.softDelete(scentId);
   }
 
   async getPublic(queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AwsConfigService } from 'common/config/aws.config';
 
+import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
@@ -24,6 +25,7 @@ import { PlaylistService } from './playlist.service';
       Product,
       UserSession,
       DeviceCartridge,
+      AlbumPlaylist,
     ]),
   ],
   controllers: [PlaylistController],
