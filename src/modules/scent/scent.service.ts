@@ -74,12 +74,30 @@ export class ScentService {
       params: queries,
     });
 
-    return {
-      items: result.items.map((el) => ({
+    const categories = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
+    });
+
+    const newItems = result.items.map((el) => {
+      const categoryTags = categories
+        .filter((category) => JSON.parse(el.tags).includes(category.id))
+        .map((category) => ({
+          id: category.id,
+          name: category.name,
+          image: category.metadata.image ? convertURLToS3Readable(category.metadata.image) : '',
+          description: category.metadata.name,
+        }));
+
+      return {
         ...el,
+        tags: categoryTags,
         image: el.image ? convertURLToS3Readable(el.image) : '',
         createdBy: userInfo,
-      })),
+      };
+    });
+
+    return {
+      items: newItems,
       pagination: result.pagination,
     };
   }
@@ -246,9 +264,11 @@ export class ScentService {
       throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const scentName = updateScentDto.name || found.name;
+
     const existed = await this.scentRepository.findOne({
       where: {
-        name: updateScentDto.name,
+        name: scentName,
         createdBy: userId,
       },
     });
@@ -267,15 +287,12 @@ export class ScentService {
 
     let image = found.image;
 
-    // Check if we should remove the image
-    if (updateScentDto.isRemoveImage && file) {
+    if (file) {
       const fileName = `scents/${Date.now()}`;
 
       const uploadedImage = await this.storageService.uploadImage(file, fileName);
 
       image = uploadedImage.fileName;
-
-      delete updateScentDto.isRemoveImage;
     }
 
     // Prepare the updated scent data
@@ -292,6 +309,50 @@ export class ScentService {
     const updated = await this.scentRepository.update(scentId, updatedScentData);
 
     return updated;
+  }
+
+  async replace(
+    userId: string,
+    scentId: string,
+    bodyRequest: CreateScentDto,
+    file: Express.Multer.File,
+  ) {
+    const found = await this.scentRepository.findOne({
+      where: { id: scentId, createdBy: userId },
+    });
+
+    if (!found) {
+      throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const existed = await this.scentRepository.findOne({
+      where: {
+        name: bodyRequest.name,
+        createdBy: userId,
+      },
+    });
+
+    if (existed && existed.id !== scentId) {
+      throw new HttpException(MESSAGE.SCENT_MOBILE.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
+    }
+
+    //check validate cartridges
+    await this.validateScentConfig(JSON.parse(bodyRequest.cartridgeInfo), bodyRequest.intensity);
+
+    let image = '';
+
+    if (file) {
+      const fileName = `scents/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      image = uploadedImage.fileName;
+    }
+
+    const updatedScentData = {
+      ...bodyRequest,
+      image,
+    } as any;
+
+    return await this.scentRepository.update(scentId, updatedScentData);
   }
 
   async delete(userId: string, scentId: string) {

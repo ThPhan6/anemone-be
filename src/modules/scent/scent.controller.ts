@@ -6,6 +6,7 @@ import {
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -65,7 +66,7 @@ export class ScentController extends BaseController {
           new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
         ],
-        fileIsRequired: false,
+        fileIsRequired: true,
       }),
     )
     image: Express.Multer.File,
@@ -81,8 +82,8 @@ export class ScentController extends BaseController {
     return this.scentService.testScent(body);
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update a scent by id' })
+  @Patch(':id')
+  @ApiOperation({ summary: 'Partially update scent data' })
   @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
   async update(
     @AuthUser() user: UserDto,
@@ -100,6 +101,27 @@ export class ScentController extends BaseController {
     image: Express.Multer.File,
   ) {
     return this.scentService.update(user.sub, id, body, image);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update entire scent data' })
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async replace(
+    @AuthUser() user: UserDto,
+    @Param('id') id: string,
+    @Body() body: CreateScentDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: true,
+      }),
+    )
+    image: Express.Multer.File,
+  ) {
+    return this.scentService.replace(user.sub, id, body, image);
   }
 
   @Delete(':id')
