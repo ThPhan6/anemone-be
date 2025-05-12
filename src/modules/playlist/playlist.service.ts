@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
+import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
@@ -44,6 +45,8 @@ export class PlaylistService {
     @InjectRepository(DeviceCartridge)
     private deviceCartridgeRepository: Repository<DeviceCartridge>,
     private storageService: StorageService,
+    @InjectRepository(AlbumPlaylist)
+    private albumPlaylistRepository: Repository<AlbumPlaylist>,
   ) {}
 
   async get(
@@ -295,9 +298,11 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    await this.playlistScentRepository.delete({ playlist: { id } });
+    await this.playlistScentRepository.softDelete({ playlist: { id } });
 
-    const playlist = await this.playlistRepository.delete(id);
+    await this.albumPlaylistRepository.softDelete({ playlist: { id } });
+
+    const playlist = await this.playlistRepository.softDelete(id);
 
     return playlist;
   }
