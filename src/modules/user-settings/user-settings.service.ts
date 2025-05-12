@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { UserSetting } from '../../common/entities/user-setting.entity';
-import { SettingDefinition } from '../setting-definition/entities/setting-definition.entity';
+import { SettingDefinition } from '../system/entities/setting-definition.entity';
 import { QuestionnaireAnswerItem } from './dto/questionnaire.dto';
 import { UpdateUserSettingsDto } from './dto/update-visibility.dto';
 

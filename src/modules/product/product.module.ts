@@ -8,7 +8,7 @@ import { ScentConfigRepository } from '../../common/repositories/scent-config.re
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
 import { ProductVariant } from '../product-variant/entities/product-variant.entity';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { ScentConfig } from '../system/entities/scent-config.entity';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
 

@@ -7,7 +7,7 @@ import { Device, DeviceProvisioningStatus } from '../device/entities/device.enti
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product, ProductType } from '../device/entities/product.entity';
 import { ProductVariant } from '../product-variant/entities/product-variant.entity';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { ScentConfig } from '../system/entities/scent-config.entity';
 @Injectable()
 export class MockService {
   constructor(

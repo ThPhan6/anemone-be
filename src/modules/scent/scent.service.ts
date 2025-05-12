@@ -16,12 +16,12 @@ import { Device } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../device/entities/device-command.entity';
 import { Product } from '../device/entities/product.entity';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { StorageService } from '../storage/storage.service';
+import { ScentConfig } from '../system/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../setting-definition/entities/setting-definition.entity';
-import { StorageService } from '../storage/storage.service';
+} from '../system/entities/setting-definition.entity';
 import {
   CartridgeInfoDto,
   CreateScentDto,

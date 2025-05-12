@@ -13,8 +13,6 @@ import { PlaylistModule } from './playlist/playlist.module';
 import { ProductModule } from './product/product.module';
 import { ProductVariantModule } from './product-variant/product-variant.module';
 import { ScentModule } from './scent/scent.module';
-import { ScentConfigModule } from './scent-config/scent-config.module';
-import { SettingDefinitionModule } from './setting-definition/setting-definition.module';
 import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
 import { SystemSettingsModule } from './system/system-settings.module';
@@ -32,8 +30,6 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     AuthModule,
     DeviceModule,
     ScentModule,
-    ScentConfigModule,
-    SettingDefinitionModule,
     SpaceModule,
     PlaylistModule,
     UserSettingsModule,
