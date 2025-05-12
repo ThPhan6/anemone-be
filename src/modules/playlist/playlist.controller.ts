@@ -1,6 +1,22 @@
-import { Body, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Delete,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  Patch,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation } from '@nestjs/swagger';
 
+import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { MemberRoleGuard } from '../../core/decorator/auth.decorator';
@@ -8,7 +24,7 @@ import { AuthUser } from '../../core/decorator/auth-user.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { UserDto } from '../auth/dto/auth-user.dto';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
-import { CreatePlaylistDto } from './dto/create-playlist.dto';
+import { CreatePlaylistDto, UpdatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
 import { PlaylistService } from './playlist.service';
 @MemberRoleGuard()
@@ -35,20 +51,68 @@ export class PlaylistController extends BaseController {
 
   @Post()
   @ApiOperation({ summary: 'Create a playlist' })
-  async create(@AuthUser() user: UserDto, @Body() bodyRequest: CreatePlaylistDto) {
-    const playlist = await this.playlistService.create(user.sub, bodyRequest);
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async create(
+    @AuthUser() user: UserDto,
+    @Body() bodyRequest: CreatePlaylistDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    image: Express.Multer.File,
+  ) {
+    const playlist = await this.playlistService.create(user.sub, bodyRequest, image);
+
+    return playlist;
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Partially update playlist data' })
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async update(
+    @AuthUser() user: UserDto,
+    @Param('id') id: string,
+    @Body() bodyRequest: UpdatePlaylistDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    image: Express.Multer.File,
+  ) {
+    const playlist = await this.playlistService.update(user.sub, id, bodyRequest, image);
 
     return playlist;
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update a playlist' })
-  async update(
+  @ApiOperation({ summary: 'Update entire playlist data' })
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async replace(
     @AuthUser() user: UserDto,
     @Param('id') id: string,
     @Body() bodyRequest: CreatePlaylistDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    image: Express.Multer.File,
   ) {
-    const playlist = await this.playlistService.update(user.sub, id, bodyRequest);
+    const playlist = await this.playlistService.replace(user.sub, id, bodyRequest, image);
 
     return playlist;
   }
