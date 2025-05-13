@@ -334,11 +334,11 @@ export class DeviceIotService {
       throw new NotFoundException('Device not found');
     }
 
-    if (!device.isConnected) {
-      return {
-        command: Command.REQUEST_AUTH,
-      };
-    }
+    // if (!device.isConnected) {
+    //   return {
+    //     command: Command.REQUEST_AUTH,
+    //   };
+    // }
 
     //Check lastPingAt — if > 15s ago, return command: "request auth"
     if (device.lastPingAt) {
