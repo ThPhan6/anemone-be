@@ -31,6 +31,9 @@ export class Product extends BaseEntity {
   @Column({ name: 'type', type: 'smallint', enum: ProductType })
   type: ProductType;
 
+  @Column({ name: 'certificate_id', type: 'varchar', nullable: true })
+  certificateId: string;
+
   @ManyToOne(() => ScentConfig)
   @JoinColumn({ name: 'scent_config_id' })
   scentConfig: ScentConfig;

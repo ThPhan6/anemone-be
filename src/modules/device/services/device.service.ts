@@ -17,7 +17,9 @@ import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../../common/utils/file';
+import { IotService } from '../../../core/services/iot-core.service';
 import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
+import { CertificateStorageService } from '../../storage/services/certificate-storage.service';
 import { PingDeviceStatus } from '../device.enum';
 import { RegisterDeviceDto, UpdateDeviceDto } from '../dto';
 import { ImportDeviceDto } from '../dto/import-device.dto';
@@ -34,7 +36,9 @@ export class DeviceService {
     @InjectRepository(Device)
     private repository: Repository<Device>,
     private awsIotService: AwsIotCoreService,
+    private iotService: IotService,
     private deviceCertificateService: DeviceCertificateService,
+    private certificateStorageService: CertificateStorageService,
     @InjectRepository(DeviceCertificate)
     private certificateRepository: Repository<DeviceCertificate>,
     @InjectRepository(Space)
@@ -559,9 +563,8 @@ export class DeviceService {
     const successes: Product[] = [];
     const failures: Array<{ csvRowIdentifier: string; errors: string[] }> = [];
 
-    // Get a default product variant with more specific conditions
     const defaultVariant = await this.productVariantRepository.findOne({
-      where: { deletedAt: IsNull() }, // Only get non-deleted variants
+      where: { deletedAt: IsNull() },
       order: { createdAt: 'ASC' },
     });
 
@@ -586,15 +589,36 @@ export class DeviceService {
       }
 
       try {
+        // Create the product first
         const newProduct = this.productRepository.create({
           serialNumber: record.deviceId,
           manufacturerId: record.manufacturerId,
           batchId: record.batchId,
           name: record.deviceId,
           type: ProductType.DEVICE,
-          sku: defaultVariant.name, // Use product variant name as SKU
+          sku: defaultVariant.name,
           productVariant: { id: defaultVariant.id },
         });
+
+        // Create certificate using IoT Core service
+        const certResult = await this.iotService.createThingAndCertificate(record.deviceId);
+
+        // Store certificate in S3
+        await this.certificateStorageService.storeCertificate(
+          record.deviceId,
+          certResult.certificateId,
+          certResult.certificatePem,
+        );
+
+        // Store private key in S3 (temporary)
+        await this.certificateStorageService.storePrivateKey(
+          record.deviceId,
+          certResult.certificateId,
+          certResult.privateKey,
+        );
+
+        // Update product with certificate ID
+        newProduct.certificateId = certResult.certificateId;
 
         const savedProduct = await this.productRepository.save(newProduct);
         successes.push(savedProduct);

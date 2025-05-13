@@ -25,12 +25,14 @@ export class IotService {
     thingName: string;
     certificateArn: string;
     certificatePem: string;
+    certificateId: string;
     privateKey: string;
     publicKey: string;
   }> {
     try {
       // 1. Create Certificate
       const certificate = await this.iot.createKeysAndCertificate({ setAsActive: true }).promise();
+      const certificateId = certificate.certificateId;
       const certificateArn = certificate.certificateArn;
       const certificatePem = certificate.certificatePem;
       const privateKey = certificate.keyPair.PrivateKey;
@@ -66,12 +68,55 @@ export class IotService {
 
       await this.iot.attachThingPrincipal(attachParams).promise();
 
-      return { thingName, certificateArn, certificatePem, privateKey, publicKey };
+      return { thingName, certificateArn, certificatePem, privateKey, publicKey, certificateId };
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error creating Thing and Certificate:', error);
       throw error;
     }
+  }
+
+  async describeCertificate(certificateId: string) {
+    try {
+      const response = await this.iot
+        .describeCertificate({
+          certificateId,
+        })
+        .promise();
+
+      return response.certificateDescription;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error describing certificate:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check certificate status and wait until it is active
+   * @param certificateId The ID of the certificate to check
+   * @param maxAttempts Maximum number of attempts to check the status
+   * @param delayMs Delay in milliseconds between checks
+   */
+  async waitForCertificateStatus(
+    certificateId: string,
+    maxAttempts = 20,
+    delayMs = 1000,
+  ): Promise<boolean> {
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const certDescription = await this.describeCertificate(certificateId);
+
+      if (certDescription.status === 'ACTIVE') {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      attempts++;
+    }
+
+    return false;
   }
 
   private async getOrCreateIotPolicy(): Promise<string> {
