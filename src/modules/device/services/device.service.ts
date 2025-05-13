@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { parse as csvParse } from 'csv-parse/sync';
 import { orderBy } from 'lodash';
 import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
 import { In, IsNull, Repository } from 'typeorm';
@@ -16,12 +17,14 @@ import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../../common/utils/file';
+import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
 import { PingDeviceStatus } from '../device.enum';
 import { RegisterDeviceDto, UpdateDeviceDto } from '../dto';
+import { ImportDeviceDto } from '../dto/import-device.dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { DeviceCertificate } from '../entities/device-certificate.entity';
 import { CommandType, DeviceCommand } from '../entities/device-command.entity';
-import { Product } from '../entities/product.entity';
+import { Product, ProductType } from '../entities/product.entity';
 import { AwsIotCoreService } from './aws-iot-core.service';
 import { DeviceCertificateService } from './device-certificate.service';
 
@@ -46,6 +49,8 @@ export class DeviceService {
     private productRepository: Repository<Product>,
     @InjectRepository(DeviceCartridge)
     private deviceCartridgeRepository: Repository<DeviceCartridge>,
+    @InjectRepository(ProductVariant)
+    private productVariantRepository: Repository<ProductVariant>,
   ) {}
 
   /**
@@ -451,5 +456,211 @@ export class DeviceService {
       deviceStatus: PingDeviceStatus.CONNECTED,
       scentStatus,
     };
+  }
+
+  async importDevicesFromCsv(fileBuffer: Buffer): Promise<{
+    successRecords: Product[];
+    failedRecords: Array<{ csvRowIdentifier: string; errors: string[] }>;
+  }> {
+    try {
+      const importDtos: ImportDeviceDto[] = [];
+      const failedParseRecords: Array<{ csvRowIdentifier: string; errors: string[] }> = [];
+
+      const rows = csvParse(fileBuffer.toString(), {
+        columns: true,
+        skip_empty_lines: true,
+      });
+
+      for (const row of rows) {
+        const importDto = new ImportDeviceDto();
+        // Handle both camelCase and space-separated column names
+        importDto.deviceId = (row['Device ID'] || row['deviceId'])?.trim();
+        importDto.manufacturerId = (row['Manufacturer ID'] || row['manufacturerId'])?.trim();
+        importDto.batchId = (row['Batch ID'] || row['batchId'])?.trim();
+
+        if (importDto.deviceId) {
+          importDtos.push(importDto);
+        } else {
+          failedParseRecords.push({
+            csvRowIdentifier: row['Device ID'] || row['deviceId'] || 'unknown',
+            errors: ['Missing required field: Device ID'],
+          });
+        }
+      }
+
+      const { newDevices, existingDevices, lookupFailures } =
+        await this._segregateNewAndExisting(importDtos);
+
+      const newResults = await this._handleImportNew(newDevices);
+      const existingResults = await this._handleImportExisted(existingDevices);
+
+      return {
+        successRecords: [...newResults.successes, ...existingResults.successes],
+        failedRecords: [
+          ...newResults.failures,
+          ...existingResults.failures,
+          ...failedParseRecords,
+          ...lookupFailures,
+        ],
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to process CSV file: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  private async _segregateNewAndExisting(dtos: ImportDeviceDto[]): Promise<{
+    newDevices: ImportDeviceDto[];
+    existingDevices: ImportDeviceDto[];
+    lookupFailures: Array<{ csvRowIdentifier: string; errors: string[] }>;
+  }> {
+    const deviceIds = dtos.map((dto) => dto.deviceId);
+    const existingProducts = await this.productRepository.find({
+      where: { serialNumber: In(deviceIds) },
+    });
+    const existingSerialNumberMap = new Map(
+      existingProducts.map((product) => [product.serialNumber, product]),
+    );
+
+    const newDevices: ImportDeviceDto[] = [];
+    const existingDevices: ImportDeviceDto[] = [];
+    const lookupFailures: Array<{ csvRowIdentifier: string; errors: string[] }> = [];
+
+    for (const dto of dtos) {
+      if (existingSerialNumberMap.has(dto.deviceId)) {
+        existingDevices.push(dto);
+      } else {
+        newDevices.push(dto);
+      }
+    }
+
+    return { newDevices, existingDevices, lookupFailures };
+  }
+
+  private _validateNewDevice(dto: ImportDeviceDto): string[] {
+    const errors: string[] = [];
+    if (!dto.manufacturerId) {
+      errors.push('Manufacturer ID is required for new devices');
+    }
+
+    if (!dto.batchId) {
+      errors.push('Batch ID is required for new devices');
+    }
+
+    return errors;
+  }
+
+  private async _handleImportNew(records: ImportDeviceDto[]): Promise<{
+    successes: Product[];
+    failures: Array<{ csvRowIdentifier: string; errors: string[] }>;
+  }> {
+    const successes: Product[] = [];
+    const failures: Array<{ csvRowIdentifier: string; errors: string[] }> = [];
+
+    // Get a default product variant with more specific conditions
+    const defaultVariant = await this.productVariantRepository.findOne({
+      where: { deletedAt: IsNull() }, // Only get non-deleted variants
+      order: { createdAt: 'ASC' },
+    });
+
+    if (!defaultVariant) {
+      return {
+        successes: [],
+        failures: records.map((record) => ({
+          csvRowIdentifier: record.deviceId,
+          errors: ['No product variant found in the system'],
+        })),
+      };
+    }
+
+    for (const record of records) {
+      const validationErrors = this._validateNewDevice(record);
+      if (validationErrors.length > 0) {
+        failures.push({
+          csvRowIdentifier: record.deviceId,
+          errors: validationErrors,
+        });
+        continue;
+      }
+
+      try {
+        const newProduct = this.productRepository.create({
+          serialNumber: record.deviceId,
+          manufacturerId: record.manufacturerId,
+          batchId: record.batchId,
+          name: record.deviceId,
+          type: ProductType.DEVICE,
+          sku: defaultVariant.name, // Use product variant name as SKU
+          productVariant: { id: defaultVariant.id },
+        });
+
+        const savedProduct = await this.productRepository.save(newProduct);
+        successes.push(savedProduct);
+      } catch (error) {
+        failures.push({
+          csvRowIdentifier: record.deviceId,
+          errors: [`Error creating device: ${error.message}`],
+        });
+      }
+    }
+
+    return { successes, failures };
+  }
+
+  private async _handleImportExisted(records: ImportDeviceDto[]): Promise<{
+    successes: Product[];
+    failures: Array<{ csvRowIdentifier: string; errors: string[] }>;
+  }> {
+    const successes: Product[] = [];
+    const failures: Array<{ csvRowIdentifier: string; errors: string[] }> = [];
+
+    const existingProducts = await this.productRepository.find({
+      where: { serialNumber: In(records.map((r) => r.deviceId)) },
+      relations: ['device'],
+    });
+
+    const existingProductMap = new Map(
+      existingProducts.map((product) => [product.serialNumber, product]),
+    );
+
+    for (const record of records) {
+      const existingProduct = existingProductMap.get(record.deviceId);
+      if (!existingProduct) {
+        failures.push({
+          csvRowIdentifier: record.deviceId,
+          errors: ['Product not found (this should not happen after segregation)'],
+        });
+        continue;
+      }
+
+      try {
+        const updates: Partial<Product> = {};
+
+        if (record.manufacturerId && record.manufacturerId !== existingProduct.manufacturerId) {
+          updates.manufacturerId = record.manufacturerId;
+        }
+
+        if (record.batchId && record.batchId !== existingProduct.batchId) {
+          updates.batchId = record.batchId;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          Object.assign(existingProduct, updates);
+          const updatedProduct = await this.productRepository.save(existingProduct);
+          successes.push(updatedProduct);
+        } else {
+          successes.push(existingProduct); // No changes needed
+        }
+      } catch (error) {
+        failures.push({
+          csvRowIdentifier: record.deviceId,
+          errors: [`Error updating device: ${error.message}`],
+        });
+      }
+    }
+
+    return { successes, failures };
   }
 }
