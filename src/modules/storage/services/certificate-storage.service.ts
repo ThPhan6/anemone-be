@@ -19,7 +19,7 @@ export class CertificateStorageService {
   /**
    * Generate a unique S3 key for a certificate file
    */
-  private generateCertificateKey(
+  public generateCertificateKey(
     deviceId: string,
     certificateId: string,
     fileType: 'cert' | 'key',

@@ -1,4 +1,5 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { orderBy } from 'lodash';
 import { In } from 'typeorm';
 
@@ -9,17 +10,24 @@ import { ProductVariantRepository } from '../../common/repositories/product-vari
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
 import { transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
+import { IotService } from '../../core/services/iot-core.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Product, ProductType } from '../device/entities/product.entity';
+import { CertificateStorageService } from '../storage/services/certificate-storage.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product-request.dto';
 
 @Injectable()
 export class ProductService extends BaseService<Product> {
+  private readonly logger = new Logger(ProductService.name);
+
   constructor(
+    @InjectRepository(Product)
     private readonly productRepository: ProductRepository,
     private readonly scentConfigRepository: ScentConfigRepository,
     private readonly productVariantRepository: ProductVariantRepository,
     private readonly deviceCartridgeRepository: DeviceCartridgeRepository,
+    private readonly certificateStorageService: CertificateStorageService,
+    private readonly itoService: IotService,
   ) {
     super(productRepository);
   }
@@ -174,15 +182,37 @@ export class ProductService extends BaseService<Product> {
       configTemplate: product.configTemplate,
       supportedFeatures: product.supportedFeatures,
       canEditManufacturerInfo,
-      scentConfig: null,
-      productVariant: null,
     };
 
     // Apply type-specific transformations
     switch (product.type) {
       case ProductType.DEVICE:
-        // For DEVICE type, focus on product variant
-        result.productVariant = transformImageUrls(product.productVariant);
+        // For DEVICE type, focus on product variant and fetch certificate if exists
+        result['productVariant'] = transformImageUrls(product.productVariant);
+        if (product.certificateId) {
+          const key = this.certificateStorageService.generateCertificateKey(
+            product.serialNumber,
+            product.certificateId,
+            'cert',
+          );
+          try {
+            const downloadedCertificate =
+              await this.certificateStorageService.generateCertificateDownloadUrl(key);
+            const describeCertificate = await this.itoService.describeCertificate(
+              product.certificateId,
+            );
+            result['certificate'] = {
+              url: downloadedCertificate,
+              status: describeCertificate.status,
+              createdAt: describeCertificate.creationDate,
+            };
+          } catch (error) {
+            this.logger.error(
+              `Failed to fetch certificate for product ${product.id}: ${error.message}`,
+            );
+          }
+        }
+
         // Include registeredBy field for DEVICE type products
         if (product.device) {
           result['registeredBy'] = product.device.registeredBy || null;
@@ -192,7 +222,7 @@ export class ProductService extends BaseService<Product> {
 
       case ProductType.CARTRIDGE:
         // For CARTRIDGE type, focus on scent config with specific image fields
-        result.scentConfig = transformImageUrls(product.scentConfig, ['background', 'image']);
+        result['scentConfig'] = transformImageUrls(product.scentConfig, ['background', 'image']);
         // Add activatedQuantity - number of cartridges connected to devices
         result['activatedQuantity'] = product?.cartridges?.length || 0;
         break;

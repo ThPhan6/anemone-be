@@ -5,10 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Scent } from '../../common/entities/scent.entity';
 import { Space } from '../../common/entities/space.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
+import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
+import { IotService } from '../../core/services/iot-core.service';
+import { ProductVariant } from '../product-variant/entities/product-variant.entity';
 import { SettingDefinition } from '../setting-definition/entities/setting-definition.entity';
 import { SettingValue } from '../setting-definition/entities/setting-value.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DeviceController } from './controllers/device.controller';
+import { DeviceAdminController } from './controllers/device-admin.controller';
 import { DeviceIotController } from './controllers/device-iot.controller';
 import { DeviceOfflineCron } from './device-offline.cron';
 import { Device } from './entities/device.entity';
@@ -20,6 +24,7 @@ import { AwsIotCoreService } from './services/aws-iot-core.service';
 import { DeviceService } from './services/device.service';
 import { DeviceCertificateService } from './services/device-certificate.service';
 import { DeviceIotService } from './services/device-iot.service';
+
 @Module({
   imports: [
     ConfigModule,
@@ -35,15 +40,18 @@ import { DeviceIotService } from './services/device-iot.service';
       Space,
       UserSession,
       Scent,
+      ProductVariant,
     ]),
   ],
-  controllers: [DeviceController, DeviceIotController],
+  controllers: [DeviceController, DeviceIotController, DeviceAdminController],
   providers: [
+    IotService,
     AwsIotCoreService,
     DeviceIotService,
     DeviceCertificateService,
     DeviceService,
     DeviceOfflineCron,
+    ProductVariantRepository,
   ],
   exports: [DeviceService, DeviceCertificateService],
 })
