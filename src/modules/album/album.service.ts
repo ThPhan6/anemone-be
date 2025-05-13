@@ -11,7 +11,8 @@ import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { CognitoService } from '../auth/cognito.service';
-import { CreateAlbumDto } from './dto/album-request';
+import { StorageService } from '../storage/storage.service';
+import { CreateAlbumDto, UpdateAlbumDto } from './dto/album-request';
 
 @Injectable()
 export class AlbumService {
@@ -25,6 +26,7 @@ export class AlbumService {
     private cognitoService: CognitoService,
     @InjectRepository(UserFavorites)
     private readonly userFavoritesRepository: Repository<UserFavorites>,
+    private storageService: StorageService,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries) {
@@ -44,7 +46,11 @@ export class AlbumService {
       return {
         id: album.id,
         name: album.name,
-        image: firstScent?.image ? convertURLToS3Readable(firstScent?.image) : '',
+        image: album.image
+          ? convertURLToS3Readable(album.image)
+          : firstScent?.image
+            ? convertURLToS3Readable(firstScent?.image)
+            : '',
         createdBy: userInfo,
       };
     });
@@ -85,7 +91,9 @@ export class AlbumService {
       });
     }
 
-    const albumImage = playlists[0]?.image || '';
+    const albumImage = album.image
+      ? convertURLToS3Readable(album.image)
+      : playlists[0]?.image || '';
 
     const userInfo = await this.cognitoService.getUserByUserId(album.createdBy);
 
@@ -107,7 +115,7 @@ export class AlbumService {
     };
   }
 
-  async create(userId: string, body: CreateAlbumDto) {
+  async create(userId: string, body: CreateAlbumDto, file: Express.Multer.File) {
     const found = await this.albumRepository.findOne({
       where: { name: body.name, createdBy: userId },
     });
@@ -116,16 +124,58 @@ export class AlbumService {
       throw new HttpException(MESSAGE.ALBUM.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
+    let uploadedImageUrl = '';
+
+    if (file) {
+      const fileName = `albums/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      uploadedImageUrl = uploadedImage.fileName;
+    }
+
     const album = this.albumRepository.create({
       ...body,
-      image: '',
+      image: uploadedImageUrl,
       createdBy: userId,
     });
 
     return this.albumRepository.save(album);
   }
 
-  async update(userId: string, id: string, body: CreateAlbumDto) {
+  async update(userId: string, id: string, body: UpdateAlbumDto, file: Express.Multer.File) {
+    const found = await this.albumRepository.findOne({
+      where: { id, createdBy: userId },
+    });
+
+    if (!found) {
+      throw new HttpException(MESSAGE.ALBUM.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const albumName = body.name || found.name;
+
+    const existed = await this.albumRepository.findOne({
+      where: { name: albumName, createdBy: userId },
+    });
+
+    if (existed && existed.id !== id) {
+      throw new HttpException(MESSAGE.ALBUM.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
+    }
+
+    let image = found.image;
+
+    if (file) {
+      const fileName = `albums/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+
+      image = uploadedImage.fileName;
+    }
+
+    return this.albumRepository.update(id, {
+      image,
+      name: albumName,
+    });
+  }
+
+  async replace(userId: string, id: string, body: CreateAlbumDto, file: Express.Multer.File) {
     const found = await this.albumRepository.findOne({
       where: { id, createdBy: userId },
     });
@@ -142,8 +192,18 @@ export class AlbumService {
       throw new HttpException(MESSAGE.ALBUM.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
+    let image = found.image;
+
+    if (file) {
+      const fileName = `albums/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+
+      image = uploadedImage.fileName;
+    }
+
     return this.albumRepository.update(id, {
-      ...body,
+      image,
+      name: body.name,
     });
   }
 

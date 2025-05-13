@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
+import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
@@ -19,8 +20,9 @@ import {
   ESystemDefinitionType,
   SettingDefinition,
 } from '../setting-definition/entities/setting-definition.entity';
+import { StorageService } from '../storage/storage.service';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
-import { CreatePlaylistDto } from './dto/create-playlist.dto';
+import { CreatePlaylistDto, UpdatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
 @Injectable()
 export class PlaylistService {
@@ -42,6 +44,9 @@ export class PlaylistService {
     private userSessionRepository: Repository<UserSession>,
     @InjectRepository(DeviceCartridge)
     private deviceCartridgeRepository: Repository<DeviceCartridge>,
+    private storageService: StorageService,
+    @InjectRepository(AlbumPlaylist)
+    private albumPlaylistRepository: Repository<AlbumPlaylist>,
   ) {}
 
   async get(
@@ -65,8 +70,9 @@ export class PlaylistService {
       items: items.map((playlist) => ({
         id: playlist.id,
         name: playlist.name,
-        image:
-          playlist.playlistScents.length > 0
+        image: playlist.image
+          ? convertURLToS3Readable(playlist.image)
+          : playlist.playlistScents.length > 0
             ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
             : '',
         createdBy: userInfo,
@@ -157,8 +163,9 @@ export class PlaylistService {
     const playlistDetail = {
       id: playlist.id,
       name: playlist.name,
-      image:
-        playlist.playlistScents.length > 0 && playlist.playlistScents[0].scent.image
+      image: playlist.image
+        ? convertURLToS3Readable(playlist.image)
+        : playlist.playlistScents.length > 0 && playlist.playlistScents[0].scent.image
           ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
           : '',
       createdBy: userInfo,
@@ -168,7 +175,7 @@ export class PlaylistService {
     return playlistDetail;
   }
 
-  async create(userId: string, bodyRequest: CreatePlaylistDto) {
+  async create(userId: string, bodyRequest: CreatePlaylistDto, file: Express.Multer.File) {
     const existed = await this.playlistRepository.findOne({
       where: {
         name: bodyRequest.name,
@@ -180,16 +187,29 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.ALREADY_EXIST, HttpStatus.BAD_REQUEST);
     }
 
+    let uploadedImageUrl = '';
+
+    if (file) {
+      const fileName = `playlists/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      uploadedImageUrl = uploadedImage.fileName;
+    }
+
     const playlist = await this.playlistRepository.save({
       ...bodyRequest,
-      image: '',
+      image: uploadedImageUrl,
       createdBy: userId,
     });
 
     return playlist;
   }
 
-  async update(userId: string, id: string, bodyRequest: CreatePlaylistDto) {
+  async update(
+    userId: string,
+    id: string,
+    bodyRequest: UpdatePlaylistDto,
+    file: Express.Multer.File,
+  ) {
     const playlist = await this.playlistRepository.findOne({
       where: {
         id,
@@ -201,9 +221,11 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const playlistName = bodyRequest.name || playlist.name;
+
     const existed = await this.playlistRepository.findOne({
       where: {
-        name: bodyRequest.name,
+        name: playlistName,
         createdBy: userId,
       },
     });
@@ -212,11 +234,56 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.ALREADY_EXIST, HttpStatus.BAD_REQUEST);
     }
 
+    let image = playlist.image;
+
+    if (file) {
+      const fileName = `playlists/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      image = uploadedImage.fileName;
+    }
+
     const updatedPlaylist = await this.playlistRepository.update(id, {
-      ...bodyRequest,
+      image,
+      name: playlistName,
     });
 
     return updatedPlaylist;
+  }
+
+  async replace(
+    userId: string,
+    id: string,
+    bodyRequest: CreatePlaylistDto,
+    file: Express.Multer.File,
+  ) {
+    const found = await this.playlistRepository.findOne({
+      where: { id, createdBy: userId },
+    });
+
+    if (!found) {
+      throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const existed = await this.playlistRepository.findOne({
+      where: { name: bodyRequest.name, createdBy: userId },
+    });
+
+    if (existed && existed.id !== id) {
+      throw new HttpException(MESSAGE.PLAYLIST.ALREADY_EXIST, HttpStatus.BAD_REQUEST);
+    }
+
+    let image = found.image;
+
+    if (file) {
+      const fileName = `playlists/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      image = uploadedImage.fileName;
+    }
+
+    return this.playlistRepository.update(id, {
+      image,
+      name: bodyRequest.name,
+    });
   }
 
   async delete(userId: string, id: string) {
@@ -231,9 +298,11 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    await this.playlistScentRepository.delete({ playlist: { id } });
+    await this.playlistScentRepository.softDelete({ playlist: { id } });
 
-    const playlist = await this.playlistRepository.delete(id);
+    await this.albumPlaylistRepository.softDelete({ playlist: { id } });
+
+    const playlist = await this.playlistRepository.softDelete(id);
 
     return playlist;
   }
