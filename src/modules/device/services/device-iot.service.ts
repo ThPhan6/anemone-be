@@ -371,19 +371,8 @@ export class DeviceIotService {
     }
 
     if (dto.cartridges) {
-      // Check if any cartridge has percent = 0
-      const hasEmptyCartridge = device.cartridges.some((c) => Number(c.percentage) === 0);
-
-      if (hasEmptyCartridge) {
-        await this.commandRepository.save({
-          device,
-          command: { type: CommandType.PAUSE },
-          isExecuted: false,
-        });
-      } else {
-        // Sync cartridges
-        await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
-      }
+      // Sync cartridges
+      await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
     }
 
     // Check if there is any pending command for the device
