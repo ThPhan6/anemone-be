@@ -369,7 +369,7 @@ export class ScentService {
     return await this.scentRepository.softDelete(scentId);
   }
 
-  async getPublic(queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+  async getPublic(queries: ApiBaseGetListQueries, random: boolean): Promise<Pagination<Scent>> {
     const { page, perPage, search } = queries;
     //Get list userId public
     const publicUsers = await this.userSettingRepository.find({
@@ -396,6 +396,27 @@ export class ScentService {
 
     if (search) {
       where.name = ILike(`%${search}%`);
+    }
+
+    if (random) {
+      const scents = await this.scentRepository
+        .createQueryBuilder('scent')
+        .where('scent.createdBy IN (:...userIds)', { userIds: publicUserIds })
+        .orderBy('RANDOM()')
+        .limit(4)
+        .getMany();
+
+      return {
+        items: scents.map((el) => ({
+          ...el,
+          image: el.image ? convertURLToS3Readable(el.image) : '',
+        })),
+        pagination: {
+          total: scents.length,
+          page,
+          perPage,
+        },
+      };
     }
 
     const result = await paginate(this.scentRepository, {
