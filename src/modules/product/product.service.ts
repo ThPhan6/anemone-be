@@ -116,7 +116,7 @@ export class ProductService extends BaseService<Product> {
     const { type, name, sku, scentConfigId, productVariantId, batchId } = data;
 
     const existingProduct = await this.findOne({
-      where: [{ sku, name, type }],
+      where: [{ name, type }],
     });
 
     if (existingProduct) {
@@ -305,13 +305,12 @@ export class ProductService extends BaseService<Product> {
     product: Product,
     data: UpdateProductDto,
   ): Promise<void> {
-    const { name, sku, type } = data;
+    const { name, type } = data;
 
-    if (name || sku || type) {
+    if (name || type) {
       const existingProduct = await this.productRepository.findOne({
         where: [
           {
-            sku: sku || product.sku,
             name: name || product.name,
             type: type || product.type,
           },
