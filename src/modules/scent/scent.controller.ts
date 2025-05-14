@@ -47,6 +47,12 @@ export class ScentController extends BaseController {
       : this.scentService.get(user.sub, queries);
   }
 
+  @Get('scent-tag')
+  @ApiOperation({ summary: 'Get scents by one scent tag' })
+  async getByScentTag() {
+    return this.scentService.getByScentTag();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a scent by id' })
   async getById(@Param('id') id: string) {

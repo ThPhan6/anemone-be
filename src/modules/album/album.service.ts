@@ -1,12 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Album } from '../../common/entities/album.entity';
 import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { FavoriteType, UserFavorites } from '../../common/entities/user-favorites.entity';
+import { UserSetting } from '../../common/entities/user-setting.entity';
 import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
@@ -27,6 +28,8 @@ export class AlbumService {
     @InjectRepository(UserFavorites)
     private readonly userFavoritesRepository: Repository<UserFavorites>,
     private storageService: StorageService,
+    @InjectRepository(UserSetting)
+    private readonly userSettingRepository: Repository<UserSetting>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries) {
@@ -52,6 +55,54 @@ export class AlbumService {
             ? convertURLToS3Readable(firstScent?.image)
             : '',
         createdBy: userInfo,
+      };
+    });
+
+    return {
+      items: newItems,
+      pagination,
+    };
+  }
+
+  async getPublic(queries: ApiBaseGetListQueries) {
+    const { page, perPage, search } = queries;
+
+    //Get list userId public
+    const publicUsers = await this.userSettingRepository.find({
+      where: { isPublic: true },
+      select: ['userId'],
+    });
+
+    const publicUserIds = publicUsers.map((u) => u.userId);
+
+    if (publicUserIds.length === 0) {
+      return { items: [], pagination: { total: 0, page, perPage } };
+    }
+
+    const where: any = {
+      createdBy: In(publicUserIds),
+    };
+
+    if (search) {
+      where.name = ILike(`%${search}%`);
+    }
+
+    const { items, pagination } = await paginate(this.albumRepository, {
+      where,
+      params: queries,
+    });
+
+    const newItems = items.map((album) => {
+      const firstPlaylist = album.albumPlaylists?.[0]?.playlist?.playlistScents?.[0]?.scent;
+
+      return {
+        id: album.id,
+        name: album.name,
+        image: album.image
+          ? convertURLToS3Readable(album.image)
+          : firstPlaylist?.image
+            ? convertURLToS3Readable(firstPlaylist?.image)
+            : '',
       };
     });
 
