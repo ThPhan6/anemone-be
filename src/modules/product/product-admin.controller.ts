@@ -5,15 +5,15 @@ import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiUploadFile } from 'core/decorator/apiDoc.decorator';
 import { AdminRoleGuard } from 'core/decorator/auth.decorator';
 
-import { DeviceService } from '../services/device.service';
+import { ProductService } from './product.service';
 
 @AdminRoleGuard()
 @ApiController({
-  name: 'devices',
+  name: 'products',
   admin: true,
 })
-export class DeviceAdminController extends BaseController {
-  constructor(private readonly deviceService: DeviceService) {
+export class ProductAdminController extends BaseController {
+  constructor(private readonly productService: ProductService) {
     super();
   }
 
@@ -32,6 +32,6 @@ export class DeviceAdminController extends BaseController {
     )
     file: Express.Multer.File,
   ) {
-    return this.deviceService.importDevicesFromCsv(file.buffer);
+    return this.productService.importDevicesFromCsv(file.buffer);
   }
 }
