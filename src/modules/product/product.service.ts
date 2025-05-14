@@ -1,8 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { parse as csvParse } from 'csv-parse/sync';
 import { orderBy } from 'lodash';
-import { In, IsNull } from 'typeorm';
+import { In, IsNull, Not } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { DeviceCartridgeRepository } from '../../common/repositories/device-cartridge.repository';
@@ -23,7 +22,6 @@ export class ProductService extends BaseService<Product> {
   private readonly logger = new Logger(ProductService.name);
 
   constructor(
-    @InjectRepository(Product)
     private readonly productRepository: ProductRepository,
     private readonly scentConfigRepository: ScentConfigRepository,
     private readonly productVariantRepository: ProductVariantRepository,
@@ -238,15 +236,12 @@ export class ProductService extends BaseService<Product> {
 
     this.validateRestrictedFieldsUpdate(product, data);
 
-    await this.checkProductUniqueness(id, product, data);
+    await this.checkProductUniqueness(product, data);
 
     const updateData = await this.prepareProductUpdateData(data, product);
 
     // Update serial number for cartridges if relevant fields are changed
-    if (
-      product.type === ProductType.CARTRIDGE &&
-      (data.sku || data.manufacturerId || data.batchId)
-    ) {
+    if (product.type === ProductType.CARTRIDGE && (data.sku || data.batchId)) {
       // Use current values for any fields that aren't being updated
       const sku = data.sku || product.sku;
       const batchId = data.batchId || product.batchId;
@@ -300,31 +295,23 @@ export class ProductService extends BaseService<Product> {
   /**
    * Check for uniqueness conflicts with existing products
    */
-  private async checkProductUniqueness(
-    id: string,
-    product: Product,
-    data: UpdateProductDto,
-  ): Promise<void> {
-    const { name, type } = data;
+  private async checkProductUniqueness(product: Product, data: UpdateProductDto): Promise<void> {
+    const { name, sku, type } = data;
 
-    if (name || type) {
-      const existingProduct = await this.productRepository.findOne({
+    if (type === ProductType.CARTRIDGE) {
+      const existingProduct = await this.repository.findOne({
         where: [
           {
+            sku: sku || product.sku,
             name: name || product.name,
             type: type || product.type,
+            id: Not(product.id),
           },
         ],
       });
 
-      if (existingProduct && existingProduct.id !== id) {
-        const productType = type || product.type;
-        const message =
-          productType === ProductType.DEVICE
-            ? MESSAGE.DEVICE.ALREADY_EXISTS
-            : MESSAGE.CARTRIDGE.ALREADY_EXISTS;
-
-        throw new HttpException(message, HttpStatus.BAD_REQUEST);
+      if (existingProduct) {
+        throw new HttpException(MESSAGE.CARTRIDGE.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
       }
     }
   }
