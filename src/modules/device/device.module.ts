@@ -12,7 +12,6 @@ import { SettingDefinition } from '../setting-definition/entities/setting-defini
 import { SettingValue } from '../setting-definition/entities/setting-value.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DeviceController } from './controllers/device.controller';
-import { DeviceAdminController } from './controllers/device-admin.controller';
 import { DeviceIotController } from './controllers/device-iot.controller';
 import { DeviceOfflineCron } from './device-offline.cron';
 import { Device } from './entities/device.entity';
@@ -43,7 +42,7 @@ import { DeviceIotService } from './services/device-iot.service';
       ProductVariant,
     ]),
   ],
-  controllers: [DeviceController, DeviceIotController, DeviceAdminController],
+  controllers: [DeviceController, DeviceIotController],
   providers: [
     IotService,
     AwsIotCoreService,

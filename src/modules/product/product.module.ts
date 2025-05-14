@@ -12,10 +12,11 @@ import { ProductVariant } from '../product-variant/entities/product-variant.enti
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
+import { ProductAdminController } from './product-admin.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Product, ScentConfig, ProductVariant, DeviceCartridge])],
-  controllers: [ProductController],
+  controllers: [ProductController, ProductAdminController],
   providers: [
     ProductService,
     ScentConfigRepository,
