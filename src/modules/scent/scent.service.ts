@@ -457,4 +457,39 @@ export class ScentService {
 
     return true;
   }
+
+  async getByScentTag() {
+    const scentTags = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
+      order: { createdAt: 'ASC' },
+    });
+
+    const firstScentTag = scentTags[0];
+
+    const scentTagId = firstScentTag.id;
+
+    const publicUsers = await this.userSettingRepository.find({
+      where: { isPublic: true },
+    });
+
+    const publicUserIds = publicUsers.map((el) => el.userId);
+
+    const scents = await this.scentRepository
+      .createQueryBuilder('scent')
+      .where('scent.createdBy IN (:...userIds)', {
+        userIds: publicUserIds,
+      })
+      .getMany();
+
+    const scentsByTag = scents.filter((el) => JSON.parse(el.tags).includes(scentTagId));
+
+    return {
+      name: firstScentTag.name,
+      scents: scentsByTag.map((el) => ({
+        id: el.id,
+        name: el.name,
+        image: el.image ? convertURLToS3Readable(el.image) : '',
+      })),
+    };
+  }
 }
