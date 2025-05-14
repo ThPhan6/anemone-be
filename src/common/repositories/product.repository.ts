@@ -16,7 +16,7 @@ export class ProductRepository extends BaseRepository<Product> {
    * @returns A promise that resolves to a unique diffuser serial number
    */
   async generateSerialNumber(
-    productType?: ProductType,
+    productType: ProductType,
     sku?: string,
     batchId?: string,
   ): Promise<string> {
@@ -30,9 +30,7 @@ export class ProductRepository extends BaseRepository<Product> {
       });
 
       if (exists) {
-        throw new Error(
-          `Serial number ${serialNumber} already exists. Please use a different batch ID.`,
-        );
+        throw new Error(`Serial number ${serialNumber} already exists.`);
       }
 
       return serialNumber;
