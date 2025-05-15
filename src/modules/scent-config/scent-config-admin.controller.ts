@@ -1,11 +1,13 @@
-import { Body, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from '../../core/decorator/apiDoc.decorator';
 import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
+import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
 import { UpdateScentConfigDto } from './dto/update-scent-config.dto';
+import { EScentConfigType } from './entities/scent-config.entity';
 import { ScentConfigService } from './scent-config.service';
 
 @AdminRoleGuard()
@@ -22,7 +24,11 @@ export class ScentConfigAdminController extends BaseController {
     description: 'Get all scent configurations',
   })
   @Get()
-  getAll() {
+  getAll(@Query() queries: ApiBaseGetListQueries & { type: EScentConfigType }) {
+    if (queries.page && queries.perPage) {
+      return this.scentConfigService.findAll(queries);
+    }
+
     return this.scentConfigService.find();
   }
 

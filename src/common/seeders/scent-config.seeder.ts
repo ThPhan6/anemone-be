@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 
 import {
+  EScentConfigType,
   EScentNoteType,
   ScentConfig,
 } from '../../modules/scent-config/entities/scent-config.entity';
@@ -13,6 +14,7 @@ const records = [
     title: 'stillness of shadows',
     background: 'scent-S01.png',
     tags: ['Floral', 'Citrus', 'Woody'],
+    type: EScentConfigType.SCENT,
     description:
       'A solemn blend of floral, citrus, and woody notes that creates a meditative atmosphere. Stillness of Shadows opens with bright citrus accents before revealing delicate floral heart notes and settling into a grounding woody base that evokes the quiet contemplation of dappled shadows.',
     story: {
@@ -47,7 +49,8 @@ const records = [
     name: 'Petal Symphony',
     title: 'White Floral Elegance',
     background: 'scent-I01.png',
-    tags: ['Floral', 'White', 'Floral'],
+    tags: ['Floral', 'White', 'Sandalwood'],
+    type: EScentConfigType.SCENT,
     description:
       'An exquisite bouquet celebrating the most precious white flowers in perfumery. Petal Symphony opens with bright citrus notes that give way to an opulent heart of jasmine, rose, and lily of the valley. The composition settles into a creamy base of vanilla and amber, creating a scent that embodies timeless feminine elegance.',
     story: {
@@ -83,6 +86,7 @@ const records = [
     title: 'ivory interlude',
     background: 'scent-I01.png',
     tags: ['Aldehydic', 'Ambery', 'Woody'],
+    type: EScentConfigType.SCENT,
     description:
       'An intimate composition that blends aldehydic brightness with warm ambery notes and sophisticated woody accents. Ivory Interlude creates a personal sanctuary of elegance and warmth, with a complexity that unfolds gracefully over time.',
     story: {
@@ -118,6 +122,7 @@ const records = [
     title: 'Fresh Fruity Elegance',
     background: 'scent-S01.png',
     tags: ['Green', 'Fruity', 'Musky'],
+    type: EScentConfigType.SCENT,
     description:
       'A modern, sophisticated fragrance that balances juicy fruit notes with clean greens and subtle musk. Orchard Mist opens with vibrant fruit notes that feel dewy and fresh rather than sweet, transitioning to a heart of delicate white flowers that add refinement and complexity. The composition settles into a sophisticated base of clean musk that gives it a contemporary signature.',
     story: {
@@ -153,6 +158,7 @@ const records = [
     title: 'Exotic Woody Warmth',
     background: 'scent-S01.png',
     tags: ['Spicy', 'Woody', 'Citrus'],
+    type: EScentConfigType.SCENT,
     description:
       'A rich and complex fragrance that brings to life the ancient spice routes with warm spices, precious woods, and bright citrus accents. Spice Route opens with vibrant orange and spice notes that immediately transport you to exotic markets, while the heart reveals sophisticated woody facets enhanced by subtle floral touches. The base anchors the composition with deep, earthy notes that evoke rare woods and resins.',
     story: {
@@ -188,6 +194,7 @@ const records = [
     title: 'Serene Green Retreat',
     background: 'scent-I01.png',
     tags: ['Green', 'Mint'],
+    type: EScentConfigType.SCENT,
     description:
       'A calming yet refreshing blend that combines the clarity of mint with soothing green tea notes. Mint Meditation opens with a crisp array of mint varieties that feel both energizing and centering, evolving into a serene heart of tea and herbal notes. The composition is grounded in a smooth base of amber and musk that adds warmth and longevity without disturbing its meditative quality.',
     story: {
