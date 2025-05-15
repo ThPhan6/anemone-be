@@ -6,12 +6,13 @@ import { Album } from '../../common/entities/album.entity';
 import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { UserFavorites } from '../../common/entities/user-favorites.entity';
+import { UserSetting } from '../../common/entities/user-setting.entity';
 import { CognitoService } from '../auth/cognito.service';
 import { AlbumController } from './album.controller';
 import { AlbumService } from './album.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Album, AlbumPlaylist, Playlist, UserFavorites])],
+  imports: [TypeOrmModule.forFeature([Album, AlbumPlaylist, Playlist, UserFavorites, UserSetting])],
   controllers: [AlbumController],
   providers: [AlbumService, CognitoService, AwsConfigService],
 })

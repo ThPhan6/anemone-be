@@ -7,7 +7,7 @@ import { Device, DeviceProvisioningStatus } from '../device/entities/device.enti
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product, ProductType } from '../device/entities/product.entity';
 import { ProductVariant } from '../product-variant/entities/product-variant.entity';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { ScentConfig } from '../system/entities/scent-config.entity';
 @Injectable()
 export class MockService {
   constructor(
@@ -50,31 +50,43 @@ export class MockService {
       },
       {
         name: 'S01',
+        sku: 'SKU-001',
+        batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'R01',
+        sku: 'SKU-001',
+        batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'I01',
+        sku: 'SKU-001',
+        batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'H01',
+        sku: 'SKU-001',
+        batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'F01',
+        sku: 'SKU-001',
+        batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },
       {
         name: 'E01',
+        sku: 'SKU-001',
+        batchId: 'BATCH-02-2025',
         serialNumber: this.generateRandomSerialNumber(),
         type: ProductType.CARTRIDGE,
       },

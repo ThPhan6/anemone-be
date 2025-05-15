@@ -1,10 +1,10 @@
 import { DataSource } from 'typeorm';
 
-import { ScentConfig } from '../../modules/scent-config/entities/scent-config.entity';
+import { ScentConfig } from '../../modules/system/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../../modules/setting-definition/entities/setting-definition.entity';
+} from '../../modules/system/entities/setting-definition.entity';
 import { Scent } from '../entities/scent.entity';
 import { UserSetting } from '../entities/user-setting.entity';
 import { BaseSeeder } from './base.seeder';

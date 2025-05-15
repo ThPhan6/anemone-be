@@ -38,8 +38,14 @@ export class AlbumController extends BaseController {
 
   @Get()
   @ApiOperation({ summary: 'Get all albums' })
-  async get(@AuthUser() user: UserDto, @Query() queries: ApiBaseGetListQueries) {
-    return this.albumService.get(user.sub, queries);
+  async get(
+    @AuthUser() user: UserDto,
+    @Query() queries: ApiBaseGetListQueries,
+    @Query('isPublic') isPublic: boolean,
+  ) {
+    return isPublic
+      ? this.albumService.getPublic(queries)
+      : this.albumService.get(user.sub, queries);
   }
 
   @Get(':albumId')

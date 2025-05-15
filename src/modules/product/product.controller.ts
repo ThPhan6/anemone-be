@@ -1,4 +1,4 @@
-import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Delete, Get, Param, Post, Put, Query, ValidationPipe } from '@nestjs/common';
 
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
@@ -38,7 +38,7 @@ export class ProductController extends BaseController {
     description: 'Create new product',
   })
   @Post()
-  create(@Body() data: CreateProductDto) {
+  create(@Body(new ValidationPipe({ whitelist: true })) data: CreateProductDto) {
     return this.productService.create(data);
   }
 
@@ -46,7 +46,11 @@ export class ProductController extends BaseController {
     description: 'Update product',
   })
   @Put(':id')
-  update(@Param('id') id: string, @Body() data: UpdateProductDto) {
+  update(
+    @Param('id') id: string,
+    @Body(new ValidationPipe({ whitelist: true }))
+    data: UpdateProductDto,
+  ) {
     return this.productService.update(id, data);
   }
 

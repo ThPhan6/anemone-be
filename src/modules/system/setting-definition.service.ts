@@ -27,6 +27,7 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
   private readonly logger = new Logger(SettingDefinitionService.name);
 
   constructor(
+    @InjectRepository(SettingDefinition)
     private readonly settingDefinitionRepository: SettingDefinitionRepository,
     @InjectRepository(SettingValue)
     private readonly settingValueRepository: Repository<SettingValue>,

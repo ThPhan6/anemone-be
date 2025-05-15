@@ -1,8 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ScentConfig } from '../../../modules/scent-config/entities/scent-config.entity';
 import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
+import { ScentConfig } from '../../system/entities/scent-config.entity';
 import { Device } from './device.entity';
 import { DeviceCartridge } from './device-cartridge.entity';
 
@@ -16,7 +16,7 @@ export class Product extends BaseEntity {
   @Column({ name: 'manufacturer_id' })
   manufacturerId: string;
 
-  @Column({ name: 'sku' })
+  @Column({ name: 'sku', nullable: true })
   sku: string;
 
   @Column({ name: 'batch_id' })
@@ -25,11 +25,14 @@ export class Product extends BaseEntity {
   @Column({ name: 'serial_number', type: 'varchar', unique: true })
   serialNumber: string;
 
-  @Column({ name: 'name' })
+  @Column({ name: 'name', nullable: true })
   name: string;
 
   @Column({ name: 'type', type: 'smallint', enum: ProductType })
   type: ProductType;
+
+  @Column({ name: 'certificate_id', type: 'varchar', nullable: true })
+  certificateId: string;
 
   @ManyToOne(() => ScentConfig)
   @JoinColumn({ name: 'scent_config_id' })

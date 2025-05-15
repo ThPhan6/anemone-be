@@ -17,12 +17,12 @@ import { Device } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../device/entities/device-command.entity';
 import { Product } from '../device/entities/product.entity';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { StorageService } from '../storage/storage.service';
+import { ScentConfig } from '../system/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../setting-definition/entities/setting-definition.entity';
-import { StorageService } from '../storage/storage.service';
+} from '../system/entities/setting-definition.entity';
 import {
   CartridgeInfoDto,
   CreateScentDto,
@@ -369,7 +369,7 @@ export class ScentService {
     return await this.scentRepository.softDelete(scentId);
   }
 
-  async getPublic(queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+  async getPublic(queries: ApiBaseGetListQueries, random: boolean): Promise<Pagination<Scent>> {
     const { page, perPage, search } = queries;
     //Get list userId public
     const publicUsers = await this.userSettingRepository.find({
@@ -396,6 +396,27 @@ export class ScentService {
 
     if (search) {
       where.name = ILike(`%${search}%`);
+    }
+
+    if (random) {
+      const scents = await this.scentRepository
+        .createQueryBuilder('scent')
+        .where('scent.createdBy IN (:...userIds)', { userIds: publicUserIds })
+        .orderBy('RANDOM()')
+        .limit(4)
+        .getMany();
+
+      return {
+        items: scents.map((el) => ({
+          ...el,
+          image: el.image ? convertURLToS3Readable(el.image) : '',
+        })),
+        pagination: {
+          total: scents.length,
+          page,
+          perPage,
+        },
+      };
     }
 
     const result = await paginate(this.scentRepository, {
@@ -456,5 +477,40 @@ export class ScentService {
     await this.deviceCommandRepository.save(command);
 
     return true;
+  }
+
+  async getByScentTag() {
+    const scentTags = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
+      order: { createdAt: 'ASC' },
+    });
+
+    const firstScentTag = scentTags[0];
+
+    const scentTagId = firstScentTag.id;
+
+    const publicUsers = await this.userSettingRepository.find({
+      where: { isPublic: true },
+    });
+
+    const publicUserIds = publicUsers.map((el) => el.userId);
+
+    const scents = await this.scentRepository
+      .createQueryBuilder('scent')
+      .where('scent.createdBy IN (:...userIds)', {
+        userIds: publicUserIds,
+      })
+      .getMany();
+
+    const scentsByTag = scents.filter((el) => JSON.parse(el.tags).includes(scentTagId));
+
+    return {
+      name: firstScentTag.name,
+      scents: scentsByTag.map((el) => ({
+        id: el.id,
+        name: el.name,
+        image: el.image ? convertURLToS3Readable(el.image) : '',
+      })),
+    };
   }
 }
