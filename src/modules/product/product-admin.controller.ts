@@ -1,4 +1,11 @@
-import { FileTypeValidator, ParseFilePipe, Post, UploadedFile } from '@nestjs/common';
+import {
+  FileTypeValidator,
+  HttpException,
+  HttpStatus,
+  ParseFilePipe,
+  Post,
+  UploadedFile,
+} from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
@@ -28,6 +35,11 @@ export class ProductAdminController extends BaseController {
       new ParseFilePipe({
         validators: [new FileTypeValidator({ fileType: '.csv' })],
         fileIsRequired: true,
+        exceptionFactory: () =>
+          new HttpException(
+            'Invalid file type. Only CSV files are allowed.',
+            HttpStatus.BAD_REQUEST,
+          ),
       }),
     )
     file: Express.Multer.File,

@@ -7,6 +7,10 @@ export class ImportDeviceDto {
   @IsNotEmpty()
   deviceId: string;
 
+  @IsString()
+  @IsNotEmpty()
+  sku: string;
+
   @ApiProperty({ required: false, description: 'Manufacturer ID' })
   @IsOptional()
   @IsString()

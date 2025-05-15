@@ -16,7 +16,7 @@ export class Product extends BaseEntity {
   @Column({ name: 'manufacturer_id' })
   manufacturerId: string;
 
-  @Column({ name: 'sku' })
+  @Column({ name: 'sku', nullable: true })
   sku: string;
 
   @Column({ name: 'batch_id' })
@@ -25,7 +25,7 @@ export class Product extends BaseEntity {
   @Column({ name: 'serial_number', type: 'varchar', unique: true })
   serialNumber: string;
 
-  @Column({ name: 'name' })
+  @Column({ name: 'name', nullable: true })
   name: string;
 
   @Column({ name: 'type', type: 'smallint', enum: ProductType })

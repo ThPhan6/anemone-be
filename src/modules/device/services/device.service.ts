@@ -318,7 +318,6 @@ export class DeviceService {
       warranty: device.warrantyExpirationDate,
       productInfo: {
         serialNumber: device.product.serialNumber,
-        sku: device.product.sku,
         batch: device.product.batchId,
         image: device.product.productVariant.image
           ? convertURLToS3Readable(device.product.productVariant.image)
