@@ -20,6 +20,7 @@ export class UserSessionsService {
       where: {
         userId,
       },
+      order: { createdAt: 'DESC' },
       relations: ['device', 'playlist', 'scent', 'album'],
     });
 
