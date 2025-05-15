@@ -19,6 +19,7 @@ import { SystemSettingsModule } from './system/system-settings.module';
 import { UnifiedSearchModule } from './unified-search/unified-search.module';
 import { UserModule } from './user/user.module';
 import { UserFavoritesModule } from './user-favorites/user-favorites.module';
+import { UserSessionsModule } from './user-sessions/user-sessions.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     SystemSettingsModule,
     AlbumModule,
     UserFavoritesModule,
+    UserSessionsModule,
     UnifiedSearchModule,
     MulterModule.register({
       dest: './uploads',
