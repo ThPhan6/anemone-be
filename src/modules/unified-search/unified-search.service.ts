@@ -125,7 +125,7 @@ export class UnifiedSearchService {
     }
 
     return {
-      data: enriched,
+      items: enriched,
       pagination: {
         total,
         page,
