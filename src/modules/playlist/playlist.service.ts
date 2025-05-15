@@ -330,7 +330,40 @@ export class PlaylistService {
 
     await this.playlistScentRepository.save(playlistScent);
 
-    return playlistScent;
+    // Fetch the categories where type = ScentTag
+    const categories = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
+    });
+
+    const categoryTags = categories
+      .filter((category) => JSON.parse(scent.tags).includes(category.id))
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        image: category.metadata.image ? convertURLToS3Readable(category.metadata.image) : '',
+        description: category.metadata.name,
+      }));
+
+    const cartridgeInfo = JSON.parse(scent.cartridgeInfo || '[]');
+
+    const scentConfigs = await this.scentConfigRepository.find({
+      where: {
+        id: In(cartridgeInfo.map((el) => el.id)),
+      },
+    });
+
+    return {
+      playlist,
+      scent: {
+        ...scent,
+        image: scent.image ? convertURLToS3Readable(scent.image) : '',
+        tags: categoryTags,
+        cartridgeInfo: scentConfigs.map((el) => ({
+          ...el,
+          intensity: cartridgeInfo.find((c) => c.id === el.id)?.intensity,
+        })),
+      },
+    };
   }
 
   async updateScentInPlaylist(

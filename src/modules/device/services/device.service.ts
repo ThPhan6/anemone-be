@@ -16,6 +16,7 @@ import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../../common/utils/file';
+import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
 import { PingDeviceStatus } from '../device.enum';
 import { RegisterDeviceDto, UpdateDeviceDto } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
@@ -46,6 +47,8 @@ export class DeviceService {
     private productRepository: Repository<Product>,
     @InjectRepository(DeviceCartridge)
     private deviceCartridgeRepository: Repository<DeviceCartridge>,
+    @InjectRepository(ProductVariant)
+    private productVariantRepository: Repository<ProductVariant>,
   ) {}
 
   /**
@@ -315,7 +318,6 @@ export class DeviceService {
       warranty: device.warrantyExpirationDate,
       productInfo: {
         serialNumber: device.product.serialNumber,
-        sku: device.product.sku,
         batch: device.product.batchId,
         image: device.product.productVariant.image
           ? convertURLToS3Readable(device.product.productVariant.image)
