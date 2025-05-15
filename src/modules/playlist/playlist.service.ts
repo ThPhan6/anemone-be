@@ -15,8 +15,8 @@ import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import { StorageService } from '../storage/storage.service';
-import { ScentConfig } from '../system/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,

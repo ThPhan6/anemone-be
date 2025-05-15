@@ -2,7 +2,7 @@ import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { IsEnum } from 'class-validator';
 
 import { SystemSettingsType } from '../../../common/enum/system-settings.enum';
-import { CreateScentConfigDto } from './create-scent-config.dto';
+import { CreateScentConfigDto } from '../../scent-config/dto/create-scent-config.dto';
 import { QuestionnaireAdminCreateDto } from './questionnaire-admin.dto';
 import { CreateScentTagDto } from './scent-tag.dto';
 

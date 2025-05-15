@@ -2,7 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ScentColorDto, ScentNoteDto, ScentStoryDto } from './scent-config.dto';
+import {
+  ScentColorDto,
+  ScentNoteDto,
+  ScentStoryDto,
+} from '../../scent-config/dto/scent-config.dto';
 
 export class UpdateScentConfigDto {
   @ApiProperty({ required: false })

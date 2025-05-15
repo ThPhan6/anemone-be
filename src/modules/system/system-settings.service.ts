@@ -7,11 +7,12 @@ import { MESSAGE } from '../../common/constants/message.constant';
 import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { paginate, transformImageUrls } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { ScentConfigService } from '../scent-config/scent-config.service';
 import {
   QuestionnaireAdminCreateDto,
   QuestionnaireAdminUpdateDto,
 } from './dto/questionnaire-admin.dto';
-import { ScentConfig } from './entities/scent-config.entity';
 import { SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 import { SettingDefinitionService } from './setting-definition.service';
@@ -23,28 +24,26 @@ export class SystemSettingsService {
     private readonly settingDefinitionRepository: Repository<SettingDefinition>,
     @InjectRepository(SettingValue)
     private readonly settingValueRepository: Repository<SettingValue>,
-    @InjectRepository(ScentConfig)
-    private readonly scentConfigRepository: Repository<ScentConfig>,
     private readonly settingDefinitionService: SettingDefinitionService,
+    private readonly scentConfigService: ScentConfigService,
   ) {}
 
-  async get(queries: ApiBaseGetListQueries, type: SystemSettingsType) {
-    if (type === SystemSettingsType.SCENT_CONFIG) {
-      const { items, pagination } = await paginate(this.scentConfigRepository, {
-        params: queries,
-      });
+  async get(queries: ApiBaseGetListQueries) {
+    const { _type, ...restQueries } = queries;
 
-      return {
-        items: items.map((item) => transformImageUrls(item, ['background', 'image'])),
-        pagination,
-      };
+    if (Number(_type) === SystemSettingsType.SCENT_CONFIG) {
+      if (queries.page && queries.perPage) {
+        return this.scentConfigService.findAll(restQueries);
+      }
+
+      return this.scentConfigService.find();
     }
 
     const { items, pagination } = await paginate(this.settingDefinitionRepository, {
       where: {
-        type: type as any,
+        type: Number(_type) as any,
       },
-      params: queries,
+      params: restQueries,
     });
 
     const values = await this.settingValueRepository.find({
@@ -58,7 +57,7 @@ export class SystemSettingsService {
       const data = values.filter((value) => value.settingDefinition.id === question.id);
 
       return {
-        ...omit(question, ['deletedAt', 'values', 'type']),
+        ...omit(question, ['deletedAt', 'values', '_type']),
         settingDefinition: data.map((item) => omit(item, ['deletedAt', 'settingDefinition'])),
       };
     });
@@ -72,8 +71,8 @@ export class SystemSettingsService {
   }
 
   async getById(id: string, type: SystemSettingsType) {
-    if (type === SystemSettingsType.SCENT_CONFIG) {
-      const scentConfig = await this.scentConfigRepository.findOne({
+    if (Number(type) === SystemSettingsType.SCENT_CONFIG) {
+      const scentConfig = await this.scentConfigService.findOne({
         where: { id },
       });
 
@@ -101,7 +100,7 @@ export class SystemSettingsService {
 
     switch (type) {
       case SystemSettingsType.SCENT_CONFIG:
-        const existingScentConfig = await this.scentConfigRepository.findOne({
+        const existingScentConfig = await this.scentConfigService.findOne({
           where: { code: parseData.code },
         });
 
@@ -113,7 +112,7 @@ export class SystemSettingsService {
 
         Object.assign(newScentConfig, parseData);
 
-        return this.scentConfigRepository.save(newScentConfig);
+        return this.scentConfigService.save(newScentConfig);
 
       case SystemSettingsType.QUESTIONNAIRE:
         try {
@@ -200,7 +199,7 @@ export class SystemSettingsService {
       case SystemSettingsType.SCENT_CONFIG:
         // If criteria is a string (id), find the entity first to validate it exists
 
-        const scentConfig = await this.scentConfigRepository.findOne({
+        const scentConfig = await this.scentConfigService.findOne({
           where: { id },
         });
 
@@ -210,7 +209,7 @@ export class SystemSettingsService {
 
         const parseData = JSON.parse(data.data);
 
-        return this.scentConfigRepository.update(id, {
+        return this.scentConfigService.update(id, {
           code: parseData.code,
           name: parseData.name,
           title: parseData.title,
@@ -335,7 +334,7 @@ export class SystemSettingsService {
   async delete(id: string, type: SystemSettingsType) {
     switch (type) {
       case SystemSettingsType.SCENT_CONFIG:
-        const scentConfig = await this.scentConfigRepository.findOne({
+        const scentConfig = await this.scentConfigService.findOne({
           where: { id },
         });
 
@@ -343,7 +342,7 @@ export class SystemSettingsService {
           throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
         }
 
-        return await this.scentConfigRepository.softDelete(id);
+        return await this.scentConfigService.delete(id);
 
       case SystemSettingsType.QUESTIONNAIRE:
         return await this.settingDefinitionService.deleteQuestionnaire(id);

@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
-import { ScentConfig } from './entities/scent-config.entity';
+import { ScentConfigModule } from '../scent-config/scent-config.module';
 import { SettingDefinition } from './entities/setting-definition.entity';
 import { SettingValue } from './entities/setting-value.entity';
 import { SettingDefinitionService } from './setting-definition.service';
@@ -13,7 +13,8 @@ import { SystemSettingsAdminController } from './system-settings-admin.controlle
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SettingDefinition, SettingValue, ScentConfig, UserSetting, Scent]),
+    TypeOrmModule.forFeature([SettingDefinition, SettingValue, UserSetting, Scent]),
+    ScentConfigModule,
   ],
   controllers: [SystemSettingsController, SystemSettingsAdminController],
   providers: [SystemSettingsService, SettingDefinitionService],

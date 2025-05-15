@@ -4,7 +4,11 @@ import { ArrayMaxSize, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'clas
 import { IsArray, ValidateNested } from 'class-validator';
 
 import { SystemSettingsType } from '../../../common/enum/system-settings.enum';
-import { ScentColorDto, ScentNoteDto, ScentStoryDto } from './scent-config.dto';
+import {
+  ScentColorDto,
+  ScentNoteDto,
+  ScentStoryDto,
+} from '../../scent-config/dto/scent-config.dto';
 
 export class CreateScentConfigDto {
   @ApiProperty({ required: true })

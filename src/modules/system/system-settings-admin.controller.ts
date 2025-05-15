@@ -13,9 +13,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
+import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
@@ -36,16 +37,28 @@ export class SystemSettingsAdminController extends BaseController {
 
   @Get()
   @ApiOperation({ summary: 'Get system settings data' })
-  async get(@Query() queries: ApiBaseGetListQueries, @Query('type') type: number) {
-    const settings = await this.systemSettingsService.get(queries, type);
-
-    return settings;
+  @ApiQuery({
+    name: '_type',
+    enum: SystemSettingsType,
+    description: '1: Questionnaire, 2: Scent Tag, 3: Scent Config',
+    type: 'enum',
+    required: true,
+  })
+  get(@Query() queries: ApiBaseGetListQueries) {
+    return this.systemSettingsService.get(queries);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get system settings data by id' })
-  async getById(@Param('id') id: string, @Query('type') type: number) {
-    const settings = await this.systemSettingsService.getById(id, type);
+  @ApiQuery({
+    name: '_type',
+    enum: SystemSettingsType,
+    description: '1: Questionnaire, 2: Scent Tag, 3: Scent Config',
+    type: 'enum',
+    required: true,
+  })
+  async getById(@Param('id') id: string, @Query() _type: number) {
+    const settings = await this.systemSettingsService.getById(id, _type);
 
     return settings;
   }
@@ -97,8 +110,8 @@ export class SystemSettingsAdminController extends BaseController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Soft delete system setting data' })
-  async delete(@Param('id') id: string, @Query('type') type: number) {
-    await this.systemSettingsService.delete(id, type);
+  async delete(@Param('id') id: string, @Query('_type') _type: number) {
+    await this.systemSettingsService.delete(id, _type);
 
     return { success: true };
   }

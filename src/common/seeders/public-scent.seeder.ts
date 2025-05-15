@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { ScentConfig } from '../../modules/system/entities/scent-config.entity';
+import { ScentConfig } from '../../modules/scent-config/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,

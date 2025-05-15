@@ -16,7 +16,7 @@ import { Device } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { DeviceCommand } from '../device/entities/device-command.entity';
 import { Product } from '../device/entities/product.entity';
-import { ScentConfig } from '../system/entities/scent-config.entity';
+import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import { SettingDefinition } from '../system/entities/setting-definition.entity';
 import { ScentController } from './scent.controller';
 import { ScentService } from './scent.service';
