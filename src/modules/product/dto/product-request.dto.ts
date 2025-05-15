@@ -7,13 +7,9 @@ import { ProductType } from '../../device/entities/product.entity';
 export class CreateProductDto {
   @ApiProperty({ required: true })
   @IsString()
-  @IsNotEmpty({ message: 'Name is required' })
-  name: string;
-
-  @ApiProperty({ required: true })
-  @IsString()
-  @IsNotEmpty({ message: 'SKU is required' })
-  sku: string;
+  @IsNotEmpty({ message: 'Serial Number is required' })
+  @ValidateIf((o) => o.type === ProductType.DEVICE)
+  serialNumber: string;
 
   @ApiProperty({ required: true })
   @IsString()
@@ -44,18 +40,6 @@ export class CreateProductDto {
 }
 
 export class UpdateProductDto {
-  @ApiProperty()
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty({ message: 'Name must not be empty' })
-  name: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  @IsNotEmpty({ message: 'SKU must not be empty' })
-  sku: string;
-
   @ApiProperty()
   @IsString()
   @IsOptional()
