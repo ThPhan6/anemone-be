@@ -18,6 +18,7 @@ import { SettingDefinitionModule } from './setting-definition/setting-definition
 import { SpaceModule } from './space/space.module';
 import { StorageModule } from './storage/storage.module';
 import { SystemSettingsModule } from './system/system-settings.module';
+import { UnifiedSearchModule } from './unified-search/unified-search.module';
 import { UserModule } from './user/user.module';
 import { UserFavoritesModule } from './user-favorites/user-favorites.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
@@ -43,6 +44,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     SystemSettingsModule,
     AlbumModule,
     UserFavoritesModule,
+    UnifiedSearchModule,
     MulterModule.register({
       dest: './uploads',
     }),
