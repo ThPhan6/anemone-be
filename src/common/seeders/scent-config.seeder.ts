@@ -1,9 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import {
-  EScentNoteType,
-  ScentConfig,
-} from '../../modules/scent-config/entities/scent-config.entity';
+import { EScentNoteType, ScentConfig } from '../../modules/system/entities/scent-config.entity';
 import { BaseSeeder } from './base.seeder';
 
 const records = [

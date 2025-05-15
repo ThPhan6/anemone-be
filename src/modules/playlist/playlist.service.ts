@@ -15,12 +15,12 @@ import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { StorageService } from '../storage/storage.service';
+import { ScentConfig } from '../system/entities/scent-config.entity';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../setting-definition/entities/setting-definition.entity';
-import { StorageService } from '../storage/storage.service';
+} from '../system/entities/setting-definition.entity';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
 import { CreatePlaylistDto, UpdatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';

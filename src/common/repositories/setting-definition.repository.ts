@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { SettingDefinition } from '../../modules/setting-definition/entities/setting-definition.entity';
+import { SettingDefinition } from '../../modules/system/entities/setting-definition.entity';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
