@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { sortBy } from 'lodash';
 import { ILike, In, Not, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -73,10 +74,12 @@ export class PlaylistService {
         image: playlist.image
           ? convertURLToS3Readable(playlist.image)
           : playlist.playlistScents.length > 0
-            ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
+            ? convertURLToS3Readable(
+                sortBy(playlist.playlistScents, 'createdAt', 'ASC')[0].scent.image,
+              )
             : '',
         createdBy: userInfo,
-        scents: playlist.playlistScents.map((ps) => ({
+        scents: sortBy(playlist.playlistScents, 'createdAt', 'ASC').map((ps) => ({
           id: ps.scent.id,
           name: ps.scent.name,
           image: ps.scent.image ? convertURLToS3Readable(ps.scent.image) : '',
@@ -104,7 +107,9 @@ export class PlaylistService {
 
     const scents = [];
 
-    for (const ps of playlist.playlistScents) {
+    const sortedPlaylistScents = sortBy(playlist.playlistScents, 'createdAt', 'ASC');
+
+    for (const ps of sortedPlaylistScents) {
       const scent = ps.scent;
 
       const cartridgeRaw = JSON.parse(scent.cartridgeInfo || '[]');
@@ -165,10 +170,11 @@ export class PlaylistService {
       name: playlist.name,
       image: playlist.image
         ? convertURLToS3Readable(playlist.image)
-        : playlist.playlistScents.length > 0 && playlist.playlistScents[0].scent.image
-          ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
+        : scents.length > 0 && scents[0].image
+          ? convertURLToS3Readable(scents[0].image)
           : '',
       createdBy: userInfo,
+      userId: playlist.createdBy,
       scents,
     };
 

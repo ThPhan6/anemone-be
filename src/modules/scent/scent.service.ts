@@ -185,6 +185,7 @@ export class ScentService {
       tags: categoryTags,
       cartridgeInfo: sortBy(cartridgeInfo, 'position'),
       createdBy: userInfo,
+      userId: scent.createdBy,
     };
   }
 

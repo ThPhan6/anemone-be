@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { sortBy } from 'lodash';
 import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -38,13 +39,19 @@ export class AlbumService {
     const { items, pagination } = await paginate(this.albumRepository, {
       params: queries,
       where: { createdBy: userId, ...(search ? { name: ILike(`%${search}%`) } : {}) },
+      relations: [
+        'albumPlaylists',
+        'albumPlaylists.playlist',
+        'albumPlaylists.playlist.playlistScents',
+        'albumPlaylists.playlist.playlistScents.scent',
+      ],
     });
 
     const userInfo = await this.cognitoService.getUserByUserId(userId);
 
     const newItems = items.map((album) => {
-      const firstPlaylist = album.albumPlaylists?.[0]?.playlist;
-      const firstScent = firstPlaylist?.playlistScents?.[0]?.scent;
+      const firstPlaylist = sortBy(album.albumPlaylists, 'createdAt', 'ASC')?.[0]?.playlist;
+      const firstScent = sortBy(firstPlaylist?.playlistScents, 'createdAt', 'ASC')?.[0]?.scent;
 
       return {
         id: album.id,
@@ -90,24 +97,32 @@ export class AlbumService {
     const { items, pagination } = await paginate(this.albumRepository, {
       where,
       params: queries,
+      relations: [
+        'albumPlaylists',
+        'albumPlaylists.playlist',
+        'albumPlaylists.playlist.playlistScents',
+        'albumPlaylists.playlist.playlistScents.scent',
+      ],
     });
 
     const newItems = items.map((album) => {
-      const firstPlaylist = album.albumPlaylists?.[0]?.playlist?.playlistScents?.[0]?.scent;
+      const firstPlaylist = sortBy(album.albumPlaylists, 'createdAt', 'ASC')?.[0]?.playlist;
+      const firstScent = sortBy(firstPlaylist?.playlistScents, 'createdAt', 'ASC')?.[0]?.scent;
 
       return {
         id: album.id,
         name: album.name,
         image: album.image
           ? convertURLToS3Readable(album.image)
-          : firstPlaylist?.image
-            ? convertURLToS3Readable(firstPlaylist?.image)
+          : firstScent?.image
+            ? convertURLToS3Readable(firstScent?.image)
             : '',
+        totalPlaylists: album.albumPlaylists?.length,
       };
     });
 
     return {
-      items: newItems,
+      items: newItems.filter((item) => item.totalPlaylists > 0),
       pagination,
     };
   }
@@ -129,8 +144,10 @@ export class AlbumService {
 
     const playlists = [];
 
-    for (const ap of album.albumPlaylists) {
-      const firstScent = ap.playlist.playlistScents?.[0]?.scent;
+    const sortedAlbumPlaylists = sortBy(album.albumPlaylists, 'createdAt', 'ASC');
+
+    for (const ap of sortedAlbumPlaylists) {
+      const firstScent = sortBy(ap.playlist.playlistScents, 'createdAt', 'ASC')?.[0]?.scent;
 
       const userInfo = await this.cognitoService.getUserByUserId(ap.playlist.createdBy);
 
@@ -161,6 +178,7 @@ export class AlbumService {
       name: album.name,
       image: albumImage ? convertURLToS3Readable(albumImage) : '',
       createdBy: userInfo,
+      userId: album.createdBy,
       playlists,
       isFavorite: !!favorite,
     };
