@@ -23,13 +23,11 @@ export class DeviceIotController extends BaseController {
   @ApiOperation({ summary: 'Device auth endpoint' })
   @ApiDeviceHeaders()
   async auth(@IoTDevice() device: Device) {
-    if (device.isConnected) {
-      // Update last ping time
-      await this.service.updateLastPing(device.product.serialNumber);
-    }
+    // Update last ping time
+    await this.service.updateLastPing(device.product.serialNumber);
 
     return {
-      success: device.isConnected ? true : false,
+      success: true,
       timestamp: new Date().toISOString(),
       deviceId: device.product.serialNumber,
     };

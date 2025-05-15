@@ -1,8 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ScentConfig } from '../../../modules/scent-config/entities/scent-config.entity';
 import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
+import { ScentConfig } from '../../scent-config/entities/scent-config.entity';
 import { Device } from './device.entity';
 import { DeviceCartridge } from './device-cartridge.entity';
 

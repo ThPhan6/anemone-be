@@ -1,6 +1,7 @@
 import { Get, Query } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 
+import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
@@ -16,8 +17,18 @@ export class SystemSettingsController extends BaseController {
 
   @Get()
   @ApiOperation({ summary: 'Get app settings data' })
-  async get(@Query() queries: ApiBaseGetListQueries, @Query('type') type: number) {
-    const settings = await this.systemSettingsService.get(queries, type);
+  @ApiQuery({
+    name: 'type',
+    enum: SystemSettingsType,
+    description: '1: Questionnaire, 2: Scent Tag, 3: Scent Config',
+    type: 'enum',
+    required: true,
+  })
+  async get(@Query() queries: ApiBaseGetListQueries) {
+    const newQueries = { ...queries };
+    newQueries._type = queries.type;
+    delete newQueries.type;
+    const settings = await this.systemSettingsService.get(newQueries);
 
     return settings;
   }

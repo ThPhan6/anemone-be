@@ -1,0 +1,51 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { UserSession } from '../../common/entities/user-session.entity';
+import { PingDeviceStatus } from '../device/device.enum';
+import { Device } from '../device/entities/device.entity';
+
+@Injectable()
+export class UserSessionsService {
+  constructor(
+    @InjectRepository(UserSession)
+    private readonly userSessionRepository: Repository<UserSession>,
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
+  ) {}
+
+  async getUserSession(userId: string) {
+    const userSession = await this.userSessionRepository.findOne({
+      where: {
+        userId,
+      },
+      relations: ['device', 'playlist', 'scent', 'album'],
+    });
+
+    const devices = await this.deviceRepository.find({
+      where: {
+        registeredBy: userId,
+      },
+    });
+
+    return {
+      devices:
+        devices.length > 0
+          ? devices.map((device) => ({
+              id: device.id,
+              status: device.isConnected
+                ? PingDeviceStatus.CONNECTED
+                : PingDeviceStatus.DISCONNECTED,
+            }))
+          : [],
+      deviceStatus: userSession
+        ? userSession?.device?.isConnected
+          ? PingDeviceStatus.CONNECTED
+          : PingDeviceStatus.DISCONNECTED
+        : null,
+      scentStatus: userSession?.status ?? null,
+      userSession: userSession ?? null,
+    };
+  }
+}

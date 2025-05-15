@@ -41,10 +41,17 @@ export class ScentController extends BaseController {
     @AuthUser() user: UserDto,
     @Query() queries: ApiBaseGetListQueries,
     @Query('isPublic') isPublic: boolean,
+    @Query('random') random: boolean,
   ) {
     return isPublic
-      ? this.scentService.getPublic(queries)
+      ? this.scentService.getPublic(queries, random)
       : this.scentService.get(user.sub, queries);
+  }
+
+  @Get('scent-tag')
+  @ApiOperation({ summary: 'Get scents by one scent tag' })
+  async getByScentTag() {
+    return this.scentService.getByScentTag();
   }
 
   @Get(':id')

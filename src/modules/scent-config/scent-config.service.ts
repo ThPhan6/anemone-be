@@ -9,7 +9,7 @@ import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity
 import { MESSAGE } from '../../common/constants/message.constant';
 import { transformImageUrls } from '../../common/utils/helper';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
-import { EScentConfigType, ScentConfig } from './entities/scent-config.entity';
+import { ScentConfig } from './entities/scent-config.entity';
 
 @Injectable()
 export class ScentConfigService extends BaseService<ScentConfig> {
@@ -17,9 +17,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     super(scentConfigRepository);
   }
 
-  async findAll(
-    query: ApiBaseGetListQueries & { type: EScentConfigType },
-  ): Promise<Pagination<ScentConfig>> {
+  async findAll(query: ApiBaseGetListQueries): Promise<Pagination<ScentConfig>> {
     const data = await super.findAll(query, {}, ['code', 'name', 'tags']);
 
     return {
@@ -81,5 +79,9 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     }
 
     await this.repository.softDelete(id);
+  }
+
+  async save(data: ScentConfig) {
+    return this.repository.save(data);
   }
 }
