@@ -45,19 +45,19 @@ export class UnifiedSearchService {
       (
         SELECT id, name, image, 'scent' AS type
         FROM scents
-        WHERE created_by = ANY($1) AND name ILIKE $2
+        WHERE created_by = ANY($1) AND name ILIKE $2 AND deleted_at IS NULL
       )
       UNION ALL
       (
         SELECT id, name, image, 'album' AS type
         FROM albums
-        WHERE created_by = ANY($1) AND name ILIKE $2
+        WHERE created_by = ANY($1) AND name ILIKE $2 AND deleted_at IS NULL
       )
       UNION ALL
       (
         SELECT id, name, image, 'playlist' AS type
         FROM playlists
-        WHERE created_by = ANY($1) AND name ILIKE $2
+        WHERE created_by = ANY($1) AND name ILIKE $2 AND deleted_at IS NULL
       )
       ORDER BY name
       LIMIT $3 OFFSET $4
@@ -69,11 +69,11 @@ export class UnifiedSearchService {
     const totalResult = await this.dataSource.query(
       `
       SELECT COUNT(*) FROM (
-        SELECT id FROM scents WHERE created_by = ANY($1) AND name ILIKE $2
+        SELECT id FROM scents WHERE created_by = ANY($1) AND name ILIKE $2 AND deleted_at IS NULL
         UNION ALL
-        SELECT id FROM albums WHERE created_by = ANY($1) AND name ILIKE $2
+        SELECT id FROM albums WHERE created_by = ANY($1) AND name ILIKE $2 AND deleted_at IS NULL
         UNION ALL
-        SELECT id FROM playlists WHERE created_by = ANY($1) AND name ILIKE $2
+        SELECT id FROM playlists WHERE created_by = ANY($1) AND name ILIKE $2 AND deleted_at IS NULL
     ) AS total
   `,
       [publicUserIds, keywordParam],
