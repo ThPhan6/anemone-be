@@ -403,6 +403,7 @@ export class DeviceService {
 
     const userSession = await this.userSessionRepository.findOne({
       where: { userId },
+      order: { createdAt: 'DESC' },
     });
 
     if (userSession) {
