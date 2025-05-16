@@ -74,10 +74,25 @@ export class IoTAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    // Extract device ID from headers
+    const deviceId = request.headers['x-device-id'];
+    logger.info(`Device ID: ${deviceId}`);
+    if (!deviceId) {
+      throw new UnauthorizedException('Empty Device Id');
+    }
+    // First check device in your database
+
+    const device = await this.deviceRepository.findOne({
+      where: { serialNumber: deviceId },
+      relations: ['product'],
+    });
+
+    if (!device) {
+      throw new UnauthorizedException('Device not registered');
+    }
 
     // Extract device certificate from headers
     const encodedCert = request.headers['x-client-cert'];
-    logger.info(`encodeCert ${JSON.stringify(encodedCert)}`);
     if (!encodedCert) {
       return false; // No certificate provided
     }
@@ -85,10 +100,6 @@ export class IoTAuthGuard implements CanActivate {
     const certPem = decodeURIComponent(encodedCert);
     // Compute the fingerprint of the client certificate
     const clientFingerprint = this.computeFingerprint(certPem);
-
-    // Extract device ID from headers
-    const deviceId = request.headers['x-device-id'];
-    logger.info(`Device ID: ${deviceId}`);
 
     try {
       // Find the certificate ID by fingerprint
@@ -98,16 +109,6 @@ export class IoTAuthGuard implements CanActivate {
         logger.error(`Certificate is not active: ${certificate.certificateDescription.status}`);
 
         return false;
-      }
-
-      // First check device in your database
-      const device = await this.deviceRepository.findOne({
-        where: { serialNumber: deviceId },
-        relations: ['product'],
-      });
-
-      if (!device) {
-        throw new UnauthorizedException('Device not registered');
       }
 
       request.device = device;
