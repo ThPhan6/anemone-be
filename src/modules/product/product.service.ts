@@ -135,57 +135,13 @@ export class ProductService extends BaseService<Product> {
       }
 
       newProduct.productVariant = productVariant;
-    }
-
-    // CARTRIDGE type requires scent config
-    if (type === ProductType.CARTRIDGE) {
-      const scentConfig = await this.scentConfigRepository.findOne({
-        where: { id: scentConfigId },
-      });
-
-      if (!scentConfig) {
-        throw new HttpException('Scent configuration not found', HttpStatus.BAD_REQUEST);
-      }
-
-      newProduct.scentConfig = scentConfig;
-    }
-
-    const existingProduct = await this.findOne({
-      where: [{ serialNumber: batchId, type }],
-      relations:
-        type === ProductType.DEVICE
-          ? {
-              productVariant: true,
-            }
-          : { scentConfig: true },
-    });
-
-    if (existingProduct) {
-      const message =
-        type === ProductType.DEVICE
-          ? MESSAGE.DEVICE.ALREADY_EXISTS
-          : MESSAGE.CARTRIDGE.ALREADY_EXISTS;
-      throw new HttpException(message, HttpStatus.BAD_REQUEST);
-    }
-
-    // DEVICE type requires product variant
-    if (type === ProductType.DEVICE) {
-      const productVariant = await this.productVariantRepository.findOne({
-        where: { id: productVariantId },
-      });
-
-      if (!productVariant) {
-        throw new HttpException('Product variant not found', HttpStatus.BAD_REQUEST);
-      }
-
-      newProduct.productVariant = productVariant;
       newProduct.serialNumber = serialNumber;
 
       const certResult = await this._createCert(serialNumber);
       newProduct.certificateId = certResult.certificateId;
     }
 
-    // CARTRIDGE type requires scent config
+    // CARTRIDGE type requires scent config(dont have serialNumber in payload)
     if (type === ProductType.CARTRIDGE) {
       const scentConfig = await this.scentConfigRepository.findOne({
         where: { id: scentConfigId },
@@ -196,9 +152,8 @@ export class ProductService extends BaseService<Product> {
       }
 
       newProduct.scentConfig = scentConfig;
-
       newProduct.serialNumber = await this.productRepository.generateSerialNumber(
-        ProductType.DEVICE,
+        ProductType.CARTRIDGE,
         {
           sku: newProduct.scentConfig.code,
           batchId,

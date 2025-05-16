@@ -40,7 +40,7 @@ export class IoTAuthGuard implements CanActivate {
     try {
       // Get the certificates associated with the device
       const thingsData = await this.iotClient
-        .listThingPrincipals({ thingName: 'anemone_test_device' })
+        .listThingPrincipals({ thingName: `ANEMONE-${deviceId}` })
         .promise();
       const certificateArns = thingsData.principals;
 
