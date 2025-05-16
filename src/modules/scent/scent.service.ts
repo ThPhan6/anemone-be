@@ -10,7 +10,7 @@ import { UserSession } from '../../common/entities/user-session.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { ScentRepository } from '../../common/repositories/scent.repository';
 import { convertURLToS3Readable } from '../../common/utils/file';
-import { transformImageUrls } from '../../common/utils/helper';
+import { paginate, transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
@@ -93,19 +93,30 @@ export class ScentService extends BaseService<Scent> {
       return el;
     });
 
-    return transformImageUrls(transformRes);
+    return transformImageUrls(transformRes, ['image', 'background']);
   }
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
+    const { search } = queries;
+
+    const whereConditions: any = {
+      createdBy: userId,
+    };
+    if (search) {
+      whereConditions.name = ILike(`%${search}%`); // ILike for case-insensitive search
+    }
+
     const userInfo = await this.cognitoService.getUserByUserId(userId);
 
-    const scent = await super.findAll(queries, { createdBy: userId }, ['name']);
-
+    const result = await paginate(this.scentRepository as any, {
+      where: whereConditions,
+      params: queries,
+    });
     const categories = await this.settingDefinitionRepository.find({
       where: { type: ESystemDefinitionType.SCENT_TAG },
     });
 
-    const newItems = scent.items.map((el: Scent) => {
+    const newItems = result.items.map((el: Scent) => {
       const categoryTags = categories
         .filter((category) => JSON.parse(el.tags).includes(category.id))
         .map((category) => ({
@@ -125,7 +136,7 @@ export class ScentService extends BaseService<Scent> {
 
     return {
       items: newItems,
-      pagination: scent.pagination,
+      pagination: result.pagination,
     };
   }
 
@@ -447,14 +458,17 @@ export class ScentService extends BaseService<Scent> {
       };
     }
 
-    const scent = await this.findAll(queries);
+    const result = await paginate(this.scentRepository as any, {
+      where,
+      params: queries,
+    });
 
     return {
-      items: scent.items.map((el: Scent) => ({
+      items: result.items.map((el: Scent) => ({
         ...el,
         image: el.image ? convertURLToS3Readable(el.image) : '',
       })),
-      pagination: scent.pagination,
+      pagination: result.pagination,
     };
   }
 
