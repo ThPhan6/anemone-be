@@ -6,7 +6,7 @@ import { IoTAuthGuard } from 'core/guards/iot-auth.guard';
 import { BaseController } from '../../../core/controllers/base.controller';
 import { ApiController } from '../../../core/decorator/apiController.decorator';
 import { DeviceCartridgesDto, DeviceHeartbeatDto } from '../dto';
-import { Device } from '../entities/device.entity';
+import { Product } from '../entities/product.entity';
 import { DeviceIotService } from '../services/device-iot.service';
 
 @ApiController({
@@ -22,46 +22,46 @@ export class DeviceIotController extends BaseController {
   @Post('auth')
   @ApiOperation({ summary: 'Device auth endpoint' })
   @ApiDeviceHeaders()
-  async auth(@IoTDevice() device: Device) {
+  async auth(@IoTDevice() product: Product) {
     // Update last ping time
-    await this.service.updateLastPing(device.product.serialNumber);
+    await this.service.updateLastPing(product.serialNumber);
 
     return {
       success: true,
       timestamp: new Date().toISOString(),
-      deviceId: device.product.serialNumber,
+      deviceId: product.serialNumber,
     };
   }
 
   @Get('ping')
   @ApiOperation({ summary: 'Device ping endpoint' })
   @ApiDeviceHeaders()
-  async ping(@IoTDevice() device: Device) {
+  async ping(@IoTDevice() product: Product) {
     // Update last ping time
-    await this.service.updateLastPing(device.product.serialNumber);
+    await this.service.updateLastPing(product.serialNumber);
 
     return {
       success: true,
       timestamp: new Date().toISOString(),
-      deviceId: device.product.serialNumber,
+      deviceId: product.serialNumber,
     };
   }
 
   @Post('status')
   @ApiDeviceHeaders()
   async updateStatus(
-    @IoTDevice() device: Device,
+    @IoTDevice() product: Product,
     @Body() data: { status: string; playlistId?: string; scentId?: string },
   ) {
-    await this.service.updateDeviceStatus(device.product.serialNumber, data);
+    await this.service.updateDeviceStatus(product.serialNumber, data);
 
     return { status: 'success' };
   }
 
   @Get('commands')
   @ApiDeviceHeaders()
-  async getCommands(@IoTDevice() device: Device) {
-    const command = await this.service.getPendingCommand(device.product.serialNumber);
+  async getCommands(@IoTDevice() product: Product) {
+    const command = await this.service.getPendingCommand(product.serialNumber);
 
     return command;
   }
@@ -69,8 +69,8 @@ export class DeviceIotController extends BaseController {
   @Post('cartridges')
   @ApiOperation({ summary: 'Sync cartridges' })
   @ApiDeviceHeaders()
-  async syncCartridges(@IoTDevice() device: Device, @Body() data: DeviceCartridgesDto) {
-    await this.service.syncDeviceCartridges(device.product.serialNumber, data);
+  async syncCartridges(@IoTDevice() product: Product, @Body() data: DeviceCartridgesDto) {
+    await this.service.syncDeviceCartridges(product.serialNumber, data);
 
     return this.ok(true, {
       message: 'Cartridge data synced successfully',
@@ -79,7 +79,7 @@ export class DeviceIotController extends BaseController {
 
   @Post('heartbeat')
   @ApiDeviceHeaders()
-  async heartbeat(@IoTDevice() device: Device, @Body() data: DeviceHeartbeatDto) {
-    return await this.service.handleHeartbeat(device.product.serialNumber, data);
+  async heartbeat(@IoTDevice() product: Product, @Body() data: DeviceHeartbeatDto) {
+    return await this.service.handleHeartbeat(product.serialNumber, data);
   }
 }
