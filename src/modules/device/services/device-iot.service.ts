@@ -8,6 +8,7 @@ import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
 import { UserSession } from '../../../common/entities/user-session.entity';
 import { Command } from '../../../common/enum/command.enum';
+import { formatDeviceName } from '../../../common/utils/helper';
 import { DeviceCartridgesDto, DeviceHeartbeatDto, DeviceStatus } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../entities/device-command.entity';
@@ -243,7 +244,7 @@ export class DeviceIotService {
       // Create new device if device not found
       const newDevice = await this.repository.create({
         product: { serialNumber: deviceId },
-        name: product.name, // or set default name if you want
+        name: formatDeviceName(product.serialNumber),
         isConnected: true,
         lastPingAt: now,
         provisioningStatus: DeviceProvisioningStatus.PROVISIONED,

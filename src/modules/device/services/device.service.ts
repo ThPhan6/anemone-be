@@ -16,6 +16,7 @@ import { Scent } from '../../../common/entities/scent.entity';
 import { Space } from '../../../common/entities/space.entity';
 import { Status, UserSession } from '../../../common/entities/user-session.entity';
 import { convertURLToS3Readable } from '../../../common/utils/file';
+import { formatDeviceName } from '../../../common/utils/helper';
 import { ProductVariant } from '../../product-variant/entities/product-variant.entity';
 import { RegisterDeviceDto, UpdateDeviceDto } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
@@ -181,7 +182,7 @@ export class DeviceService {
     if (!device) {
       const newDevice = this.repository.create({
         product: { serialNumber: dto.deviceId },
-        name: `Anemone_${product.serialNumber}`,
+        name: formatDeviceName(product.serialNumber),
         isConnected: true,
         registeredBy: userId,
         provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
