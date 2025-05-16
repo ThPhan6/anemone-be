@@ -358,6 +358,8 @@ export class PlaylistService {
       },
     });
 
+    const userInfo = await this.cognitoService.getUserByUserId(scent.createdBy);
+
     return {
       playlist,
       scent: {
@@ -368,6 +370,7 @@ export class PlaylistService {
           ...el,
           intensity: cartridgeInfo.find((c) => c.id === el.id)?.intensity,
         })),
+        createdBy: userInfo,
       },
     };
   }
