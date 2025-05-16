@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { sortBy } from 'lodash';
+import { sortBy, uniq } from 'lodash';
 import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -8,8 +8,10 @@ import { PlaylistScent } from '../../common/entities/playlist-scent.entity';
 import { Scent } from '../../common/entities/scent.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
+import { ScentRepository } from '../../common/repositories/scent.repository';
 import { convertURLToS3Readable } from '../../common/utils/file';
-import { paginate } from '../../common/utils/helper';
+import { transformImageUrls } from '../../common/utils/helper';
+import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
@@ -31,10 +33,9 @@ import {
 } from './dto/scent-request.dto';
 
 @Injectable()
-export class ScentService {
+export class ScentService extends BaseService<Scent> {
   constructor(
-    @InjectRepository(Scent)
-    private readonly scentRepository: Repository<Scent>,
+    private readonly scentRepository: ScentRepository,
     private storageService: StorageService,
     @InjectRepository(SettingDefinition)
     private readonly settingDefinitionRepository: Repository<SettingDefinition>,
@@ -55,30 +56,56 @@ export class ScentService {
     private readonly userSessionRepository: Repository<UserSession>,
     @InjectRepository(PlaylistScent)
     private readonly playlistScentRepository: Repository<PlaylistScent>,
-  ) {}
+  ) {
+    super(scentRepository);
+  }
+
+  async findAll(queries: ApiBaseGetListQueries) {
+    const res = await super.findAll(queries, {}, ['name']);
+    const transformRes = transformImageUrls(res);
+
+    const scentConfigIds = uniq(
+      transformRes.items.map((item) => item.cartridgeInfo.map((el) => el.id)).flat(),
+    );
+
+    const scentConfigs = await this.scentConfigRepository.find({
+      where: { id: In(scentConfigIds) },
+    });
+
+    const scentTags = await this.settingDefinitionRepository.find({
+      where: {
+        type: ESystemDefinitionType.SCENT_TAG,
+      },
+    });
+
+    transformRes.items = transformRes.items.map((el) => {
+      el.cartridgeInfo = el.cartridgeInfo.map((cart) => {
+        const scentConfig = scentConfigs.find((scentConfig) => scentConfig.id === cart.id);
+
+        return {
+          ...cart,
+          scentConfig,
+        };
+      });
+
+      el.tags = el.tags.map((tagId) => scentTags.find((tag) => tag.id === tagId));
+
+      return el;
+    });
+
+    return transformImageUrls(transformRes);
+  }
 
   async get(userId: string, queries: ApiBaseGetListQueries): Promise<Pagination<Scent>> {
-    const { search } = queries;
-
-    const whereConditions: any = {
-      createdBy: userId,
-    };
-    if (search) {
-      whereConditions.name = ILike(`%${search}%`); // ILike for case-insensitive search
-    }
-
     const userInfo = await this.cognitoService.getUserByUserId(userId);
 
-    const result = await paginate(this.scentRepository, {
-      where: whereConditions,
-      params: queries,
-    });
+    const scent = await super.findAll(queries, { createdBy: userId }, ['name']);
 
     const categories = await this.settingDefinitionRepository.find({
       where: { type: ESystemDefinitionType.SCENT_TAG },
     });
 
-    const newItems = result.items.map((el) => {
+    const newItems = scent.items.map((el: Scent) => {
       const categoryTags = categories
         .filter((category) => JSON.parse(el.tags).includes(category.id))
         .map((category) => ({
@@ -98,7 +125,7 @@ export class ScentService {
 
     return {
       items: newItems,
-      pagination: result.pagination,
+      pagination: scent.pagination,
     };
   }
 
@@ -219,7 +246,7 @@ export class ScentService {
     }
   }
 
-  async create(userId: string, bodyRequest: CreateScentDto, file: Express.Multer.File) {
+  async createScent(userId: string, bodyRequest: CreateScentDto, file: Express.Multer.File) {
     const found = await this.scentRepository.findOne({
       where: {
         name: bodyRequest.name,
@@ -251,7 +278,7 @@ export class ScentService {
     return await this.scentRepository.save(scent);
   }
 
-  async update(
+  async updateScent(
     userId: string,
     scentId: string,
     updateScentDto: UpdateScentDto,
@@ -356,7 +383,7 @@ export class ScentService {
     return await this.scentRepository.update(scentId, updatedScentData);
   }
 
-  async delete(userId: string, scentId: string) {
+  async deleteScent(userId: string, scentId: string) {
     const found = await this.scentRepository.findOne({
       where: { id: scentId, createdBy: userId },
     });
@@ -420,17 +447,14 @@ export class ScentService {
       };
     }
 
-    const result = await paginate(this.scentRepository, {
-      where,
-      params: queries,
-    });
+    const scent = await this.findAll(queries);
 
     return {
-      items: result.items.map((el) => ({
+      items: scent.items.map((el: Scent) => ({
         ...el,
         image: el.image ? convertURLToS3Readable(el.image) : '',
       })),
-      pagination: result.pagination,
+      pagination: scent.pagination,
     };
   }
 

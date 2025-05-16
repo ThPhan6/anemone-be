@@ -2,11 +2,6 @@ import { Column, Entity } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 
-export enum EScentConfigType {
-  SCENT = 1,
-  BLENDED = 2,
-}
-
 export enum EScentNoteType {
   TOP = 'top',
   MIDDLE = 'middle',
@@ -48,9 +43,6 @@ export class ScentConfig extends BaseEntity {
 
   @Column({ name: 'story', type: 'json' })
   story: IScenStory;
-
-  @Column({ name: 'type', type: 'enum', enum: EScentConfigType, nullable: true })
-  type: EScentConfigType;
 
   @Column({ name: 'tags', type: 'simple-array', nullable: true })
   tags: string[];
