@@ -23,6 +23,7 @@ export class DeviceOfflineCron {
     const devicesToUpdate = connectedDevices.filter((device) => {
       return (
         device.lastPingAt &&
+        !device.name.includes('Mock device') &&
         moment().diff(moment(device.lastPingAt), 'seconds') >
           parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)
       );

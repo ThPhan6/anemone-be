@@ -141,7 +141,7 @@ export class MockService {
       thingName: `thing-${deviceProduct.serialNumber}`,
       provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
       firmwareVersion: '1.0.0',
-      isConnected: false,
+      isConnected: true,
       lastPingAt: new Date(),
       warrantyExpirationDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
       product: deviceProduct,
