@@ -4,7 +4,7 @@ import { ApiHeader } from '@nestjs/swagger';
 export const IoTDevice = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
   const request = ctx.switchToHttp().getRequest();
 
-  return request.device;
+  return request.product;
 });
 
 export function ApiDeviceHeaders() {
