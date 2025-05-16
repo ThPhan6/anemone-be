@@ -496,6 +496,13 @@ export class ScentService {
 
     const publicUserIds = publicUsers.map((el) => el.userId);
 
+    if (publicUserIds.length === 0) {
+      return {
+        name: firstScentTag.name,
+        scents: [],
+      };
+    }
+
     const scents = await this.scentRepository
       .createQueryBuilder('scent')
       .where('scent.createdBy IN (:...userIds)', {
