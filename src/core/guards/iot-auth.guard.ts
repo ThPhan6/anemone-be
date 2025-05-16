@@ -4,7 +4,7 @@ import * as AWS from 'aws-sdk';
 import * as forge from 'node-forge';
 import { Repository } from 'typeorm';
 
-import { Device } from '../../modules/device/entities/device.entity';
+import { Product } from '../../modules/device/entities/product.entity';
 import { logger } from '../logger/index.logger';
 
 @Injectable()
@@ -12,8 +12,8 @@ export class IoTAuthGuard implements CanActivate {
   private iotClient: AWS.Iot;
 
   constructor(
-    @InjectRepository(Device)
-    private deviceRepository: Repository<Device>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {
     // Initialize AWS IoT client
     this.iotClient = new AWS.Iot({
@@ -80,14 +80,13 @@ export class IoTAuthGuard implements CanActivate {
     if (!deviceId) {
       throw new UnauthorizedException('Empty Device Id');
     }
-    // First check device in your database
 
-    const device = await this.deviceRepository.findOne({
+    // First check product in your database
+    const product = await this.productRepository.findOne({
       where: { serialNumber: deviceId },
-      relations: ['product'],
     });
 
-    if (!device) {
+    if (!product) {
       throw new UnauthorizedException('Device not registered');
     }
 
@@ -111,7 +110,7 @@ export class IoTAuthGuard implements CanActivate {
         return false;
       }
 
-      request.device = device;
+      request.product = product;
 
       return true;
     } catch (error) {
