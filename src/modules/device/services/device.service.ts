@@ -181,7 +181,7 @@ export class DeviceService {
     if (!device) {
       const newDevice = this.repository.create({
         product: { serialNumber: dto.deviceId },
-        name: product.name,
+        name: `Anemone_${product.serialNumber}`,
         isConnected: true,
         registeredBy: userId,
         provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
