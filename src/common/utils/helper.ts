@@ -94,3 +94,7 @@ export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']):
   // Return primitive values and Date objects as is
   return data;
 };
+
+export function formatDeviceName(serialNumber: string): string {
+  return `Anemone_${serialNumber}`;
+}
