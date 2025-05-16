@@ -11,6 +11,7 @@ import { Scent } from '../../common/entities/scent.entity';
 import { ScentPlayHistory } from '../../common/entities/scent-play-history.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
+import { ScentRepository } from '../../common/repositories/scent.repository';
 import { CognitoService } from '../auth/cognito.service';
 import { Device } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
@@ -20,6 +21,7 @@ import { ScentConfig } from '../scent-config/entities/scent-config.entity';
 import { SettingDefinition } from '../system/entities/setting-definition.entity';
 import { ScentController } from './scent.controller';
 import { ScentService } from './scent.service';
+import { ScentAdminController } from './scent-admin.controller';
 
 @Module({
   imports: [
@@ -41,7 +43,7 @@ import { ScentService } from './scent.service';
       UserSession,
     ]),
   ],
-  controllers: [ScentController],
-  providers: [ScentService, CognitoService, AwsConfigService],
+  controllers: [ScentController, ScentAdminController],
+  providers: [ScentRepository, ScentService, CognitoService, AwsConfigService],
 })
 export class ScentModule {}

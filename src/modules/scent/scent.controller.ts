@@ -78,7 +78,7 @@ export class ScentController extends BaseController {
     )
     image: Express.Multer.File,
   ) {
-    const scent = await this.scentService.create(user.sub, body, image);
+    const scent = await this.scentService.createScent(user.sub, body, image);
 
     return scent;
   }
@@ -107,7 +107,7 @@ export class ScentController extends BaseController {
     )
     image: Express.Multer.File,
   ) {
-    return this.scentService.update(user.sub, id, body, image);
+    return this.scentService.updateScent(user.sub, id, body, image);
   }
 
   @Put(':id')
@@ -134,6 +134,6 @@ export class ScentController extends BaseController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a scent by id' })
   async delete(@AuthUser() user: UserDto, @Param('id') id: string) {
-    return this.scentService.delete(user.sub, id);
+    return this.scentService.deleteScent(user.sub, id);
   }
 }
