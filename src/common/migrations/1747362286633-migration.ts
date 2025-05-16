@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Migration1745490499767 implements MigrationInterface {
-  name = 'Migration1745490499767';
+export class Migration1747362286633 implements MigrationInterface {
+  name = 'Migration1747362286633';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -11,7 +11,10 @@ export class Migration1745490499767 implements MigrationInterface {
       `CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "cog_id" character varying(64) NOT NULL, "email" character varying NOT NULL, "role" "public"."users_role_enum" NOT NULL DEFAULT 'MEMBER', "third_party_accounts" json, "user_id" character varying NOT NULL, CONSTRAINT "UQ_374577911594766e6ba18a14670" UNIQUE ("cog_id"), CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "user_settings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "user_id" character varying NOT NULL, "schedule_timer" json, "system" json, "device" json, "network" json, "system_update" json, "wifi_enabled" boolean NOT NULL DEFAULT false, "wifi_connections" json, "personalise" boolean NOT NULL DEFAULT false, "is_public" boolean NOT NULL DEFAULT false, "follower_access" boolean NOT NULL DEFAULT false, CONSTRAINT "PK_00f004f5922a0744d174530d639" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "user_settings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "user_id" character varying NOT NULL, "schedule_timer" json, "system" json, "device" json, "network" json, "system_update" json, "wifi_enabled" boolean NOT NULL DEFAULT false, "wifi_connections" json, "personalise" boolean NOT NULL DEFAULT false, "is_public" boolean NOT NULL DEFAULT false, "follower_access" boolean NOT NULL DEFAULT false, "onboarded" boolean NOT NULL DEFAULT false, "questionnaire" json, CONSTRAINT "PK_00f004f5922a0744d174530d639" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "user_profiles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" character varying, "given_name" character varying, "preferred_username" character varying, "picture" character varying, "phone_number" character varying, "email" character varying, "user_id" character varying NOT NULL, "is_public" boolean NOT NULL DEFAULT false, "follower_access" boolean NOT NULL DEFAULT false, "locale" character varying, "zone_info" character varying, CONSTRAINT "PK_1ec6662219f4605723f1e41b6cb" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TABLE "family_members" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "user_id" character varying NOT NULL, "role" smallint NOT NULL, "family_id" uuid, CONSTRAINT "PK_186da7c7fcbf23775fdd888a747" PRIMARY KEY ("id"))`,
@@ -23,13 +26,14 @@ export class Migration1745490499767 implements MigrationInterface {
       `CREATE TABLE "families" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" character varying NOT NULL DEFAULT 'My Home', CONSTRAINT "PK_70414ac0c8f45664cf71324b9bb" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "scent_configs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "code" character varying NOT NULL, "name" character varying NOT NULL, "title" character varying NOT NULL, "description" character varying NOT NULL, "background" character varying NOT NULL, "story" json NOT NULL, "tags" text, "notes" json, "color" json, CONSTRAINT "PK_513234df13c8923ca77ddfe4551" PRIMARY KEY ("id"))`,
-    );
-    await queryRunner.query(
       `CREATE TABLE "product_variants" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" character varying NOT NULL, "image" character varying, "color" character varying, CONSTRAINT "PK_281e3f2c55652d6a22c0aa59fd7" PRIMARY KEY ("id"))`,
     );
+    await queryRunner.query(`CREATE TYPE "public"."scent_configs_type_enum" AS ENUM('1', '2')`);
     await queryRunner.query(
-      `CREATE TABLE "products" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "manufacturer_id" character varying NOT NULL, "sku" character varying NOT NULL, "batch_id" character varying NOT NULL, "serial_number" character varying NOT NULL, "name" character varying NOT NULL, "type" smallint NOT NULL, "config_template" json, "supported_features" json, "scent_config_id" uuid, "product_variant_id" uuid, CONSTRAINT "UQ_d95100c677e0db71a45424229b7" UNIQUE ("serial_number"), CONSTRAINT "PK_0806c755e0aca124e67c0cf6d7d" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "scent_configs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "code" character varying NOT NULL, "name" character varying NOT NULL, "title" character varying NOT NULL, "description" character varying NOT NULL, "background" character varying NOT NULL, "story" json NOT NULL, "type" "public"."scent_configs_type_enum", "tags" text, "notes" json, "color" json, CONSTRAINT "PK_513234df13c8923ca77ddfe4551" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "products" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "manufacturer_id" character varying NOT NULL, "sku" character varying, "batch_id" character varying NOT NULL, "serial_number" character varying NOT NULL, "name" character varying, "type" smallint NOT NULL, "certificate_id" character varying, "config_template" json, "supported_features" json, "scent_config_id" uuid, "product_variant_id" uuid, CONSTRAINT "UQ_d95100c677e0db71a45424229b7" UNIQUE ("serial_number"), CONSTRAINT "PK_0806c755e0aca124e67c0cf6d7d" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TABLE "device_cartridges" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "eot" bigint NOT NULL, "ert" bigint NOT NULL, "serial_number" character varying NOT NULL, "percentage" numeric NOT NULL, "position" numeric NOT NULL, "product_id" uuid, "device_id" uuid, CONSTRAINT "PK_c88bc614409d66ebd5912256a40" PRIMARY KEY ("id"))`,
@@ -68,7 +72,7 @@ export class Migration1745490499767 implements MigrationInterface {
       `CREATE TABLE "user_sessions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "status" smallint NOT NULL, "user_id" character varying NOT NULL, "device_id" uuid, "album_id" uuid, "playlist_id" uuid, "scent_id" uuid, CONSTRAINT "PK_e93e031a5fed190d4789b6bfd83" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "user_profiles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" character varying, "given_name" character varying, "preferred_username" character varying, "picture" character varying, "phone_number" character varying, "email" character varying, "user_id" character varying NOT NULL, "is_public" boolean NOT NULL DEFAULT false, "follower_access" boolean NOT NULL DEFAULT false, "locale" character varying, "zone_info" character varying, CONSTRAINT "PK_1ec6662219f4605723f1e41b6cb" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "user_favorites" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "user_id" character varying NOT NULL, "type" character varying NOT NULL, "relation_id" character varying NOT NULL, CONSTRAINT "PK_6c472a19a7423cfbbf6b7c75939" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TABLE "activity_logs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "user_id" character varying NOT NULL, "entity_id" uuid NOT NULL, "entity" character varying(64) NOT NULL, "action" character varying NOT NULL, "old_data" json NOT NULL, "new_data" json NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_f25287b6140c5ba18d38776a796" PRIMARY KEY ("id"))`,
@@ -215,7 +219,7 @@ export class Migration1745490499767 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "setting_values"`);
     await queryRunner.query(`DROP TABLE "setting_definitions"`);
     await queryRunner.query(`DROP TABLE "activity_logs"`);
-    await queryRunner.query(`DROP TABLE "user_profiles"`);
+    await queryRunner.query(`DROP TABLE "user_favorites"`);
     await queryRunner.query(`DROP TABLE "user_sessions"`);
     await queryRunner.query(`DROP TABLE "albums"`);
     await queryRunner.query(`DROP TABLE "album_playlists"`);
@@ -229,11 +233,13 @@ export class Migration1745490499767 implements MigrationInterface {
     await queryRunner.query(`DROP TYPE "public"."device_certificates_status_enum"`);
     await queryRunner.query(`DROP TABLE "device_cartridges"`);
     await queryRunner.query(`DROP TABLE "products"`);
-    await queryRunner.query(`DROP TABLE "product_variants"`);
     await queryRunner.query(`DROP TABLE "scent_configs"`);
+    await queryRunner.query(`DROP TYPE "public"."scent_configs_type_enum"`);
+    await queryRunner.query(`DROP TABLE "product_variants"`);
     await queryRunner.query(`DROP TABLE "families"`);
     await queryRunner.query(`DROP TABLE "spaces"`);
     await queryRunner.query(`DROP TABLE "family_members"`);
+    await queryRunner.query(`DROP TABLE "user_profiles"`);
     await queryRunner.query(`DROP TABLE "user_settings"`);
     await queryRunner.query(`DROP TABLE "users"`);
     await queryRunner.query(`DROP TYPE "public"."users_role_enum"`);
