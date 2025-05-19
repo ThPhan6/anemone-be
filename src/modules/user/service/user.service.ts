@@ -138,7 +138,7 @@ export class UserService extends BaseService<User> {
    * Get APP users from database
    */
   private async getAllAppUsers(query: UserGetListQueries) {
-    return this.findAll(
+    return await this.findAll(
       {
         ...query,
         type: UserType.APP,
@@ -150,22 +150,6 @@ export class UserService extends BaseService<User> {
 
   async findUserByEmail(email: string): Promise<User | null> {
     return this.repository.findOne({ where: { email } });
-  }
-
-  async getUserByEmail(email: string): Promise<User> {
-    try {
-      // Get CMS user details from Cognito
-      const cognitoUser = await this.cognitoService.getUserByEmail(email);
-      if (!cognitoUser) {
-        throw new Error('User not found');
-      }
-
-      // Sync with our database for consistent response format
-      return await this.syncUserWithCognitoData(cognitoUser);
-    } catch (error) {
-      logger.error('Failed to get user by email and type:', error);
-      throw error;
-    }
   }
 
   /**
@@ -225,7 +209,10 @@ export class UserService extends BaseService<User> {
       const updatedCognitoUser = await this.cognitoService.getUserByEmail(email);
 
       // Sync changes to our database
-      const updatedUser = await this.syncUserWithCognitoData(updatedCognitoUser);
+      const updatedUser = await this.syncUserWithCognitoData({
+        ...updatedCognitoUser,
+        type: UserType.CMS,
+      });
 
       // Return formatted response without profile data
       return {
@@ -286,7 +273,7 @@ export class UserService extends BaseService<User> {
 
       if (!existingUser) {
         // Create new user in database from Cognito data
-        await this.syncUserWithCognitoData(updatedCognitoUser);
+        await this.syncUserWithCognitoData({ ...updatedCognitoUser, type: UserType.CMS });
       } else {
         // Update existing user with Cognito data and additional fields
         const userDataForDb: Partial<User> = {
@@ -355,6 +342,7 @@ export class UserService extends BaseService<User> {
         role: userData.role || UserRole.MEMBER,
         isAdmin: userData.isAdmin || userData.role === UserRole.ADMIN,
         enabled: userData.enabled,
+        type: UserType.CMS,
       };
 
       // Create user in our database
@@ -526,12 +514,12 @@ export class UserService extends BaseService<User> {
 
   async syncUserWithCognitoData(cognitoUser: {
     email: string;
+    sub: string;
+    type: UserType;
     name?: string;
     given_name?: string;
     status?: string;
-    role?: string;
-    'custom:role'?: string;
-    sub?: string;
+    role?: UserRole;
     email_verified?: boolean | string;
     enabled?: boolean;
     phone_number_verified?: boolean | string;
@@ -540,7 +528,6 @@ export class UserService extends BaseService<User> {
       const existingUser = await this.findUserByEmail(cognitoUser.email);
 
       // Extract role from either role or custom:role
-      const role = cognitoUser['custom:role'] || cognitoUser.role || UserRole.MEMBER;
 
       // Prepare user data for database
       const userDataForDb: Partial<User> = {
@@ -548,7 +535,7 @@ export class UserService extends BaseService<User> {
         name: cognitoUser.name || '',
         givenName: cognitoUser.given_name || '',
         status: (cognitoUser.status as UserStatus) || UserStatus.UNCONFIRMED,
-        role: role as UserRole,
+        role: cognitoUser.role,
         emailVerified:
           typeof cognitoUser.email_verified === 'string'
             ? cognitoUser.email_verified === 'true'
@@ -558,7 +545,8 @@ export class UserService extends BaseService<User> {
           typeof cognitoUser.phone_number_verified === 'string'
             ? cognitoUser.phone_number_verified === 'true'
             : !!cognitoUser.phone_number_verified,
-        isAdmin: role === UserRole.ADMIN,
+        isAdmin: cognitoUser.role === UserRole.ADMIN,
+        type: cognitoUser.type,
       };
 
       // Add user_id if available
@@ -623,11 +611,11 @@ export class UserService extends BaseService<User> {
       given_name: cognitoUser.givenName,
       status: cognitoUser.status,
       role: cognitoUser.role,
-      'custom:role': cognitoUser.role,
       sub: cognitoUser.id,
       email_verified: cognitoUser.emailVerified,
       enabled: cognitoUser.enabled,
       phone_number_verified: cognitoUser.phoneNumberVerified,
+      type: UserType.APP,
     });
   }
 }
