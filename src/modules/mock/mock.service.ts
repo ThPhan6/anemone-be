@@ -187,6 +187,7 @@ export class MockService {
       lastPingAt: device.lastPingAt,
       warrantyExpirationDate: device.warrantyExpirationDate,
       registeredBy: device.registeredBy,
+      product: device.product,
     };
   }
 }
