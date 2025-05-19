@@ -45,6 +45,7 @@ export class UserSessionsService {
           ? PingDeviceStatus.CONNECTED
           : PingDeviceStatus.DISCONNECTED
         : null,
+      deviceId: userSession?.device?.id ?? null,
       scentStatus: userSession?.status ?? null,
       userSession: userSession ?? null,
     };
