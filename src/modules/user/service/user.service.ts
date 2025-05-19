@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { User } from 'common/entities/user.entity';
 import { UserRepository } from 'common/repositories/user.repository';
 import { BaseService } from 'core/services/base.service';
 import { UserGetListQueries } from 'modules/user/dto/user.request';
 import { UserRole } from 'modules/user/user.type';
 import { FindOptionsWhere } from 'typeorm';
+
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class UserService extends BaseService<User> {

@@ -4,7 +4,6 @@ import { ApiBadRequestException } from 'common/types/apiException.type';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from 'core/decorator/apiDoc.decorator';
-import { UserProfileService } from 'core/services/user-profile.service';
 import { UserService } from 'modules/user/service/user.service';
 import { UserRole } from 'modules/user/user.type';
 
@@ -26,7 +25,6 @@ export class AuthController extends BaseController {
   constructor(
     private readonly cognitoService: CognitoService,
     private readonly userService: UserService,
-    private readonly userProfileService: UserProfileService,
   ) {
     super();
   }
