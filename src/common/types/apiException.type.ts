@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
-import { Message } from 'common/constants/app.constants';
 import { MessageCode } from 'common/constants/messageCode';
+
+import { Message } from '../constants/app.constants';
 
 export class ApiErrorDescription {
   [property: string]: string[];
@@ -15,7 +16,7 @@ export class ApiException {
 }
 
 export class ApiNotFoundException extends ApiException {
-  constructor(messageCode?: MessageCode, message?: string) {
+  constructor(messageCode: MessageCode, message: string) {
     super(HttpStatus.NOT_FOUND, messageCode ?? MessageCode.notFound, message ?? Message.notFound());
   }
 }

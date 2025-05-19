@@ -8,6 +8,7 @@ export class OrderSortDto {
   @ExposeApiOptional()
   isDesc: boolean;
 }
+
 export class ApiBaseGetListQueries {
   @ExposeApiOptional()
   page?: number;

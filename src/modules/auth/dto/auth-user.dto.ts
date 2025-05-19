@@ -1,5 +1,6 @@
 import { Expose } from 'class-transformer';
-import { UserRole } from 'modules/user/user.type';
+
+import { UserRole } from '../../user/entities/user.entity';
 
 export class UserDto {
   @Expose()

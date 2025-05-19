@@ -1,63 +1,84 @@
-import { IsEmail, IsEnum } from 'class-validator';
-import { ExposeApiOptional } from 'core/decorator/property.decorator';
-import { CheckAny } from 'core/decorator/validators/checkAny.decorator';
-import { IsPassword } from 'core/decorator/validators/password.decorator';
-import { ApiBaseGetListQueries } from 'core/types/apiQuery.type';
-import { UserRole } from 'modules/user/user.type';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ExposeApi, ExposeApiOptional } from 'core/decorator/property.decorator';
+
+import { CheckAny } from '../../../core/decorator/validators/checkAny.decorator';
+import { ApiBaseGetListQueries } from '../../../core/types/apiQuery.type';
+import { UserRole, UserType } from '../entities/user.entity';
+
+export class UserGetListQueries extends ApiBaseGetListQueries {
+  @ExposeApi()
+  @IsEnum(UserType)
+  @IsNotEmpty({ message: 'User type is required' })
+  @ApiProperty({
+    description: 'Type of user: 1 for CMS, 2 for APP',
+    enum: UserType,
+    enumName: 'UserType',
+    example: UserType.CMS,
+  })
+  type: UserType;
+}
 
 export class CreateUserDto {
-  @CheckAny({ required: true })
-  @IsEmail()
+  @ExposeApi()
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
   email: string;
 
-  @CheckAny({ required: true })
-  firstName: string;
+  @ExposeApi()
+  @IsString({ message: 'First name must be a string' })
+  @IsNotEmpty({ message: 'First name is required' })
+  name: string;
+
+  @ExposeApi()
+  @IsString({ message: 'Last name must be a string' })
+  @IsNotEmpty({ message: 'Last name is required' })
+  givenName: string;
+
+  @ExposeApi()
+  @IsEnum(UserRole, { message: 'Role must be a valid user role' })
+  @IsOptional()
+  role: UserRole = UserRole.MEMBER;
 
   @CheckAny({ required: true })
-  lastName: string;
+  @IsBoolean({ message: 'Enabled must be a boolean' })
+  @IsNotEmpty({ message: 'Enabled is required' })
+  enabled: boolean;
 
-  @CheckAny({ required: true })
-  @IsPassword()
-  password: string;
-
-  @CheckAny({ required: true })
-  @IsEnum(UserRole)
-  role: UserRole;
+  @ExposeApi()
+  @IsBoolean({ message: 'isAdmin must be a boolean' })
+  @IsOptional()
+  isAdmin: boolean = false;
 }
 
 export class UpdateUserDto {
-  @CheckAny({ required: false })
-  firstName: string;
-
-  @CheckAny({ required: false })
-  lastName: string;
-
-  @CheckAny({ required: true })
-  @IsEnum(UserRole)
-  role: UserRole;
-
-  @CheckAny({ required: true })
-  isActive: boolean;
-}
-
-export class ChangePasswordDto {
-  @CheckAny({ required: true })
-  @IsPassword()
-  password: string;
-}
-
-export class UserGetListQueries extends ApiBaseGetListQueries {
   @ExposeApiOptional()
-  role: UserRole[];
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsOptional()
+  email?: string;
 
   @ExposeApiOptional()
-  isActive: boolean;
-}
+  @IsString({ message: 'First name must be a string' })
+  @IsOptional()
+  name?: string;
 
-export class UpdateProfileDto {
-  @CheckAny({ required: true })
-  firstName: string;
+  @ExposeApiOptional()
+  @IsString({ message: 'Last name must be a string' })
+  @IsOptional()
+  givenName?: string;
 
-  @CheckAny({ required: true })
-  lastName: string;
+  @ExposeApiOptional()
+  @IsEnum(UserRole, { message: 'Role must be a valid user role' })
+  @IsOptional()
+  role?: UserRole = UserRole.MEMBER;
+
+  @ExposeApiOptional()
+  @IsBoolean({ message: 'Enabled must be a boolean' })
+  @IsOptional()
+  enabled?: boolean;
+
+  @ExposeApiOptional()
+  @IsBoolean({ message: 'isAdmin must be a boolean' })
+  @IsOptional()
+  isAdmin?: boolean;
 }

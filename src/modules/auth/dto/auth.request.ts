@@ -67,3 +67,8 @@ export class SignUpDto {
   @CheckAny({ required: true })
   lastName: string;
 }
+
+export class GetProfileDto {
+  @IsEmail()
+  email: string;
+}

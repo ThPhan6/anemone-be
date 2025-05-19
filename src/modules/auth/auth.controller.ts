@@ -5,9 +5,9 @@ import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiBaseOkResponse } from 'core/decorator/apiDoc.decorator';
 import { UserService } from 'modules/user/service/user.service';
-import { UserRole } from 'modules/user/user.type';
 
 import { logger } from '../../core/logger/index.logger';
+import { UserRole } from '../user/entities/user.entity';
 import { CognitoService } from './cognito.service';
 import {
   ChangePasswordDto,
