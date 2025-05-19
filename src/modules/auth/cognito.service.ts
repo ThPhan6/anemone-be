@@ -5,6 +5,8 @@ import {
   AdminDeleteUserCommand,
   AdminDeleteUserCommandInput,
   AdminDeleteUserCommandOutput,
+  AdminDisableUserCommand,
+  AdminEnableUserCommand,
   AdminGetUserCommand,
   AdminInitiateAuthCommand,
   AdminInitiateAuthCommandInput,
@@ -22,6 +24,9 @@ import {
   GlobalSignOutCommand,
   InitiateAuthCommand,
   InitiateAuthCommandInput,
+  ListUsersCommand,
+  ListUsersCommandInput,
+  ListUsersResponse,
   RespondToAuthChallengeCommand,
   RespondToAuthChallengeCommandInput,
   RespondToAuthChallengeCommandOutput,
@@ -32,9 +37,10 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AwsConfigService } from 'common/config/aws.config';
-import { UserRole } from 'modules/user/user.type';
+import { isBoolean } from 'lodash';
 
 import { logger } from '../../core/logger/index.logger';
+import { User, UserRole, UserStatus, UserType } from '../user/entities/user.entity';
 import { AuthResponseDto } from './dto/auth.response';
 
 @Injectable()
@@ -205,21 +211,40 @@ export class CognitoService {
     firstName: string;
     lastName: string;
     role: UserRole;
+    enabled?: boolean;
   }): Promise<AdminUpdateUserAttributesCommandOutput> {
-    const { email, firstName, lastName, role } = data;
+    const { email, firstName, lastName, role, enabled } = data;
+    const userAttributes = [
+      { Name: 'name', Value: firstName },
+      { Name: 'given_name', Value: lastName },
+      { Name: 'custom:role', Value: role },
+    ];
+
     const params: AdminUpdateUserAttributesCommandInput = {
       UserPoolId: this.awsConfigService.userCmsPoolId,
       Username: email,
-      UserAttributes: [
-        { Name: 'name', Value: firstName },
-        { Name: 'given_name', Value: lastName },
-        { Name: 'custom:role', Value: role },
-      ],
+      UserAttributes: userAttributes,
     };
 
     const command = new AdminUpdateUserAttributesCommand(params);
+    const result = await this.cognitoClient.send(command);
 
-    return this.cognitoClient.send(command);
+    // Handle enabled status separately if provided
+    if (isBoolean(enabled)) {
+      const enableCommand = enabled
+        ? new AdminEnableUserCommand({
+            UserPoolId: this.awsConfigService.userCmsPoolId,
+            Username: email,
+          })
+        : new AdminDisableUserCommand({
+            UserPoolId: this.awsConfigService.userCmsPoolId,
+            Username: email,
+          });
+
+      await this.cognitoClient.send(enableCommand);
+    }
+
+    return result;
   }
 
   async deleteUser(email: string): Promise<AdminDeleteUserCommandOutput> {
@@ -305,6 +330,52 @@ export class CognitoService {
     }
   }
 
+  async getCMSUserByUserId(userId: string): Promise<Partial<User> | null> {
+    try {
+      const command = new AdminGetUserCommand({
+        UserPoolId: this.awsConfigService.userCmsPoolId,
+        Username: userId,
+      });
+
+      const result = await this.cognitoClient.send(command);
+
+      const attrMap = result.UserAttributes?.reduce(
+        (acc, attr) => {
+          if (attr.Name && attr.Value) {
+            acc[attr.Name] = attr.Value;
+          }
+
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
+      if (!attrMap) {
+        return null;
+      }
+
+      return {
+        id: attrMap.sub,
+        email: attrMap.email || '',
+        name: attrMap.name || '',
+        givenName: attrMap.given_name || '',
+        status: result.UserStatus as UserStatus,
+        role: (attrMap['custom:role'] as UserRole) || UserRole.MEMBER,
+        type: UserType.CMS,
+        emailVerified: attrMap.email_verified === 'true',
+        enabled: result.Enabled || false,
+        phoneNumberVerified: attrMap.phone_number_verified === 'true',
+        isAdmin: attrMap['custom:role'] === UserRole.ADMIN,
+        createdAt: result.UserCreateDate,
+        updatedAt: result.UserLastModifiedDate,
+      };
+    } catch (error) {
+      logger.error('Failed to fetch user from Cognito:', error);
+
+      return null;
+    }
+  }
+
   async getUserByUserId(userId: string) {
     try {
       const command = new AdminGetUserCommand({
@@ -326,6 +397,135 @@ export class CognitoService {
       logger.error('Failed to fetch user from Cognito:', error);
 
       return null;
+    }
+  }
+
+  async getUserByEmail(email: string, isCms = true) {
+    try {
+      const params: ListUsersCommandInput = {
+        UserPoolId: isCms
+          ? this.awsConfigService.userCmsPoolId
+          : this.awsConfigService.userMobilePoolId,
+        Filter: `email = "${email}"`,
+        Limit: 1,
+      };
+
+      const command = new ListUsersCommand(params);
+      const result: ListUsersResponse = await this.cognitoClient.send(command);
+
+      if (!result.Users || result.Users.length === 0) {
+        return null;
+      }
+
+      const user = result.Users[0];
+      const attributes = (user.Attributes || []).reduce((acc, attr) => {
+        if (attr.Name && attr.Value) {
+          acc[attr.Name] = attr.Value;
+        }
+
+        return acc;
+      }, {} as any);
+
+      return {
+        sub: attributes.sub,
+        username: user.Username || '',
+        email: attributes.email,
+        name: attributes.name || '',
+        given_name: attributes.given_name || '',
+        status: user.UserStatus,
+        enabled: user.Enabled,
+        email_verified: attributes.email_verified === 'true',
+        phone_number_verified: attributes.phone_number_verified === 'true',
+        role: attributes['custom:role'] || '',
+      };
+    } catch (error) {
+      logger.error(`Failed to fetch user by email from Cognito: ${JSON.stringify(error, null, 2)}`);
+      throw new Error('Failed to retrieve user from Cognito');
+    }
+  }
+
+  /**
+   * Get a list of users from Cognito user pool
+   * @param options - Options for listing users
+   * @param isCms - Whether to use CMS or mobile user pool
+   * @returns List of users with pagination token
+   */
+  async listUsers(
+    options: {
+      limit?: number;
+      filter?: string;
+      paginationToken?: string;
+    } = {},
+    isCms = true,
+  ): Promise<{
+    users: Array<{
+      username: string;
+      attributes: {
+        email: string;
+        email_verified: string;
+        phone_number_verified: string;
+        name: string;
+        given_name: string;
+        'custom:role': string;
+        sub: string;
+      };
+      userCreateDate: Date;
+      userLastModifiedDate: Date;
+      enabled: boolean;
+      userStatus: string;
+    }>;
+    paginationToken?: string;
+  }> {
+    try {
+      const { limit = 60, filter, paginationToken } = options;
+
+      const params: ListUsersCommandInput = {
+        UserPoolId: isCms
+          ? this.awsConfigService.userCmsPoolId
+          : this.awsConfigService.userMobilePoolId,
+      };
+
+      if (limit !== undefined && limit !== null && limit > 0) {
+        params.Limit = limit;
+      }
+
+      if (filter) {
+        params.Filter = filter;
+      }
+
+      if (paginationToken) {
+        params.PaginationToken = paginationToken;
+      }
+
+      const command = new ListUsersCommand(params);
+      const result: ListUsersResponse = await this.cognitoClient.send(command);
+
+      const users =
+        result.Users?.map((user) => {
+          const attributes = (user.Attributes || []).reduce((acc, attr) => {
+            if (attr.Name && attr.Value) {
+              acc[attr.Name] = attr.Value;
+            }
+
+            return acc;
+          }, {} as any);
+
+          return {
+            username: user.Username || '',
+            attributes,
+            userCreateDate: user.UserCreateDate,
+            userLastModifiedDate: user.UserLastModifiedDate,
+            enabled: user.Enabled,
+            userStatus: user.UserStatus,
+          };
+        }) || [];
+
+      return {
+        users,
+        paginationToken: result.PaginationToken,
+      };
+    } catch (error) {
+      throw new Error('Failed to retrieve users from Cognito');
     }
   }
 }

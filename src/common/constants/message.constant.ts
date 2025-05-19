@@ -1,4 +1,7 @@
 export const MESSAGE = {
+  SYSTEM: {
+    ERROR: 'System error',
+  },
   NOT_FOUND: 'Not found',
 
   SYSTEM_SETTINGS: {

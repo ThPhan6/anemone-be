@@ -7,7 +7,7 @@ import { Reflector } from '@nestjs/core';
 import { logger } from 'core/logger/index.logger';
 
 import { ApiUnauthorizedException } from '../../common/types/apiException.type';
-import { UserRole } from '../../modules/user/user.type';
+import { UserRole } from '../../modules/user/entities/user.entity';
 import { PermDecoratorOptions } from '../decorator/auth.decorator';
 
 export const PERM_KEY = 'roles';

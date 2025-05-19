@@ -94,3 +94,30 @@ export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']):
   // Return primitive values and Date objects as is
   return data;
 };
+
+export const generateRandomPassword = (length = 12) => {
+  const specialChars = '!@#$%^&*()_+=-`~[]\{}|;\':",./<>?';
+  const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const numbers = '0123456789';
+  const allChars = specialChars + letters + numbers;
+
+  let password = '';
+
+  // Ensure at least one of each type
+  password += specialChars[Math.floor(Math.random() * specialChars.length)];
+  password += letters[Math.floor(Math.random() * letters.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+
+  // Fill the rest of the password with random characters
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Shuffle the password to make it more random
+  password = password
+    .split('')
+    .sort(() => Math.random() - 0.5)
+    .join('');
+
+  return password;
+};

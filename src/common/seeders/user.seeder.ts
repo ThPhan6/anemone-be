@@ -3,18 +3,15 @@ import {
   AdminCreateUserCommandInput,
   CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { User } from 'common/entities/user.entity';
-import { UserProfile } from 'common/entities/user-profile.entity';
 import { logger } from 'core/logger/index.logger';
-import { UserRole } from 'modules/user/user.type';
 import { DataSource } from 'typeorm';
 
+import { User, UserRole } from '../../modules/user/entities/user.entity';
 import { BaseSeeder } from './base.seeder';
 
 export class UserSeeder extends BaseSeeder {
   protected async execute(dataSource: DataSource): Promise<void> {
     const repository = dataSource.getRepository(User);
-    const profileRepo = dataSource.getRepository(UserProfile);
 
     const userData = [
       {
@@ -80,17 +77,9 @@ export class UserSeeder extends BaseSeeder {
         if (!existingUser) {
           const newUser = repository.create({
             ...user,
-            cogId: result.User.Attributes.find((x) => x.Name === 'sub')?.Value,
+            id: result.User.Attributes.find((x) => x.Name === 'sub')?.Value,
           });
           await repository.save(newUser);
-
-          const profile = profileRepo.create({
-            userId: newUser.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-          });
-
-          await profileRepo.save(profile);
         }
       }
     } catch (error) {

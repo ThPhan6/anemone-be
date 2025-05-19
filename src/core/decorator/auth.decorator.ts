@@ -1,8 +1,8 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { UserRole } from 'modules/user/user.type';
 
+import { UserRole } from '../../modules/user/entities/user.entity';
 import { PERM_KEY, PERM_OPTION_KEY, RoleGuard } from '../guards/role.guard';
 
 export type PermDecoratorOptions = { skipClassContext?: boolean };
