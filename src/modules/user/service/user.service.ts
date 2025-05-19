@@ -8,6 +8,7 @@ import { MESSAGE } from '../../../common/constants/message.constant';
 import { generateRandomPassword } from '../../../common/utils/helper';
 import { logger } from '../../../core/logger/index.logger';
 import { CognitoService } from '../../auth/cognito.service';
+import { UserDto } from '../dto/user.dto';
 import { User, UserRole, UserStatus, UserType } from '../entities/user.entity';
 
 @Injectable()
@@ -367,85 +368,160 @@ export class UserService extends BaseService<User> {
     }
   }
 
+  /**
+   * Updates a user's information in both Cognito and local database
+   * @param user_id - The ID of the user to update
+   * @param userData - The data to update the user with
+   * @returns The updated user object
+   */
   async updateUser(user_id: string, userData: UpdateUserDto): Promise<User> {
     try {
-      // 1. If we have any Cognito-related changes, update Cognito first
-      if (userData.email || userData.name || userData.givenName || userData.role) {
-        // For Cognito updates, we need either the provided email or need to get it from user_id
-        let email: string;
+      const hasCognitoUpdates = this.hasCognitoUpdates(userData);
 
-        if (userData.email) {
-          email = userData.email;
-        } else {
-          // Get user from Cognito by user_id to get their email
-          const cognitoUser = await this.cognitoService.getCMSUserByUserId(user_id);
-          if (!cognitoUser) {
-            throw new Error('User not found in Cognito');
-          }
-
-          email = cognitoUser.email;
-        }
-
-        // Update in Cognito
-        await this.cognitoService.updateUser({
-          email,
-          firstName: userData.name || '',
-          lastName: userData.givenName || '',
-          role: userData.role || UserRole.MEMBER,
-        });
-
-        // Get updated Cognito user data
-        const updatedCognitoUser = await this.cognitoService.getUserByEmail(email);
-        if (!updatedCognitoUser) {
-          throw new Error('Failed to get updated user from Cognito');
-        }
-
-        // 2. Now check if user exists in our database
-        const existingUser = await this.repository.findOne({ where: { user_id } });
-
-        if (!existingUser) {
-          // User exists in Cognito but not in our DB - create them
-          return await this.syncUserWithCognitoData(updatedCognitoUser);
-        } else {
-          // User exists in both - update our DB with Cognito data and additional fields
-          const userDataForDb: Partial<User> = {
-            email: updatedCognitoUser.email,
-            name: updatedCognitoUser.name || existingUser.name,
-            givenName: updatedCognitoUser.given_name || existingUser.givenName,
-            role: (updatedCognitoUser['custom:role'] as UserRole) || existingUser.role,
-          };
-
-          if (userData.isAdmin !== undefined) {
-            userDataForDb.isAdmin = userData.isAdmin;
-          } else if (userData.role) {
-            userDataForDb.isAdmin = userData.role === UserRole.ADMIN;
-          }
-
-          // Update in database
-          await this.repository.update({ user_id }, userDataForDb);
-        }
+      if (hasCognitoUpdates) {
+        await this.handleCognitoUpdates(user_id, userData);
       } else {
-        // No Cognito-related changes, just update database fields if user exists
-        const existingUser = await this.repository.findOne({ where: { user_id } });
-        if (existingUser) {
-          const userDataForDb: Partial<User> = {};
-
-          if (userData.isAdmin !== undefined) {
-            userDataForDb.isAdmin = userData.isAdmin;
-          }
-
-          if (Object.keys(userDataForDb).length > 0) {
-            await this.repository.update({ user_id }, userDataForDb);
-          }
-        }
+        await this.handleDatabaseOnlyUpdates(user_id, userData);
       }
 
-      // Return the final updated user
-      return this.repository.findOne({ where: { user_id } });
+      return this.getUpdatedUser(user_id);
     } catch (error) {
       logger.error('Failed to update user:', error);
       throw new Error(`Failed to update user: ${error.message}`);
     }
+  }
+
+  /**
+   * Checks if the update contains any Cognito-related fields
+   */
+  private hasCognitoUpdates(userData: UpdateUserDto): boolean {
+    return !!(userData.email || userData.name || userData.givenName || userData.role);
+  }
+
+  /**
+   * Handles updates that require Cognito synchronization
+   */
+  private async handleCognitoUpdates(user_id: string, userData: UpdateUserDto): Promise<void> {
+    const email = await this.getUserEmailForUpdate(user_id, userData);
+    const cognitoUser = await this.updateCognitoUser(email, userData);
+    await this.syncUserWithDatabase(user_id, cognitoUser, userData);
+  }
+
+  /**
+   * Gets the email to use for Cognito updates
+   */
+  private async getUserEmailForUpdate(user_id: string, userData: UpdateUserDto): Promise<string> {
+    if (userData.email) {
+      return userData.email;
+    }
+
+    const cognitoUser = await this.cognitoService.getCMSUserByUserId(user_id);
+    if (!cognitoUser) {
+      throw new Error('User not found in Cognito');
+    }
+
+    return cognitoUser.email;
+  }
+
+  /**
+   * Updates user information in Cognito
+   */
+  private async updateCognitoUser(email: string, userData: UpdateUserDto): Promise<any> {
+    await this.cognitoService.updateUser({
+      email,
+      firstName: userData.name || '',
+      lastName: userData.givenName || '',
+      role: userData.role || UserRole.MEMBER,
+    });
+
+    const updatedCognitoUser = await this.cognitoService.getUserByEmail(email);
+    if (!updatedCognitoUser) {
+      throw new Error('Failed to get updated user from Cognito');
+    }
+
+    return updatedCognitoUser;
+  }
+
+  /**
+   * Syncs Cognito user data with the database
+   */
+  private async syncUserWithDatabase(
+    user_id: string,
+    cognitoUser: any,
+    userData: UpdateUserDto,
+  ): Promise<void> {
+    const existingUser = await this.repository.findOne({ where: { user_id } });
+
+    if (!existingUser) {
+      await this.syncUserWithCognitoData(cognitoUser);
+
+      return;
+    }
+
+    const userDataForDb = this.prepareUserDataForDb(cognitoUser, existingUser, userData);
+    await this.repository.update({ user_id }, userDataForDb);
+  }
+
+  /**
+   * Prepares user data for database update
+   */
+  private prepareUserDataForDb(
+    cognitoUser: any,
+    existingUser: User,
+    userData: UpdateUserDto,
+  ): Partial<User> {
+    const userDataForDb: Partial<User> = {
+      email: cognitoUser.email,
+      name: cognitoUser.name || existingUser.name,
+      givenName: cognitoUser.given_name || existingUser.givenName,
+      role: (cognitoUser['custom:role'] as UserRole) || existingUser.role,
+    };
+
+    this.updateAdminStatus(userDataForDb, userData);
+
+    return userDataForDb;
+  }
+
+  /**
+   * Updates the admin status based on user data
+   */
+  private updateAdminStatus(userDataForDb: Partial<User>, userData: UpdateUserDto): void {
+    if (userData.isAdmin !== undefined) {
+      userDataForDb.isAdmin = userData.isAdmin;
+    } else if (userData.role) {
+      userDataForDb.isAdmin = userData.role === UserRole.ADMIN;
+    }
+  }
+
+  /**
+   * Handles updates that only affect the database
+   */
+  private async handleDatabaseOnlyUpdates(user_id: string, userData: UpdateUserDto): Promise<void> {
+    const existingUser = await this.repository.findOne({ where: { user_id } });
+    if (!existingUser) {
+      return;
+    }
+
+    const userDataForDb: Partial<User> = {};
+    if (userData.isAdmin !== undefined) {
+      userDataForDb.isAdmin = userData.isAdmin;
+    }
+
+    if (Object.keys(userDataForDb).length > 0) {
+      await this.repository.update({ user_id }, userDataForDb);
+    }
+  }
+
+  /**
+   * Retrieves the updated user from the database
+   */
+  private async getUpdatedUser(user_id: string): Promise<User> {
+    const updatedUser = await this.repository.findOne({ where: { user_id } });
+    if (!updatedUser) {
+      throw new Error('Failed to retrieve updated user');
+    }
+
+    return updatedUser;
   }
 
   async syncUserWithCognitoData(cognitoUser: {
@@ -532,5 +608,26 @@ export class UserService extends BaseService<User> {
     await this.delete(userId);
 
     return false;
+  }
+
+  async getMobileProfile(user: UserDto) {
+    const cognitoUser = await this.cognitoService.getMobileUserByUserId(user.sub);
+
+    if (!cognitoUser) {
+      throw new Error('User not found');
+    }
+
+    return await this.syncUserWithCognitoData({
+      email: cognitoUser.email,
+      name: cognitoUser.name,
+      given_name: cognitoUser.givenName,
+      status: cognitoUser.status,
+      role: cognitoUser.role,
+      'custom:role': cognitoUser.role,
+      sub: cognitoUser.id,
+      email_verified: cognitoUser.emailVerified,
+      enabled: cognitoUser.enabled,
+      phone_number_verified: cognitoUser.phoneNumberVerified,
+    });
   }
 }

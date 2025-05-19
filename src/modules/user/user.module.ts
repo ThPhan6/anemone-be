@@ -11,6 +11,7 @@ import { Space } from '../../common/entities/space.entity';
 import { UserSession } from '../../common/entities/user-session.entity';
 import { UserSetting } from '../../common/entities/user-setting.entity';
 import { User } from './entities/user.entity';
+import { UserController } from './user.controller';
 import { UserAdminController } from './user-admin.controller';
 
 @Module({
@@ -21,7 +22,7 @@ import { UserAdminController } from './user-admin.controller';
     // Auth
     forwardRef(() => AuthModule),
   ],
-  controllers: [UserAdminController],
+  controllers: [UserController, UserAdminController],
   providers: [
     // User
     UserService,
