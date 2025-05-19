@@ -50,8 +50,8 @@ export class AlbumController extends BaseController {
 
   @Get(':albumId')
   @ApiOperation({ summary: 'Get an album by ID' })
-  async getAlbumById(@Param('albumId') albumId: string) {
-    return this.albumService.getById(albumId);
+  async getAlbumById(@Param('albumId') albumId: string, @AuthUser() user: UserDto) {
+    return this.albumService.getById(albumId, user.sub);
   }
 
   @Post()

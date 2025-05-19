@@ -127,7 +127,7 @@ export class AlbumService {
     };
   }
 
-  async getById(albumId: string) {
+  async getById(albumId: string, userId: string) {
     const album = await this.albumRepository.findOne({
       where: { id: albumId },
       relations: [
@@ -167,7 +167,7 @@ export class AlbumService {
 
     const favorite = await this.userFavoritesRepository.findOne({
       where: {
-        userId: album.createdBy,
+        userId,
         type: FavoriteType.ALBUM,
         relationId: album.id,
       },
