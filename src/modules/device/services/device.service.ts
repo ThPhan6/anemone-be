@@ -258,6 +258,8 @@ export class DeviceService {
 
     const removedDevice = await this.repository.update(device.id, updatePayload);
 
+    await this.userSessionRepository.delete({ device: { id: device.id } });
+
     return removedDevice;
   }
 
