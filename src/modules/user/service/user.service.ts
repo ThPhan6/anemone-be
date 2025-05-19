@@ -96,10 +96,6 @@ export class UserService extends BaseService<User> {
       filter = `email ^= "${search}" or name ^= "${search}"`;
     }
 
-    const totalCountResult = await this.cognitoService.listUsers({ filter }, true);
-
-    const totalCount = totalCountResult?.users?.length || 0;
-
     // Get users from Cognito with pagination
     const usersResult = await this.cognitoService.listUsers({
       limit: perPage ? Number(perPage) : undefined,
@@ -132,7 +128,7 @@ export class UserService extends BaseService<User> {
         page: Number(page),
         perPage: Number(perPage),
         paginationToken: usersResult.paginationToken,
-        total: totalCount,
+        total: users.length,
       },
     };
   }

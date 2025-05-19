@@ -1,5 +1,5 @@
 import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { AdminRoleGuard } from 'core/decorator/auth.decorator';
@@ -7,6 +7,7 @@ import { UserService } from 'modules/user/service/user.service';
 
 import { CognitoService } from '../auth/cognito.service';
 import { CreateUserDto, UpdateUserDto, UserGetListQueries } from './dto/user.request';
+import { UserType } from './entities/user.entity';
 
 @AdminRoleGuard()
 @ApiController({
@@ -23,6 +24,13 @@ export class UserAdminController extends BaseController {
 
   @Get()
   @ApiOperation({ summary: 'Get all users' })
+  @ApiQuery({
+    name: 'type',
+    enum: UserType,
+    type: 'enum',
+    required: true,
+    description: '1: CMS, 2: APP',
+  })
   async getAllUsers(@Query() query: UserGetListQueries) {
     return this.service.getAllUsers(query);
   }
