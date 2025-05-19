@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -72,11 +71,6 @@ export class UpdateScentDto {
   @IsString()
   @IsOptional()
   description: string;
-
-  @ApiProperty({ example: true })
-  @IsBoolean()
-  @IsOptional()
-  isRemoveImage: boolean;
 }
 
 export class CartridgeInfoDto {

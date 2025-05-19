@@ -1,6 +1,7 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { parse as csvParse } from 'csv-parse/sync';
 import { orderBy } from 'lodash';
-import { In } from 'typeorm';
+import { In, IsNull } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { DeviceCartridgeRepository } from '../../common/repositories/device-cartridge.repository';
@@ -9,17 +10,26 @@ import { ProductVariantRepository } from '../../common/repositories/product-vari
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
 import { transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
+import { IotService } from '../../core/services/iot-core.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { ImportDeviceDto } from '../device/dto/import-device.dto';
 import { Product, ProductType } from '../device/entities/product.entity';
+import { ProductVariant } from '../product-variant/entities/product-variant.entity';
+import { CertificateStorageService } from '../storage/services/certificate-storage.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product-request.dto';
+import { DeviceImportResult, FailedImportRecord } from './types/product.type';
 
 @Injectable()
 export class ProductService extends BaseService<Product> {
+  private readonly logger = new Logger(ProductService.name);
+
   constructor(
     private readonly productRepository: ProductRepository,
     private readonly scentConfigRepository: ScentConfigRepository,
     private readonly productVariantRepository: ProductVariantRepository,
     private readonly deviceCartridgeRepository: DeviceCartridgeRepository,
+    private readonly certificateStorageService: CertificateStorageService,
+    private readonly iotService: IotService,
   ) {
     super(productRepository);
   }
@@ -34,7 +44,14 @@ export class ProductService extends BaseService<Product> {
         device: true,
         cartridges: true,
       },
-      ['name', 'sku', 'serialNumber'],
+      [
+        'serialNumber',
+        'batchId',
+        'manufacturerId',
+        'productVariant.name',
+        'scentConfig.name',
+        'scentConfig.code',
+      ],
     );
 
     // First, extract all device IDs from products that are of type DEVICE
@@ -103,19 +120,7 @@ export class ProductService extends BaseService<Product> {
   }
 
   async create(data: CreateProductDto) {
-    const { type, name, sku, scentConfigId, productVariantId, batchId } = data;
-
-    const existingProduct = await this.findOne({
-      where: [{ sku, name, type }],
-    });
-
-    if (existingProduct) {
-      const message =
-        type === ProductType.DEVICE
-          ? MESSAGE.DEVICE.ALREADY_EXISTS
-          : MESSAGE.CARTRIDGE.ALREADY_EXISTS;
-      throw new HttpException(message, HttpStatus.BAD_REQUEST);
-    }
+    const { type, scentConfigId, productVariantId, batchId, serialNumber } = data;
 
     const newProduct: Partial<Product> = { ...data };
 
@@ -130,9 +135,13 @@ export class ProductService extends BaseService<Product> {
       }
 
       newProduct.productVariant = productVariant;
+      newProduct.serialNumber = serialNumber;
+
+      const certResult = await this._createCert(serialNumber);
+      newProduct.certificateId = certResult.certificateId;
     }
 
-    // CARTRIDGE type requires scent config
+    // CARTRIDGE type requires scent config(dont have serialNumber in payload)
     if (type === ProductType.CARTRIDGE) {
       const scentConfig = await this.scentConfigRepository.findOne({
         where: { id: scentConfigId },
@@ -143,11 +152,45 @@ export class ProductService extends BaseService<Product> {
       }
 
       newProduct.scentConfig = scentConfig;
+      newProduct.serialNumber = await this.productRepository.generateSerialNumber(
+        ProductType.CARTRIDGE,
+        {
+          sku: newProduct.scentConfig.code,
+          batchId,
+        },
+      );
     }
 
-    newProduct.serialNumber = await this.productRepository.generateSerialNumber(type, sku, batchId);
-
     return super.create(newProduct);
+  }
+
+  async update(id: string, data: UpdateProductDto) {
+    const product = await this.getProductInfo(id);
+
+    this.validateRestrictedFieldsUpdate(product, data);
+
+    const updateData = await this.prepareProductUpdateData(data, product);
+
+    if (data.scentConfigId && product.scentConfig.id !== data.scentConfigId) {
+      updateData.scentConfig = await this.scentConfigRepository.findOne({
+        where: {
+          id: data.scentConfigId,
+        },
+      });
+    }
+
+    if (data.type === ProductType.CARTRIDGE) {
+      updateData.serialNumber = await this.productRepository.generateSerialNumber(
+        ProductType.CARTRIDGE,
+        {
+          id,
+          sku: updateData.scentConfig.code || product.scentConfig.code,
+          batchId: data.batchId || product.batchId,
+        },
+      );
+    }
+
+    return this.repository.update(id, updateData);
   }
 
   async getById(id: string) {
@@ -168,21 +211,41 @@ export class ProductService extends BaseService<Product> {
       manufacturerId: product.manufacturerId,
       batchId: product.batchId,
       serialNumber: product.serialNumber,
-      name: product.name,
       type: product.type,
-      sku: product.sku,
       configTemplate: product.configTemplate,
       supportedFeatures: product.supportedFeatures,
       canEditManufacturerInfo,
-      scentConfig: null,
-      productVariant: null,
     };
 
     // Apply type-specific transformations
     switch (product.type) {
       case ProductType.DEVICE:
-        // For DEVICE type, focus on product variant
-        result.productVariant = transformImageUrls(product.productVariant);
+        // For DEVICE type, focus on product variant and fetch certificate if exists
+        result['productVariant'] = transformImageUrls(product.productVariant);
+        if (product.certificateId) {
+          const key = this.certificateStorageService.generateCertificateKey(
+            product.serialNumber,
+            product.certificateId,
+            'cert',
+          );
+          try {
+            const downloadedCertificate =
+              await this.certificateStorageService.generateCertificateDownloadUrl(key);
+            const describeCertificate = await this.iotService.describeCertificate(
+              product.certificateId,
+            );
+            result['certificate'] = {
+              url: downloadedCertificate,
+              status: describeCertificate.status,
+              createdAt: describeCertificate.creationDate,
+            };
+          } catch (error) {
+            this.logger.error(
+              `Failed to fetch certificate for product ${product.id}: ${error.message}`,
+            );
+          }
+        }
+
         // Include registeredBy field for DEVICE type products
         if (product.device) {
           result['registeredBy'] = product.device.registeredBy || null;
@@ -192,7 +255,7 @@ export class ProductService extends BaseService<Product> {
 
       case ProductType.CARTRIDGE:
         // For CARTRIDGE type, focus on scent config with specific image fields
-        result.scentConfig = transformImageUrls(product.scentConfig, ['background', 'image']);
+        result['scentConfig'] = transformImageUrls(product.scentConfig, ['background', 'image']);
         // Add activatedQuantity - number of cartridges connected to devices
         result['activatedQuantity'] = product?.cartridges?.length || 0;
         break;
@@ -201,42 +264,13 @@ export class ProductService extends BaseService<Product> {
     return result;
   }
 
-  async update(id: string, data: UpdateProductDto) {
-    const product = await this.getProductForUpdate(id);
-
-    this.validateRestrictedFieldsUpdate(product, data);
-
-    await this.checkProductUniqueness(id, product, data);
-
-    const updateData = await this.prepareProductUpdateData(data, product);
-
-    // Update serial number for cartridges if relevant fields are changed
-    if (
-      product.type === ProductType.CARTRIDGE &&
-      (data.sku || data.manufacturerId || data.batchId)
-    ) {
-      // Use current values for any fields that aren't being updated
-      const sku = data.sku || product.sku;
-      const batchId = data.batchId || product.batchId;
-
-      // Generate the new serial number using the format: <sku>-<batchID>
-      updateData.serialNumber = await this.productRepository.generateSerialNumber(
-        ProductType.CARTRIDGE,
-        sku,
-        batchId,
-      );
-    }
-
-    return this.repository.update(id, updateData);
-  }
-
   /**
    * Find the product by ID for updating
    */
-  private async getProductForUpdate(id: string): Promise<Product> {
-    const product = await this.productRepository.findOne({
+  private async getProductInfo(id: string): Promise<Product> {
+    const product = await this.repository.findOne({
       where: { id },
-      relations: ['device'],
+      relations: ['productVariant', 'scentConfig'],
     });
 
     if (!product) {
@@ -261,39 +295,6 @@ export class ProductService extends BaseService<Product> {
           `Cannot update "${field}" for a product already in use`,
           HttpStatus.BAD_REQUEST,
         );
-      }
-    }
-  }
-
-  /**
-   * Check for uniqueness conflicts with existing products
-   */
-  private async checkProductUniqueness(
-    id: string,
-    product: Product,
-    data: UpdateProductDto,
-  ): Promise<void> {
-    const { name, sku, type } = data;
-
-    if (name || sku || type) {
-      const existingProduct = await this.productRepository.findOne({
-        where: [
-          {
-            sku: sku || product.sku,
-            name: name || product.name,
-            type: type || product.type,
-          },
-        ],
-      });
-
-      if (existingProduct && existingProduct.id !== id) {
-        const productType = type || product.type;
-        const message =
-          productType === ProductType.DEVICE
-            ? MESSAGE.DEVICE.ALREADY_EXISTS
-            : MESSAGE.CARTRIDGE.ALREADY_EXISTS;
-
-        throw new HttpException(message, HttpStatus.BAD_REQUEST);
       }
     }
   }
@@ -399,5 +400,317 @@ export class ProductService extends BaseService<Product> {
     }
 
     return super.delete(id);
+  }
+
+  async importDevicesFromCsv(fileBuffer: Buffer): Promise<DeviceImportResult> {
+    try {
+      // Parse CSV and perform basic validation
+      const { importDtos, failedRecords } = await this._parseCsvAndValidate(fileBuffer);
+
+      // If we already have failures from basic validation, return without processing DB
+      if (failedRecords.length > 0) {
+        return { successRecords: [], failedRecords };
+      }
+
+      // Separate records into new and existing
+      const { newDevices, existingDevices } = await this._segregateNewAndExisting(importDtos);
+
+      // Process records and collect results
+      const successRecords: Product[] = [];
+
+      // Process new devices
+      const newDevicesResult = await this._processNewDevices(newDevices);
+      successRecords.push(...newDevicesResult.successes);
+      failedRecords.push(...newDevicesResult.failures);
+
+      // Process existing devices
+      const existingDevicesResult = await this._processExistingDevices(existingDevices);
+      successRecords.push(...existingDevicesResult.successes);
+      failedRecords.push(...existingDevicesResult.failures);
+
+      return { successRecords, failedRecords };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to process CSV file: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * Parse CSV data and perform basic validation
+   */
+  private async _parseCsvAndValidate(fileBuffer: Buffer): Promise<{
+    importDtos: ImportDeviceDto[];
+    failedRecords: FailedImportRecord[];
+  }> {
+    const importDtos: ImportDeviceDto[] = [];
+    const failedRecords: FailedImportRecord[] = [];
+
+    const rows = csvParse(fileBuffer.toString(), {
+      columns: true,
+      skip_empty_lines: true,
+    });
+
+    let expectedBatchId: string | undefined;
+
+    // First step: Basic validation and collecting all records
+    for (const row of rows) {
+      const importDto = new ImportDeviceDto();
+      // Handle both camelCase and space-separated column names
+      importDto.deviceId = row['deviceId']?.trim();
+      importDto.sku = row['sku']?.trim();
+      importDto.manufacturerId = row['manufacturerId']?.trim();
+      importDto.batchId = row['batchId']?.trim();
+
+      // Check for required fields
+      if (!importDto.deviceId || !importDto.sku) {
+        const errors = [
+          !importDto.deviceId ? 'Missing required field: deviceId' : '',
+          !importDto.sku ? 'Missing required field: sku' : '',
+        ].filter(Boolean);
+
+        failedRecords.push({
+          deviceId: importDto.deviceId || 'unknown',
+          sku: importDto.sku,
+          batchId: importDto.batchId,
+          manufacturerId: importDto.manufacturerId,
+          errors: errors,
+        });
+        // Don't return immediately, we still want to validate all records first
+      } else {
+        importDtos.push(importDto);
+      }
+
+      this._validateBatchIdConsistency(importDto, expectedBatchId);
+
+      // Set expected batch ID if this is the first record with a batch ID
+      if (expectedBatchId === undefined && importDto.batchId) {
+        expectedBatchId = importDto.batchId;
+      }
+    }
+
+    return { importDtos, failedRecords };
+  }
+
+  /**
+   * Validate batch ID consistency across records
+   */
+  private _validateBatchIdConsistency(
+    importDto: ImportDeviceDto,
+    expectedBatchId: string | undefined,
+  ): void {
+    if (importDto.batchId && expectedBatchId && importDto.batchId !== expectedBatchId) {
+      throw new HttpException(
+        'All records in the CSV must have the same Batch ID.',
+        HttpStatus.BAD_REQUEST,
+      );
+    } else if (expectedBatchId !== undefined && !importDto.batchId) {
+      throw new HttpException(
+        'All records in the CSV must have a Batch ID if one is present.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * Process and validate new devices
+   */
+  private async _processNewDevices(newDevices: ImportDeviceDto[]): Promise<{
+    successes: Product[];
+    failures: FailedImportRecord[];
+  }> {
+    const successes: Product[] = [];
+    const failures: FailedImportRecord[] = [];
+
+    for (const record of newDevices) {
+      const productVariant = await this._findProductVariantBySku(record.sku);
+      const validationErrors = this._validateNewDevice(record, productVariant);
+
+      if (validationErrors.length > 0) {
+        failures.push({
+          deviceId: record.deviceId,
+          sku: record.sku,
+          batchId: record.batchId,
+          manufacturerId: record.manufacturerId,
+          errors: validationErrors,
+        });
+      } else if (productVariant) {
+        try {
+          const newProduct = this.productRepository.create({
+            serialNumber: record.deviceId,
+            manufacturerId: record.manufacturerId!,
+            batchId: record.batchId!,
+            type: ProductType.DEVICE,
+            productVariant: { id: productVariant.id },
+          });
+
+          const certResult = await this._createCert(record.deviceId);
+          newProduct.certificateId = certResult.certificateId;
+
+          const savedProduct = await this.productRepository.save(newProduct);
+          successes.push(savedProduct);
+        } catch (error) {
+          failures.push({
+            deviceId: record.deviceId,
+            sku: record.sku,
+            batchId: record.batchId,
+            manufacturerId: record.manufacturerId,
+            errors: [`Error creating device: ${error.message}`],
+          });
+        }
+      }
+    }
+
+    return { successes, failures };
+  }
+
+  /**
+   * Process and update existing devices
+   */
+  private async _processExistingDevices(
+    existingDevices: { dto: ImportDeviceDto; existingProduct: Product }[],
+  ): Promise<{
+    successes: Product[];
+    failures: FailedImportRecord[];
+  }> {
+    const successes: Product[] = [];
+    const failures: FailedImportRecord[] = [];
+
+    for (const { dto, existingProduct } of existingDevices) {
+      try {
+        const productVariant = await this._findProductVariantBySku(dto.sku);
+        if (!productVariant) {
+          failures.push({
+            deviceId: dto.deviceId,
+            sku: dto.sku,
+            batchId: dto.batchId,
+            manufacturerId: dto.manufacturerId,
+            errors: [`SKU '${dto.sku}' not found in the system`],
+          });
+          continue;
+        }
+
+        const updates = this._prepareExistingDeviceUpdates(dto, existingProduct, productVariant);
+
+        if (Object.keys(updates).length > 0) {
+          Object.assign(existingProduct, updates);
+          const updatedProduct = await this.productRepository.save(existingProduct);
+          successes.push(updatedProduct);
+        } else {
+          successes.push(existingProduct); // No changes needed
+        }
+      } catch (error) {
+        failures.push({
+          deviceId: dto.deviceId,
+          sku: dto.sku,
+          batchId: dto.batchId,
+          manufacturerId: dto.manufacturerId,
+          errors: [`Error updating device: ${error.message}`],
+        });
+      }
+    }
+
+    return { successes, failures };
+  }
+
+  /**
+   * Prepare updates for an existing device
+   */
+  private _prepareExistingDeviceUpdates(
+    dto: ImportDeviceDto,
+    existingProduct: Product,
+    productVariant: ProductVariant,
+  ): Partial<Product> {
+    const updates: Partial<Product> = {};
+
+    if (dto.manufacturerId && dto.manufacturerId !== existingProduct.manufacturerId) {
+      updates.manufacturerId = dto.manufacturerId;
+    }
+
+    if (dto.batchId && dto.batchId !== existingProduct.batchId) {
+      updates.batchId = dto.batchId;
+    }
+
+    if (existingProduct.productVariant?.id !== productVariant.id) {
+      updates.productVariant = productVariant;
+    }
+
+    return updates;
+  }
+
+  private async _segregateNewAndExisting(dtos: ImportDeviceDto[]): Promise<{
+    newDevices: ImportDeviceDto[];
+    existingDevices: { dto: ImportDeviceDto; existingProduct: Product }[];
+  }> {
+    const deviceIds = dtos.map((dto) => dto.deviceId);
+    const existingProducts = await this.productRepository.find({
+      where: { serialNumber: In(deviceIds) }, // Find existing products by deviceId (serialNumber)
+      relations: ['productVariant'],
+    });
+    const existingProductMap = new Map(
+      existingProducts.map((product) => [product.serialNumber, product]),
+    );
+
+    const newDevices: ImportDeviceDto[] = [];
+    const existingDevices: { dto: ImportDeviceDto; existingProduct: Product }[] = [];
+
+    for (const dto of dtos) {
+      const existingProduct = existingProductMap.get(dto.deviceId);
+      if (existingProduct) {
+        existingDevices.push({ dto, existingProduct });
+      } else {
+        newDevices.push(dto);
+      }
+    }
+
+    return { newDevices, existingDevices };
+  }
+
+  private async _findProductVariantBySku(sku: string): Promise<ProductVariant | null> {
+    return this.productVariantRepository.findOne({
+      where: { name: sku, deletedAt: IsNull() },
+    });
+  }
+
+  private _validateNewDevice(
+    dto: ImportDeviceDto,
+    productVariant: ProductVariant | null,
+  ): string[] {
+    const errors: string[] = [];
+    if (!dto.manufacturerId) {
+      errors.push('Manufacturer ID is required for new devices');
+    }
+
+    if (!dto.batchId) {
+      errors.push('Batch ID is required for new devices');
+    }
+
+    if (!productVariant) {
+      errors.push(`SKU '${dto.sku}' not found in the system`);
+    }
+
+    return errors;
+  }
+
+  private async _createCert(deviceId: string) {
+    // Create certificate using IoT Core service
+    const certResult = await this.iotService.createThingAndCertificate(deviceId);
+
+    // Store certificate in S3
+    await this.certificateStorageService.storeCertificate(
+      deviceId,
+      certResult.certificateId,
+      certResult.certificatePem,
+    );
+
+    // Store private key in S3 (temporary)
+    await this.certificateStorageService.storePrivateKey(
+      deviceId,
+      certResult.certificateId,
+      certResult.privateKey,
+    );
+
+    return certResult;
   }
 }

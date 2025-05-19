@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../../modules/setting-definition/entities/setting-definition.entity';
+} from '../../modules/system/entities/setting-definition.entity';
 import { BaseSeeder } from './base.seeder';
 
 const records = [

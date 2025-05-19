@@ -1,17 +1,20 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { sortBy } from 'lodash';
+import { ILike, In, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { Album } from '../../common/entities/album.entity';
 import { AlbumPlaylist } from '../../common/entities/album-playlist.entity';
 import { Playlist } from '../../common/entities/playlist.entity';
 import { FavoriteType, UserFavorites } from '../../common/entities/user-favorites.entity';
+import { UserSetting } from '../../common/entities/user-setting.entity';
 import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { CognitoService } from '../auth/cognito.service';
-import { CreateAlbumDto } from './dto/album-request';
+import { StorageService } from '../storage/storage.service';
+import { CreateAlbumDto, UpdateAlbumDto } from './dto/album-request';
 
 @Injectable()
 export class AlbumService {
@@ -25,6 +28,9 @@ export class AlbumService {
     private cognitoService: CognitoService,
     @InjectRepository(UserFavorites)
     private readonly userFavoritesRepository: Repository<UserFavorites>,
+    private storageService: StorageService,
+    @InjectRepository(UserSetting)
+    private readonly userSettingRepository: Repository<UserSetting>,
   ) {}
 
   async get(userId: string, queries: ApiBaseGetListQueries) {
@@ -33,24 +39,90 @@ export class AlbumService {
     const { items, pagination } = await paginate(this.albumRepository, {
       params: queries,
       where: { createdBy: userId, ...(search ? { name: ILike(`%${search}%`) } : {}) },
+      relations: [
+        'albumPlaylists',
+        'albumPlaylists.playlist',
+        'albumPlaylists.playlist.playlistScents',
+        'albumPlaylists.playlist.playlistScents.scent',
+      ],
     });
 
     const userInfo = await this.cognitoService.getUserByUserId(userId);
 
     const newItems = items.map((album) => {
-      const firstPlaylist = album.albumPlaylists?.[0]?.playlist;
-      const firstScent = firstPlaylist?.playlistScents?.[0]?.scent;
+      const firstPlaylist = sortBy(album.albumPlaylists, 'createdAt', 'ASC')?.[0]?.playlist;
+      const firstScent = sortBy(firstPlaylist?.playlistScents, 'createdAt', 'ASC')?.[0]?.scent;
 
       return {
         id: album.id,
         name: album.name,
-        image: firstScent?.image ? convertURLToS3Readable(firstScent?.image) : '',
+        image: album.image
+          ? convertURLToS3Readable(album.image)
+          : firstScent?.image
+            ? convertURLToS3Readable(firstScent?.image)
+            : '',
         createdBy: userInfo,
       };
     });
 
     return {
       items: newItems,
+      pagination,
+    };
+  }
+
+  async getPublic(queries: ApiBaseGetListQueries) {
+    const { page, perPage, search } = queries;
+
+    //Get list userId public
+    const publicUsers = await this.userSettingRepository.find({
+      where: { isPublic: true },
+      select: ['userId'],
+    });
+
+    const publicUserIds = publicUsers.map((u) => u.userId);
+
+    if (publicUserIds.length === 0) {
+      return { items: [], pagination: { total: 0, page, perPage } };
+    }
+
+    const where: any = {
+      createdBy: In(publicUserIds),
+    };
+
+    if (search) {
+      where.name = ILike(`%${search}%`);
+    }
+
+    const { items, pagination } = await paginate(this.albumRepository, {
+      where,
+      params: queries,
+      relations: [
+        'albumPlaylists',
+        'albumPlaylists.playlist',
+        'albumPlaylists.playlist.playlistScents',
+        'albumPlaylists.playlist.playlistScents.scent',
+      ],
+    });
+
+    const newItems = items.map((album) => {
+      const firstPlaylist = sortBy(album.albumPlaylists, 'createdAt', 'ASC')?.[0]?.playlist;
+      const firstScent = sortBy(firstPlaylist?.playlistScents, 'createdAt', 'ASC')?.[0]?.scent;
+
+      return {
+        id: album.id,
+        name: album.name,
+        image: album.image
+          ? convertURLToS3Readable(album.image)
+          : firstScent?.image
+            ? convertURLToS3Readable(firstScent?.image)
+            : '',
+        totalPlaylists: album.albumPlaylists?.length,
+      };
+    });
+
+    return {
+      items: newItems.filter((item) => item.totalPlaylists > 0),
       pagination,
     };
   }
@@ -72,8 +144,10 @@ export class AlbumService {
 
     const playlists = [];
 
-    for (const ap of album.albumPlaylists) {
-      const firstScent = ap.playlist.playlistScents?.[0]?.scent;
+    const sortedAlbumPlaylists = sortBy(album.albumPlaylists, 'createdAt', 'ASC');
+
+    for (const ap of sortedAlbumPlaylists) {
+      const firstScent = sortBy(ap.playlist.playlistScents, 'createdAt', 'ASC')?.[0]?.scent;
 
       const userInfo = await this.cognitoService.getUserByUserId(ap.playlist.createdBy);
 
@@ -85,7 +159,9 @@ export class AlbumService {
       });
     }
 
-    const albumImage = playlists[0]?.image || '';
+    const albumImage = album.image
+      ? convertURLToS3Readable(album.image)
+      : playlists[0]?.image || '';
 
     const userInfo = await this.cognitoService.getUserByUserId(album.createdBy);
 
@@ -102,12 +178,13 @@ export class AlbumService {
       name: album.name,
       image: albumImage ? convertURLToS3Readable(albumImage) : '',
       createdBy: userInfo,
+      userId: album.createdBy,
       playlists,
       isFavorite: !!favorite,
     };
   }
 
-  async create(userId: string, body: CreateAlbumDto) {
+  async create(userId: string, body: CreateAlbumDto, file: Express.Multer.File) {
     const found = await this.albumRepository.findOne({
       where: { name: body.name, createdBy: userId },
     });
@@ -116,16 +193,58 @@ export class AlbumService {
       throw new HttpException(MESSAGE.ALBUM.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
+    let uploadedImageUrl = '';
+
+    if (file) {
+      const fileName = `albums/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      uploadedImageUrl = uploadedImage.fileName;
+    }
+
     const album = this.albumRepository.create({
       ...body,
-      image: '',
+      image: uploadedImageUrl,
       createdBy: userId,
     });
 
     return this.albumRepository.save(album);
   }
 
-  async update(userId: string, id: string, body: CreateAlbumDto) {
+  async update(userId: string, id: string, body: UpdateAlbumDto, file: Express.Multer.File) {
+    const found = await this.albumRepository.findOne({
+      where: { id, createdBy: userId },
+    });
+
+    if (!found) {
+      throw new HttpException(MESSAGE.ALBUM.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const albumName = body.name || found.name;
+
+    const existed = await this.albumRepository.findOne({
+      where: { name: albumName, createdBy: userId },
+    });
+
+    if (existed && existed.id !== id) {
+      throw new HttpException(MESSAGE.ALBUM.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
+    }
+
+    let image = found.image;
+
+    if (file) {
+      const fileName = `albums/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+
+      image = uploadedImage.fileName;
+    }
+
+    return this.albumRepository.update(id, {
+      image,
+      name: albumName,
+    });
+  }
+
+  async replace(userId: string, id: string, body: CreateAlbumDto, file: Express.Multer.File) {
     const found = await this.albumRepository.findOne({
       where: { id, createdBy: userId },
     });
@@ -142,8 +261,18 @@ export class AlbumService {
       throw new HttpException(MESSAGE.ALBUM.ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
+    let image = found.image;
+
+    if (file) {
+      const fileName = `albums/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+
+      image = uploadedImage.fileName;
+    }
+
     return this.albumRepository.update(id, {
-      ...body,
+      image,
+      name: body.name,
     });
   }
 

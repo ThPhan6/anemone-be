@@ -8,6 +8,7 @@ import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
 import { UserSession } from '../../../common/entities/user-session.entity';
 import { Command } from '../../../common/enum/command.enum';
+import { formatDeviceName } from '../../../common/utils/helper';
 import { DeviceCartridgesDto, DeviceHeartbeatDto, DeviceStatus } from '../dto';
 import { DeviceCartridge } from '../entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../entities/device-command.entity';
@@ -243,7 +244,7 @@ export class DeviceIotService {
       // Create new device if device not found
       const newDevice = await this.repository.create({
         product: { serialNumber: deviceId },
-        name: product.name, // or set default name if you want
+        name: formatDeviceName(product.serialNumber),
         isConnected: true,
         lastPingAt: now,
         provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
@@ -334,6 +335,12 @@ export class DeviceIotService {
       throw new NotFoundException('Device not found');
     }
 
+    // if (!device.isConnected) {
+    //   return {
+    //     command: Command.REQUEST_AUTH,
+    //   };
+    // }
+
     //Check lastPingAt — if > 15s ago, return command: "request auth"
     if (device.lastPingAt) {
       const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
@@ -365,19 +372,8 @@ export class DeviceIotService {
     }
 
     if (dto.cartridges) {
-      // Check if any cartridge has percent = 0
-      const hasEmptyCartridge = device.cartridges.some((c) => Number(c.percentage) === 0);
-
-      if (hasEmptyCartridge) {
-        await this.commandRepository.save({
-          device,
-          command: { type: CommandType.PAUSE },
-          isExecuted: false,
-        });
-      } else {
-        // Sync cartridges
-        await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
-      }
+      // Sync cartridges
+      await this.syncDeviceCartridges(deviceId, { cartridges: dto.cartridges }, false);
     }
 
     // Check if there is any pending command for the device

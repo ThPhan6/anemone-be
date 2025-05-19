@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { sortBy } from 'lodash';
 import { ILike, In, Not, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -16,12 +17,13 @@ import { CognitoService } from '../auth/cognito.service';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { StorageService } from '../storage/storage.service';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../setting-definition/entities/setting-definition.entity';
+} from '../system/entities/setting-definition.entity';
 import { AddScentToPlayListDto } from './dto/add-scent-to-playlist.dto';
-import { CreatePlaylistDto } from './dto/create-playlist.dto';
+import { CreatePlaylistDto, UpdatePlaylistDto } from './dto/create-playlist.dto';
 import { updateScentInPlaylistDto } from './dto/update-scent-in-playlist.dto';
 @Injectable()
 export class PlaylistService {
@@ -43,6 +45,7 @@ export class PlaylistService {
     private userSessionRepository: Repository<UserSession>,
     @InjectRepository(DeviceCartridge)
     private deviceCartridgeRepository: Repository<DeviceCartridge>,
+    private storageService: StorageService,
     @InjectRepository(AlbumPlaylist)
     private albumPlaylistRepository: Repository<AlbumPlaylist>,
   ) {}
@@ -68,12 +71,15 @@ export class PlaylistService {
       items: items.map((playlist) => ({
         id: playlist.id,
         name: playlist.name,
-        image:
-          playlist.playlistScents.length > 0
-            ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
+        image: playlist.image
+          ? convertURLToS3Readable(playlist.image)
+          : playlist.playlistScents.length > 0
+            ? convertURLToS3Readable(
+                sortBy(playlist.playlistScents, 'createdAt', 'ASC')[0].scent.image,
+              )
             : '',
         createdBy: userInfo,
-        scents: playlist.playlistScents.map((ps) => ({
+        scents: sortBy(playlist.playlistScents, 'createdAt', 'ASC').map((ps) => ({
           id: ps.scent.id,
           name: ps.scent.name,
           image: ps.scent.image ? convertURLToS3Readable(ps.scent.image) : '',
@@ -101,7 +107,9 @@ export class PlaylistService {
 
     const scents = [];
 
-    for (const ps of playlist.playlistScents) {
+    const sortedPlaylistScents = sortBy(playlist.playlistScents, 'createdAt', 'ASC');
+
+    for (const ps of sortedPlaylistScents) {
       const scent = ps.scent;
 
       const cartridgeRaw = JSON.parse(scent.cartridgeInfo || '[]');
@@ -160,18 +168,20 @@ export class PlaylistService {
     const playlistDetail = {
       id: playlist.id,
       name: playlist.name,
-      image:
-        playlist.playlistScents.length > 0 && playlist.playlistScents[0].scent.image
-          ? convertURLToS3Readable(playlist.playlistScents[0].scent.image)
+      image: playlist.image
+        ? convertURLToS3Readable(playlist.image)
+        : scents.length > 0 && scents[0].image
+          ? convertURLToS3Readable(scents[0].image)
           : '',
       createdBy: userInfo,
+      userId: playlist.createdBy,
       scents,
     };
 
     return playlistDetail;
   }
 
-  async create(userId: string, bodyRequest: CreatePlaylistDto) {
+  async create(userId: string, bodyRequest: CreatePlaylistDto, file: Express.Multer.File) {
     const existed = await this.playlistRepository.findOne({
       where: {
         name: bodyRequest.name,
@@ -183,16 +193,29 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.ALREADY_EXIST, HttpStatus.BAD_REQUEST);
     }
 
+    let uploadedImageUrl = '';
+
+    if (file) {
+      const fileName = `playlists/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      uploadedImageUrl = uploadedImage.fileName;
+    }
+
     const playlist = await this.playlistRepository.save({
       ...bodyRequest,
-      image: '',
+      image: uploadedImageUrl,
       createdBy: userId,
     });
 
     return playlist;
   }
 
-  async update(userId: string, id: string, bodyRequest: CreatePlaylistDto) {
+  async update(
+    userId: string,
+    id: string,
+    bodyRequest: UpdatePlaylistDto,
+    file: Express.Multer.File,
+  ) {
     const playlist = await this.playlistRepository.findOne({
       where: {
         id,
@@ -204,9 +227,11 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const playlistName = bodyRequest.name || playlist.name;
+
     const existed = await this.playlistRepository.findOne({
       where: {
-        name: bodyRequest.name,
+        name: playlistName,
         createdBy: userId,
       },
     });
@@ -215,11 +240,56 @@ export class PlaylistService {
       throw new HttpException(MESSAGE.PLAYLIST.ALREADY_EXIST, HttpStatus.BAD_REQUEST);
     }
 
+    let image = playlist.image;
+
+    if (file) {
+      const fileName = `playlists/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      image = uploadedImage.fileName;
+    }
+
     const updatedPlaylist = await this.playlistRepository.update(id, {
-      ...bodyRequest,
+      image,
+      name: playlistName,
     });
 
     return updatedPlaylist;
+  }
+
+  async replace(
+    userId: string,
+    id: string,
+    bodyRequest: CreatePlaylistDto,
+    file: Express.Multer.File,
+  ) {
+    const found = await this.playlistRepository.findOne({
+      where: { id, createdBy: userId },
+    });
+
+    if (!found) {
+      throw new HttpException(MESSAGE.PLAYLIST.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const existed = await this.playlistRepository.findOne({
+      where: { name: bodyRequest.name, createdBy: userId },
+    });
+
+    if (existed && existed.id !== id) {
+      throw new HttpException(MESSAGE.PLAYLIST.ALREADY_EXIST, HttpStatus.BAD_REQUEST);
+    }
+
+    let image = found.image;
+
+    if (file) {
+      const fileName = `playlists/${Date.now()}`;
+      const uploadedImage = await this.storageService.uploadImage(file, fileName);
+      image = uploadedImage.fileName;
+    }
+
+    return this.playlistRepository.update(id, {
+      image,
+      name: bodyRequest.name,
+    });
   }
 
   async delete(userId: string, id: string) {
@@ -266,7 +336,43 @@ export class PlaylistService {
 
     await this.playlistScentRepository.save(playlistScent);
 
-    return playlistScent;
+    // Fetch the categories where type = ScentTag
+    const categories = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
+    });
+
+    const categoryTags = categories
+      .filter((category) => JSON.parse(scent.tags).includes(category.id))
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        image: category.metadata.image ? convertURLToS3Readable(category.metadata.image) : '',
+        description: category.metadata.name,
+      }));
+
+    const cartridgeInfo = JSON.parse(scent.cartridgeInfo || '[]');
+
+    const scentConfigs = await this.scentConfigRepository.find({
+      where: {
+        id: In(cartridgeInfo.map((el) => el.id)),
+      },
+    });
+
+    const userInfo = await this.cognitoService.getUserByUserId(scent.createdBy);
+
+    return {
+      playlist,
+      scent: {
+        ...scent,
+        image: scent.image ? convertURLToS3Readable(scent.image) : '',
+        tags: categoryTags,
+        cartridgeInfo: scentConfigs.map((el) => ({
+          ...el,
+          intensity: cartridgeInfo.find((c) => c.id === el.id)?.intensity,
+        })),
+        createdBy: userInfo,
+      },
+    };
   }
 
   async updateScentInPlaylist(

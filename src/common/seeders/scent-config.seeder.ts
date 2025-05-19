@@ -47,7 +47,7 @@ const records = [
     name: 'Petal Symphony',
     title: 'White Floral Elegance',
     background: 'scent-I01.png',
-    tags: ['Floral', 'White', 'Floral'],
+    tags: ['Floral', 'White', 'Sandalwood'],
     description:
       'An exquisite bouquet celebrating the most precious white flowers in perfumery. Petal Symphony opens with bright citrus notes that give way to an opulent heart of jasmine, rose, and lily of the valley. The composition settles into a creamy base of vanilla and amber, creating a scent that embodies timeless feminine elegance.',
     story: {

@@ -6,6 +6,7 @@ import {
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -40,10 +41,17 @@ export class ScentController extends BaseController {
     @AuthUser() user: UserDto,
     @Query() queries: ApiBaseGetListQueries,
     @Query('isPublic') isPublic: boolean,
+    @Query('random') random: boolean,
   ) {
     return isPublic
-      ? this.scentService.getPublic(queries)
+      ? this.scentService.getPublic(queries, random)
       : this.scentService.get(user.sub, queries);
+  }
+
+  @Get('scent-tag')
+  @ApiOperation({ summary: 'Get scents by one scent tag' })
+  async getByScentTag() {
+    return this.scentService.getByScentTag();
   }
 
   @Get(':id')
@@ -65,12 +73,12 @@ export class ScentController extends BaseController {
           new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
         ],
-        fileIsRequired: false,
+        fileIsRequired: true,
       }),
     )
     image: Express.Multer.File,
   ) {
-    const scent = await this.scentService.create(user.sub, body, image);
+    const scent = await this.scentService.createScent(user.sub, body, image);
 
     return scent;
   }
@@ -81,8 +89,8 @@ export class ScentController extends BaseController {
     return this.scentService.testScent(body);
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update a scent by id' })
+  @Patch(':id')
+  @ApiOperation({ summary: 'Partially update scent data' })
   @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
   async update(
     @AuthUser() user: UserDto,
@@ -99,12 +107,33 @@ export class ScentController extends BaseController {
     )
     image: Express.Multer.File,
   ) {
-    return this.scentService.update(user.sub, id, body, image);
+    return this.scentService.updateScent(user.sub, id, body, image);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update entire scent data' })
+  @UseInterceptors(FileInterceptor('image', { dest: './dist/uploads' }))
+  async replace(
+    @AuthUser() user: UserDto,
+    @Param('id') id: string,
+    @Body() body: CreateScentDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: true,
+      }),
+    )
+    image: Express.Multer.File,
+  ) {
+    return this.scentService.replace(user.sub, id, body, image);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a scent by id' })
   async delete(@AuthUser() user: UserDto, @Param('id') id: string) {
-    return this.scentService.delete(user.sub, id);
+    return this.scentService.deleteScent(user.sub, id);
   }
 }

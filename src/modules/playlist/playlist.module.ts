@@ -11,7 +11,7 @@ import { CognitoService } from '../auth/cognito.service';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
 import { ScentConfig } from '../scent-config/entities/scent-config.entity';
-import { SettingDefinition } from '../setting-definition/entities/setting-definition.entity';
+import { SettingDefinition } from '../system/entities/setting-definition.entity';
 import { PlaylistController } from './playlist.controller';
 import { PlaylistService } from './playlist.service';
 @Module({

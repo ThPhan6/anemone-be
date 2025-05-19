@@ -4,11 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
 import { ScentConfig } from './entities/scent-config.entity';
 import { ScentConfigService } from './scent-config.service';
-import { ScentConfigAdminController } from './scent-config-admin.controller';
-
 @Module({
   imports: [TypeOrmModule.forFeature([ScentConfig])],
-  controllers: [ScentConfigAdminController],
+  controllers: [],
   providers: [ScentConfigService, ScentConfigRepository],
   exports: [ScentConfigService],
 })

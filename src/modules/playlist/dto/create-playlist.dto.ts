@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { IsNotEmpty } from 'class-validator';
 
 export class CreatePlaylistDto {
@@ -9,4 +9,23 @@ export class CreatePlaylistDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty({ example: 'Image URL' })
+  @IsString()
+  @IsOptional()
+  image: string;
+}
+
+export class UpdatePlaylistDto {
+  @ApiProperty({
+    example: 'Playlist 1',
+  })
+  @IsString()
+  @IsOptional()
+  name: string;
+
+  @ApiProperty({ example: 'Image URL' })
+  @IsString()
+  @IsOptional()
+  image: string;
 }

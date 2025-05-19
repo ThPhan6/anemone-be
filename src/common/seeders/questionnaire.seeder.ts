@@ -4,8 +4,8 @@ import { v4 as uuid } from 'uuid';
 import {
   ESystemDefinitionType,
   SettingDefinition,
-} from '../../modules/setting-definition/entities/setting-definition.entity';
-import { SettingValue } from '../../modules/setting-definition/entities/setting-value.entity';
+} from '../../modules/system/entities/setting-definition.entity';
+import { SettingValue } from '../../modules/system/entities/setting-value.entity';
 import { BaseSeeder } from './base.seeder';
 
 const records = [

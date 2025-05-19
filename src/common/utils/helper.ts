@@ -50,13 +50,19 @@ export async function paginate<T>(repo: Repository<T>, options: PaginationOption
 }
 
 /**
- * Recursively transforms image URLs in a nested JSON structure
- * while preserving Date objects and entity relationships
- * @param data Any JSON object or array that might contain image URLs
- * @param imageKeys Array of key names to look for when transforming URLs (default: ['image'])
- * @returns A new object with all specified image URLs transformed
+ * Recursively transforms image URLs and automatically detects and transforms
+ * stringified arrays in a nested JSON structure,
+ * while preserving Date objects and entity relationships.
+ *
+ * @param data Any JSON object or array that might contain image URLs or stringified arrays.
+ * @param imageKeys Array of key names to look for when transforming URLs (default: ['image']).
+ * @returns A new object with all specified image URLs and detected stringified arrays transformed.
  */
-export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']): T => {
+export const transformImageUrls = <T>(
+  data: T,
+  imageKeys: string[] = ['image'],
+  keysToRemove: string[] = ['deletedAt'],
+): T => {
   // Handle null or undefined values
   if (data === null || data === undefined) {
     return data;
@@ -71,6 +77,10 @@ export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']):
   if (typeof data === 'object' && !(data instanceof Date)) {
     // Create a shallow copy to avoid modifying the original
     const result = { ...data } as any;
+    // Remove specified keys
+    keysToRemove.forEach((keyToRemove) => {
+      delete result[keyToRemove];
+    });
 
     // Process each key in the object
     for (const key in result) {
@@ -80,6 +90,15 @@ export const transformImageUrls = <T>(data: T, imageKeys: string[] = ['image']):
         // Transform image URLs if the key is in the imageKeys array
         if (imageKeys.includes(key) && typeof value === 'string' && value) {
           result[key] = convertURLToS3Readable(value);
+        }
+        // Automatically check and transform stringified arrays
+        else if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+          try {
+            result[key] = JSON.parse(value);
+          } catch (error) {
+            // console.error(`Error parsing potential array for key "${key}":`, error);
+            // Keep the original string value if parsing fails
+          }
         }
         // Recursively process nested objects if they're not Dates
         else if (value !== null && typeof value === 'object' && !(value instanceof Date && value)) {
@@ -121,3 +140,6 @@ export const generateRandomPassword = (length = 12) => {
 
   return password;
 };
+export function formatDeviceName(serialNumber: string): string {
+  return `Anemone_${serialNumber}`;
+}

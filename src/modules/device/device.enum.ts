@@ -1,4 +1,4 @@
 export enum PingDeviceStatus {
-  CONNECTED,
   DISCONNECTED,
+  CONNECTED,
 }

@@ -4,7 +4,7 @@ import * as AWS from 'aws-sdk';
 import * as forge from 'node-forge';
 import { Repository } from 'typeorm';
 
-import { Device } from '../../modules/device/entities/device.entity';
+import { Product } from '../../modules/device/entities/product.entity';
 import { logger } from '../logger/index.logger';
 
 @Injectable()
@@ -12,8 +12,8 @@ export class IoTAuthGuard implements CanActivate {
   private iotClient: AWS.Iot;
 
   constructor(
-    @InjectRepository(Device)
-    private deviceRepository: Repository<Device>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {
     // Initialize AWS IoT client
     this.iotClient = new AWS.Iot({
@@ -40,7 +40,7 @@ export class IoTAuthGuard implements CanActivate {
     try {
       // Get the certificates associated with the device
       const thingsData = await this.iotClient
-        .listThingPrincipals({ thingName: 'anemone_test_device' })
+        .listThingPrincipals({ thingName: `ANEMONE-${deviceId}` })
         .promise();
       const certificateArns = thingsData.principals;
 
@@ -74,10 +74,24 @@ export class IoTAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    // Extract device ID from headers
+    const deviceId = request.headers['x-device-id'];
+    logger.info(`Device ID: ${deviceId}`);
+    if (!deviceId) {
+      throw new UnauthorizedException('Empty Device Id');
+    }
+
+    // First check product in your database
+    const product = await this.productRepository.findOne({
+      where: { serialNumber: deviceId },
+    });
+
+    if (!product) {
+      throw new UnauthorizedException('Device not registered');
+    }
 
     // Extract device certificate from headers
     const encodedCert = request.headers['x-client-cert'];
-    logger.info(`encodeCert ${JSON.stringify(encodedCert)}`);
     if (!encodedCert) {
       return false; // No certificate provided
     }
@@ -85,10 +99,6 @@ export class IoTAuthGuard implements CanActivate {
     const certPem = decodeURIComponent(encodedCert);
     // Compute the fingerprint of the client certificate
     const clientFingerprint = this.computeFingerprint(certPem);
-
-    // Extract device ID from headers
-    const deviceId = request.headers['x-device-id'];
-    logger.info(`Device ID: ${deviceId}`);
 
     try {
       // Find the certificate ID by fingerprint
@@ -100,17 +110,7 @@ export class IoTAuthGuard implements CanActivate {
         return false;
       }
 
-      // First check device in your database
-      const device = await this.deviceRepository.findOne({
-        where: { serialNumber: deviceId },
-        relations: ['product'],
-      });
-
-      if (!device) {
-        throw new UnauthorizedException('Device not registered');
-      }
-
-      request.device = device;
+      request.product = product;
 
       return true;
     } catch (error) {

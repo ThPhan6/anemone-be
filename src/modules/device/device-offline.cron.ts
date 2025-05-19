@@ -13,7 +13,7 @@ export class DeviceOfflineCron {
     private readonly deviceRepository: Repository<Device>,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async handleDeviceOfflineCheck() {
     // Get connected devices
     const connectedDevices = await this.deviceRepository.find({
@@ -23,6 +23,7 @@ export class DeviceOfflineCron {
     const devicesToUpdate = connectedDevices.filter((device) => {
       return (
         device.lastPingAt &&
+        !device.name.includes('Mock device') &&
         moment().diff(moment(device.lastPingAt), 'seconds') >
           parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)
       );

@@ -18,7 +18,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
   }
 
   async findAll(query: ApiBaseGetListQueries): Promise<Pagination<ScentConfig>> {
-    const data = await super.findAll(query);
+    const data = await super.findAll(query, {}, ['code', 'name', 'tags']);
 
     return {
       ...data,
@@ -79,5 +79,9 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     }
 
     await this.repository.softDelete(id);
+  }
+
+  async save(data: ScentConfig) {
+    return this.repository.save(data);
   }
 }

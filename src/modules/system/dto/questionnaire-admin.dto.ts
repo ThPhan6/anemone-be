@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import { SystemSettingsType } from '../../../common/enum/system-settings.enum';
 import { ESystemDefinitionType } from '../entities/setting-definition.entity';
 import { QuestionnaireAnswerType } from '../entities/setting-value.entity';
 
@@ -73,12 +74,14 @@ export class QuestionnaireAdminCreateDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   name: string;
 
   @ApiProperty()
   @IsObject()
   @ValidateNested()
   @Type(() => QuestionMetadataDto)
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   metadata: QuestionMetadataDto;
 
   @ApiProperty()
@@ -86,6 +89,7 @@ export class QuestionnaireAdminCreateDto {
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => QuestionnaireAnswerItemDto)
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   settingDefinition: QuestionnaireAnswerItemDto[];
 }
 
@@ -99,11 +103,13 @@ export class QuestionnaireAdminUpdateDto {
   @ApiProperty()
   @IsString()
   @IsOptional()
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   name?: string;
 
   @ApiProperty()
   @IsEnum(ESystemDefinitionType)
   @IsOptional()
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   type?: ESystemDefinitionType;
 
   @ApiProperty()
@@ -111,6 +117,7 @@ export class QuestionnaireAdminUpdateDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => QuestionMetadataDto)
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   metadata?: QuestionMetadataDto;
 
   @ApiProperty()
@@ -118,5 +125,6 @@ export class QuestionnaireAdminUpdateDto {
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => QuestionnaireAnswerItemDto)
+  @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
   settingDefinition?: QuestionnaireAnswerItemDto[];
 }
