@@ -49,4 +49,16 @@ export class UserSessionsService {
       userSession: userSession ?? null,
     };
   }
+
+  async deleteUserSession(userId: string) {
+    const userSession = await this.userSessionRepository.findOne({
+      where: {
+        userId,
+      },
+    });
+
+    if (userSession) {
+      return await this.userSessionRepository.delete({ userId });
+    }
+  }
 }
