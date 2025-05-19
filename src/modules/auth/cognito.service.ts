@@ -330,7 +330,7 @@ export class CognitoService {
     }
   }
 
-  async getCMSUserByUserId(userId: string): Promise<Partial<User> | null> {
+  async getCMSUserByUserId(userId: string): Promise<Partial<Omit<User, 'user_id'>> | null> {
     try {
       const command = new AdminGetUserCommand({
         UserPoolId: this.awsConfigService.userCmsPoolId,
@@ -360,8 +360,54 @@ export class CognitoService {
         name: attrMap.name || '',
         givenName: attrMap.given_name || '',
         status: result.UserStatus as UserStatus,
-        role: (attrMap['custom:role'] as UserRole) || UserRole.MEMBER,
+        role: (attrMap['custom:role'] as UserRole) || ('' as UserRole),
         type: UserType.CMS,
+        emailVerified: attrMap.email_verified === 'true',
+        enabled: result.Enabled || false,
+        phoneNumberVerified: attrMap.phone_number_verified === 'true',
+        isAdmin: attrMap['custom:role'] === UserRole.ADMIN,
+        createdAt: result.UserCreateDate,
+        updatedAt: result.UserLastModifiedDate,
+      };
+    } catch (error) {
+      logger.error('Failed to fetch user from Cognito:', error);
+
+      return null;
+    }
+  }
+
+  async getMobileUserByUserId(userId: string): Promise<Partial<Omit<User, 'user_id'>> | null> {
+    try {
+      const command = new AdminGetUserCommand({
+        UserPoolId: this.awsConfigService.userMobilePoolId,
+        Username: userId,
+      });
+
+      const result = await this.cognitoClient.send(command);
+
+      const attrMap = result.UserAttributes?.reduce(
+        (acc, attr) => {
+          if (attr.Name && attr.Value) {
+            acc[attr.Name] = attr.Value;
+          }
+
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
+      if (!attrMap) {
+        return null;
+      }
+
+      return {
+        id: attrMap.sub,
+        email: attrMap.email || '',
+        name: attrMap.name || '',
+        givenName: attrMap.given_name || '',
+        status: result.UserStatus as UserStatus,
+        role: (attrMap['custom:role'] as UserRole) || UserRole.MEMBER,
+        type: UserType.APP,
         emailVerified: attrMap.email_verified === 'true',
         enabled: result.Enabled || false,
         phoneNumberVerified: attrMap.phone_number_verified === 'true',
