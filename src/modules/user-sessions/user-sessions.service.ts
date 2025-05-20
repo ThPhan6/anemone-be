@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 
 import { UserSession } from '../../common/entities/user-session.entity';
 import { PingDeviceStatus } from '../device/device.enum';
-import { Device } from '../device/entities/device.entity';
+import { ConnectionStatus, Device } from '../device/entities/device.entity';
 
 @Injectable()
 export class UserSessionsService {
@@ -35,13 +35,14 @@ export class UserSessionsService {
         devices.length > 0
           ? devices.map((device) => ({
               id: device.id,
-              status: device.isConnected
-                ? PingDeviceStatus.CONNECTED
-                : PingDeviceStatus.DISCONNECTED,
+              status:
+                device.connectionStatus === ConnectionStatus.CONNECTED
+                  ? PingDeviceStatus.CONNECTED
+                  : PingDeviceStatus.DISCONNECTED,
             }))
           : [],
       deviceStatus: userSession
-        ? userSession?.device?.isConnected
+        ? userSession?.device?.connectionStatus === ConnectionStatus.CONNECTED
           ? PingDeviceStatus.CONNECTED
           : PingDeviceStatus.DISCONNECTED
         : null,

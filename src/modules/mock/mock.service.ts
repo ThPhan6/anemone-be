@@ -3,7 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
-import { Device, DeviceProvisioningStatus } from '../device/entities/device.entity';
+import {
+  ConnectionStatus,
+  Device,
+  DeviceProvisioningStatus,
+} from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product, ProductType } from '../device/entities/product.entity';
 import { ProductVariant } from '../product-variant/entities/product-variant.entity';
@@ -141,7 +145,7 @@ export class MockService {
       thingName: `thing-${deviceProduct.serialNumber}`,
       provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
       firmwareVersion: '1.0.0',
-      isConnected: true,
+      connectionStatus: ConnectionStatus.CONNECTED,
       lastPingAt: new Date(),
       warrantyExpirationDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
       product: deviceProduct,
@@ -183,7 +187,7 @@ export class MockService {
       thingName: device.thingName,
       provisioningStatus: device.provisioningStatus,
       firmwareVersion: device.firmwareVersion,
-      isConnected: device.isConnected,
+      isConnected: device.connectionStatus === ConnectionStatus.CONNECTED,
       lastPingAt: device.lastPingAt,
       warrantyExpirationDate: device.warrantyExpirationDate,
       registeredBy: device.registeredBy,

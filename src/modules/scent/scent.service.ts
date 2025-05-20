@@ -15,7 +15,7 @@ import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
 import { CognitoService } from '../auth/cognito.service';
-import { Device } from '../device/entities/device.entity';
+import { ConnectionStatus, Device } from '../device/entities/device.entity';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { CommandType, DeviceCommand } from '../device/entities/device-command.entity';
 import { Product } from '../device/entities/product.entity';
@@ -481,7 +481,7 @@ export class ScentService extends BaseService<Scent> {
       throw new HttpException(MESSAGE.DEVICE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (!device.isConnected) {
+    if (device.connectionStatus !== ConnectionStatus.CONNECTED) {
       throw new HttpException(MESSAGE.DEVICE.NOT_CONNECTED, HttpStatus.BAD_REQUEST);
     }
 

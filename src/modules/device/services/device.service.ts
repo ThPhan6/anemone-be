@@ -8,7 +8,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { orderBy } from 'lodash';
-import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
+import {
+  ConnectionStatus,
+  Device,
+  DeviceProvisioningStatus,
+} from 'modules/device/entities/device.entity';
 import { In, IsNull, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
@@ -183,7 +187,7 @@ export class DeviceService {
       const newDevice = this.repository.create({
         product: { serialNumber: dto.deviceId },
         name: formatDeviceName(product.serialNumber),
-        isConnected: true,
+        connectionStatus: ConnectionStatus.CONNECTED,
         registeredBy: userId,
         provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
       });
@@ -281,15 +285,17 @@ export class DeviceService {
 
         updatePayload.space = space;
         updatePayload.registeredBy = userId;
-        updatePayload.isConnected = true;
+        updatePayload.connectionStatus = ConnectionStatus.CONNECTED;
       } else {
         updatePayload.space = null;
-        updatePayload.isConnected = false;
+        updatePayload.connectionStatus = ConnectionStatus.DISCONNECTED_BY_DEVICE;
       }
     }
 
     if ('isConnected' in dto) {
-      updatePayload.isConnected = dto.isConnected;
+      updatePayload.connectionStatus = dto.isConnected
+        ? ConnectionStatus.CONNECTED
+        : ConnectionStatus.DISCONNECTED_BY_USER;
     }
 
     return this.repository.update(device.id, updatePayload);
@@ -316,7 +322,7 @@ export class DeviceService {
       id: device.id,
       name: device.name,
       deviceId: device.product.serialNumber,
-      isConnected: device.isConnected,
+      isConnected: device.connectionStatus === ConnectionStatus.CONNECTED,
       warranty: device.warrantyExpirationDate,
       productInfo: {
         serialNumber: device.product.serialNumber,
