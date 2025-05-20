@@ -231,20 +231,31 @@ export class CognitoService {
 
     // Handle enabled status separately if provided
     if (isBoolean(enabled)) {
-      const enableCommand = enabled
-        ? new AdminEnableUserCommand({
-            UserPoolId: this.awsConfigService.userCmsPoolId,
-            Username: email,
-          })
-        : new AdminDisableUserCommand({
-            UserPoolId: this.awsConfigService.userCmsPoolId,
-            Username: email,
-          });
-
-      await this.cognitoClient.send(enableCommand);
+      await this.enableUser(email, enabled);
     }
 
     return result;
+  }
+
+  async enableUser(email: string, enabled: boolean, isCms = true): Promise<boolean> {
+    const enableCommand = enabled
+      ? new AdminEnableUserCommand({
+          UserPoolId: isCms
+            ? this.awsConfigService.userCmsPoolId
+            : this.awsConfigService.userMobilePoolId,
+          Username: email,
+        })
+      : new AdminDisableUserCommand({
+          UserPoolId: isCms
+            ? this.awsConfigService.userCmsPoolId
+            : this.awsConfigService.userMobilePoolId,
+          Username: email,
+        });
+
+    await this.cognitoClient.send(enableCommand);
+    const user = await this.getUserByEmail(email, isCms);
+
+    return !user.enabled;
   }
 
   async deleteUser(email: string): Promise<AdminDeleteUserCommandOutput> {
