@@ -1,4 +1,4 @@
-import { Get } from '@nestjs/common';
+import { Delete, Get } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import { User } from '@sentry/nestjs';
 
@@ -24,5 +24,10 @@ export class UserSessionsController extends BaseController {
   })
   async getUserSession(@AuthUser() user: User) {
     return this.userSessionsService.getUserSession(user.sub);
+  }
+
+  @Delete()
+  async deleteUserSession(@AuthUser() user: User) {
+    return this.userSessionsService.deleteUserSession(user.sub);
   }
 }
