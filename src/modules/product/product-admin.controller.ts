@@ -24,10 +24,10 @@ export class ProductAdminController extends BaseController {
     super();
   }
 
-  @Post('import')
+  @Post('imports')
   @ApiOperation({ summary: 'Import devices from CSV file' })
   @ApiUploadFile({
-    path: 'import',
+    path: 'imports',
     bodyDescription: 'CSV file containing device data',
   })
   async importDevices(

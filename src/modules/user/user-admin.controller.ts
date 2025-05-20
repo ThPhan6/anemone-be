@@ -35,12 +35,6 @@ export class UserAdminController extends BaseController {
     return this.service.getAllUsers(query);
   }
 
-  @Get('/profile')
-  @ApiOperation({ summary: 'Get user profile' })
-  getProfile(@Query('token') token: string) {
-    return this.cognitoService.getProfile(token);
-  }
-
   @Get('/:id')
   @ApiOperation({ summary: 'Get user details by id' })
   getUserDetailsById(@Param('id') id: string) {
@@ -57,20 +51,14 @@ export class UserAdminController extends BaseController {
   }
 
   @Put('/:id')
-  @ApiOperation({ summary: 'Update CMS user by id' })
-  updateCmsUserId(@Param('id') id: string, @Body() body: UpdateUserDto) {
-    return this.service.updateCmsUserById(id, body);
+  @ApiOperation({ summary: 'Update user by id' })
+  update(@Param('id') id: string, @Body() body: UpdateUserDto) {
+    return this.service.updateUser(id, body);
   }
 
   @Delete('/:id')
   @ApiOperation({ summary: 'Delete user by id' })
   deleteUser(@Param('id') id: string) {
     return this.service.deleteUserById(id);
-  }
-
-  @Get('/:id/enabled')
-  @ApiOperation({ summary: 'Enable mobile user by id' })
-  blockUser(@Param('id') id: string) {
-    return this.service.blockUserById(id);
   }
 }

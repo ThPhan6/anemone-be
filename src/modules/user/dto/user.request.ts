@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
 import { ExposeApi, ExposeApiOptional } from 'core/decorator/property.decorator';
 
 import { CheckAny } from '../../../core/decorator/validators/checkAny.decorator';
@@ -39,46 +47,61 @@ export class CreateUserDto {
   @IsEnum(UserRole, { message: 'Role must be a valid user role' })
   @IsOptional()
   role: UserRole = UserRole.MEMBER;
-
-  @CheckAny({ required: true })
-  @IsBoolean({ message: 'Enabled must be a boolean' })
-  @IsNotEmpty({ message: 'Enabled is required' })
-  enabled: boolean;
-
-  @ExposeApi()
-  @IsBoolean({ message: 'isAdmin must be a boolean' })
-  @IsOptional()
-  isAdmin: boolean = false;
 }
 
 export class UpdateUserDto {
   @ExposeApiOptional()
-  @IsEmail({}, { message: 'Email must be a valid email address' })
-  @IsOptional()
-  email?: string;
-
-  @ExposeApiOptional()
+  @ValidateIf((o) => o.type === UserType.CMS)
   @IsString({ message: 'First name must be a string' })
   @IsOptional()
+  @ApiProperty({
+    description: 'First name (CMS users only)',
+    required: false,
+    type: String,
+  })
   name?: string;
 
   @ExposeApiOptional()
+  @ValidateIf((o) => o.type === UserType.CMS)
   @IsString({ message: 'Last name must be a string' })
   @IsOptional()
+  @ApiProperty({
+    description: 'Last name (CMS users only)',
+    required: false,
+    type: String,
+  })
   givenName?: string;
 
   @ExposeApiOptional()
+  @ValidateIf((o) => o.type === UserType.CMS)
   @IsEnum(UserRole, { message: 'Role must be a valid user role' })
   @IsOptional()
+  @ApiProperty({
+    description: 'User role (CMS users only)',
+    enum: UserRole,
+    enumName: 'UserRole',
+    required: false,
+  })
   role?: UserRole = UserRole.MEMBER;
 
   @ExposeApiOptional()
+  @ValidateIf((o) => o.type === UserType.APP)
   @IsBoolean({ message: 'Enabled must be a boolean' })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Enabled status is required for mobile users' })
+  @ApiProperty({
+    description: 'User enabled status (required for mobile users only)',
+    required: false,
+    type: Boolean,
+  })
   enabled?: boolean;
 
-  @ExposeApiOptional()
-  @IsBoolean({ message: 'isAdmin must be a boolean' })
-  @IsOptional()
-  isAdmin?: boolean;
+  @CheckAny({ required: true })
+  @IsEnum(UserType, { message: 'Type must be a valid user type' })
+  @ApiProperty({
+    description: 'Type of user: CMS or APP',
+    enum: UserType,
+    enumName: 'UserType',
+    example: UserType.CMS,
+  })
+  type: UserType;
 }
