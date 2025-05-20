@@ -20,6 +20,7 @@ export class UserSettingsService {
   async get(userId: string) {
     const settings = await this.userSettingsRepository.findOne({
       where: { userId },
+      order: { createdAt: 'DESC' },
     });
 
     if (!settings) {
@@ -32,7 +33,10 @@ export class UserSettingsService {
   }
 
   async update(userId: string, dto: UpdateUserSettingsDto) {
-    let settings = await this.userSettingsRepository.findOne({ where: { userId } });
+    let settings = await this.userSettingsRepository.findOne({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
 
     if (!settings) {
       settings = this.userSettingsRepository.create({ userId });
@@ -62,15 +66,32 @@ export class UserSettingsService {
       }
     }
 
-    // If all questions are valid, save data to database
-    const answer = await this.userSettingsRepository.create({
-      userId,
-      questionnaire: body,
-      onboarded: true,
+    let user = await this.userSettingsRepository.findOne({
+      where: { userId },
+      order: { createdAt: 'DESC' },
     });
 
-    await this.userSettingsRepository.save(answer);
+    if (!user) {
+      // If all questions are valid, save data to database
+      user = await this.userSettingsRepository.create({
+        userId,
+        questionnaire: body,
+        onboarded: true,
+      });
 
-    return answer;
+      await this.userSettingsRepository.save(user);
+    } else {
+      await this.userSettingsRepository.update(user.id, {
+        questionnaire: body,
+        onboarded: true,
+      });
+
+      user = await this.userSettingsRepository.findOne({
+        where: { userId },
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    return user;
   }
 }
