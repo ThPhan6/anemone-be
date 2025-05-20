@@ -2,14 +2,14 @@ import { Body, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
-import { AdminRoleGuard } from 'core/decorator/auth.decorator';
+import { StaffRoleGuard } from 'core/decorator/auth.decorator';
 import { UserService } from 'modules/user/service/user.service';
 
 import { CognitoService } from '../auth/cognito.service';
 import { CreateUserDto, UpdateUserDto, UserGetListQueries } from './dto/user.request';
 import { UserType } from './entities/user.entity';
 
-@AdminRoleGuard()
+@StaffRoleGuard()
 @ApiController({
   name: 'users',
   admin: true,
@@ -53,7 +53,7 @@ export class UserAdminController extends BaseController {
     @Body()
     body: CreateUserDto,
   ) {
-    return this.service.createUser(body);
+    return this.service.createCmsUser(body);
   }
 
   @Put('/:id')

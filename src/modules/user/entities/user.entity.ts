@@ -2,8 +2,14 @@ import { BaseEntity } from 'common/entities/base.entity';
 import { Column, Entity } from 'typeorm';
 
 export enum UserStatus {
-  CONFIRMED = 'CONFIRMED',
-  UNCONFIRMED = 'UNCONFIRMED',
+  CONFIRMED = 'CONFIRMED', // User has completed confirmation and can sign in.
+  UNCONFIRMED = 'UNCONFIRMED', // User has been created but not confirmed (email/phone not verified yet).
+  ARCHIVED = 'ARCHIVED', // User has been deleted but retained for archival purposes.
+  COMPROMISED = 'COMPROMISED', // User is flagged due to security risks (e.g., exposed credentials).
+  UNKNOWN = 'UNKNOWN', // Catch-all for rare or undefined status.
+  RESET_REQUIRED = 'RESET_REQUIRED', // User must reset password before sign-in.
+  FORCE_CHANGE_PASSWORD = 'FORCE_CHANGE_PASSWORD', // User must change password on next sign-in (admin-created users).
+  EXTERNAL_PROVIDER = 'EXTERNAL_PROVIDER', // User signed up via a federated IdP and is managed externally (e.g., Google, SAML, Facebook).
 }
 
 export enum UserRole {

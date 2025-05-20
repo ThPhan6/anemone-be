@@ -19,12 +19,12 @@ import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
 import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
-import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
+import { StaffRoleGuard } from '../../core/decorator/auth.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { CreateSystemSettingDto } from './dto/system-settings.dto';
 import { SystemSettingsService } from './system-settings.service';
 
-@AdminRoleGuard()
+@StaffRoleGuard()
 @ApiController({
   name: 'system-settings',
   admin: true,
