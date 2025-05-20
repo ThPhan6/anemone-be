@@ -153,6 +153,7 @@ export class SpaceService {
       ...found,
       devices: devices.map((device) => ({
         ...device,
+        isConnected: device.connectionStatus === ConnectionStatus.CONNECTED,
         product: {
           ...device.product,
           image: device.product.productVariant.image
