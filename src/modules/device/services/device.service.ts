@@ -255,7 +255,7 @@ export class DeviceService {
     const device = await this.validateDeviceOwnership(deviceId, userId);
 
     const updatePayload = {
-      isConnected: false,
+      connectionStatus: ConnectionStatus.DISCONNECTED_BY_DEVICE,
       registeredBy: null,
       space: null,
       lastPingAt: null,
