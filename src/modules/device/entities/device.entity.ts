@@ -14,6 +14,12 @@ export enum DeviceProvisioningStatus {
   FAILED = 'FAILED',
 }
 
+export enum ConnectionStatus {
+  CONNECTED = 1,
+  DISCONNECTED_BY_DEVICE = 2,
+  DISCONNECTED_BY_USER = 3,
+}
+
 @Entity('devices')
 export class Device extends BaseEntity {
   @Column({ name: 'name' })
@@ -36,8 +42,8 @@ export class Device extends BaseEntity {
   @Column({ name: 'serial_number', nullable: true })
   serialNumber: string;
 
-  @Column({ name: 'is_connected', default: false })
-  isConnected: boolean;
+  @Column({ name: 'connection_status', default: ConnectionStatus.DISCONNECTED_BY_DEVICE })
+  connectionStatus: ConnectionStatus;
 
   @Column({ name: 'last_ping_at', nullable: true })
   lastPingAt: Date;

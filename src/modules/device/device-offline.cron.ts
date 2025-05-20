@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as moment from 'moment';
 import { Repository } from 'typeorm';
 
-import { Device } from './entities/device.entity';
+import { ConnectionStatus, Device } from './entities/device.entity';
 
 @Injectable()
 export class DeviceOfflineCron {
@@ -17,7 +17,7 @@ export class DeviceOfflineCron {
   async handleDeviceOfflineCheck() {
     // Get connected devices
     const connectedDevices = await this.deviceRepository.find({
-      where: { isConnected: true },
+      where: { connectionStatus: ConnectionStatus.CONNECTED },
     });
 
     const devicesToUpdate = connectedDevices.filter((device) => {
@@ -36,7 +36,7 @@ export class DeviceOfflineCron {
     // Update these devices to disconnected
     for (const device of devicesToUpdate) {
       await this.deviceRepository.update(device.id, {
-        isConnected: false,
+        connectionStatus: ConnectionStatus.DISCONNECTED_BY_DEVICE,
       });
     }
   }

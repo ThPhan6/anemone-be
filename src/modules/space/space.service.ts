@@ -8,7 +8,7 @@ import { convertURLToS3Readable } from '../../common/utils/file';
 import { paginate } from '../../common/utils/helper';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { Pagination } from '../../core/types/response.type';
-import { Device } from '../device/entities/device.entity';
+import { ConnectionStatus, Device } from '../device/entities/device.entity';
 import { CreateSpaceDto, UpdateSpaceDto } from './dto/space-request.dto';
 
 @Injectable()
@@ -115,7 +115,11 @@ export class SpaceService {
     if (devicesInSpace.length > 0) {
       await this.deviceRepository.update(
         { space: { id } },
-        { space: null, isConnected: false, registeredBy: null },
+        {
+          space: null,
+          connectionStatus: ConnectionStatus.DISCONNECTED_BY_DEVICE,
+          registeredBy: null,
+        },
       );
     }
 

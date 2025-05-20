@@ -1,6 +1,10 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Device, DeviceProvisioningStatus } from 'modules/device/entities/device.entity';
+import {
+  ConnectionStatus,
+  Device,
+  DeviceProvisioningStatus,
+} from 'modules/device/entities/device.entity';
 import * as moment from 'moment';
 import { IsNull, Repository } from 'typeorm';
 
@@ -245,7 +249,7 @@ export class DeviceIotService {
       const newDevice = await this.repository.create({
         product: { serialNumber: deviceId },
         name: formatDeviceName(product.serialNumber),
-        isConnected: true,
+        connectionStatus: ConnectionStatus.CONNECTED,
         lastPingAt: now,
         provisioningStatus: DeviceProvisioningStatus.PROVISIONED,
       });
@@ -253,7 +257,10 @@ export class DeviceIotService {
       await this.repository.save(newDevice);
     } else {
       device.lastPingAt = now;
-      device.isConnected = true;
+      device.connectionStatus =
+        device.connectionStatus === ConnectionStatus.DISCONNECTED_BY_DEVICE
+          ? ConnectionStatus.CONNECTED
+          : device.connectionStatus;
       await this.repository.save(device);
     }
   }
@@ -273,7 +280,9 @@ export class DeviceIotService {
     // Update device with status data
     // You can expand this to update specific fields based on the statusData
     if (statusData.isConnected !== undefined) {
-      device.isConnected = statusData.isConnected;
+      device.connectionStatus = statusData.isConnected
+        ? ConnectionStatus.CONNECTED
+        : ConnectionStatus.DISCONNECTED_BY_DEVICE;
     }
 
     await this.repository.save(device);
@@ -335,18 +344,14 @@ export class DeviceIotService {
       throw new NotFoundException('Device not found');
     }
 
-    // if (!device.isConnected) {
-    //   return {
-    //     command: Command.REQUEST_AUTH,
-    //   };
-    // }
-
     //Check lastPingAt — if > 15s ago, return command: "request auth"
     if (device.lastPingAt) {
       const secondsSinceLastPing = moment().diff(moment(device.lastPingAt), 'seconds');
 
       if (secondsSinceLastPing > parseInt(process.env.HEARTBEAT_EXPIRE_SECONDS)) {
-        await this.repository.update(device.id, { isConnected: false });
+        await this.repository.update(device.id, {
+          connectionStatus: ConnectionStatus.DISCONNECTED_BY_DEVICE,
+        });
 
         return {
           command: Command.REQUEST_AUTH,
