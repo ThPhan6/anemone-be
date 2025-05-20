@@ -77,4 +77,10 @@ export class Device extends BaseEntity {
   get deviceId(): string {
     return this.product?.serialNumber;
   }
+
+  @Expose()
+  @Transform(({ obj }) => obj.connectionStatus === ConnectionStatus.CONNECTED)
+  get isConnected(): boolean {
+    return this.connectionStatus === ConnectionStatus.CONNECTED;
+  }
 }

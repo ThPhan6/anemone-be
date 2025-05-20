@@ -159,6 +159,7 @@ export class DeviceService {
 
     return devices.map((el) => ({
       ...el,
+      isConnected: el.connectionStatus === ConnectionStatus.CONNECTED,
       spaceName: el.space ? el.space.name : null,
       product: {
         ...el.product,
