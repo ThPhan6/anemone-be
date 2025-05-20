@@ -20,7 +20,6 @@ import {
   ForgotPasswordCommand,
   ForgotPasswordCommandInput,
   ForgotPasswordCommandOutput,
-  GetUserCommand,
   GlobalSignOutCommand,
   InitiateAuthCommand,
   InitiateAuthCommandInput,
@@ -164,7 +163,7 @@ export class CognitoService {
       Username: email,
       UserAttributes: [
         { Name: 'email', Value: email },
-        { Name: 'name', Value: firstName },
+        { Name: 'family_name', Value: firstName },
         { Name: 'given_name', Value: lastName },
         { Name: 'custom:role', Value: role },
         { Name: 'phone_number', Value: '' },
@@ -192,7 +191,7 @@ export class CognitoService {
       Username: email,
       UserAttributes: [
         { Name: 'email', Value: email },
-        { Name: 'name', Value: firstName },
+        { Name: 'family_name', Value: firstName },
         { Name: 'given_name', Value: lastName },
         { Name: 'custom:role', Value: role },
       ],
@@ -215,7 +214,7 @@ export class CognitoService {
   }): Promise<AdminUpdateUserAttributesCommandOutput> {
     const { userName, firstName, lastName, role, enabled } = data;
     const userAttributes = [
-      { Name: 'name', Value: firstName },
+      { Name: 'family_name', Value: firstName },
       { Name: 'given_name', Value: lastName },
       { Name: 'custom:role', Value: role },
     ];
@@ -321,38 +320,6 @@ export class CognitoService {
     }
   }
 
-  async getProfile(accessToken: string) {
-    try {
-      const command = new GetUserCommand({
-        AccessToken: accessToken,
-      });
-
-      const response = await this.cognitoClient.send(command);
-
-      const attrMap = response.UserAttributes?.reduce(
-        (acc, attr) => {
-          if (attr.Name && attr.Value) {
-            acc[attr.Name] = attr.Value;
-          }
-
-          return acc;
-        },
-        {} as Record<string, string>,
-      );
-
-      return {
-        id: attrMap.sub,
-        email: attrMap.email,
-        name: attrMap.name,
-        givenName: attrMap.given_name,
-        role: attrMap['custom:role'],
-        emailVerified: attrMap.email_verified === 'true',
-      };
-    } catch (error) {
-      throw new UnauthorizedException('Invalid access token');
-    }
-  }
-
   async getCMSUserByUserId(
     userId: string,
   ): Promise<Partial<Omit<User, 'user_id'> & { userName: string }> | null> {
@@ -382,7 +349,7 @@ export class CognitoService {
       return {
         id: attrMap.sub,
         email: attrMap.email || '',
-        name: attrMap.name || '',
+        name: attrMap.family_name || '',
         givenName: attrMap.given_name || '',
         userName: result.Username,
         status: result.UserStatus as UserStatus,
@@ -391,7 +358,6 @@ export class CognitoService {
         emailVerified: attrMap.email_verified === 'true',
         enabled: result.Enabled || false,
         phoneNumberVerified: attrMap.phone_number_verified === 'true',
-        isAdmin: attrMap['custom:role'] === UserRole.ADMIN,
         createdAt: result.UserCreateDate,
         updatedAt: result.UserLastModifiedDate,
       };
@@ -431,7 +397,7 @@ export class CognitoService {
       return {
         id: attrMap.sub,
         email: attrMap.email || '',
-        name: attrMap.name || '',
+        name: attrMap.family_name || '',
         givenName: attrMap.given_name || '',
         userName: result.Username,
         status: result.UserStatus as UserStatus,
@@ -440,7 +406,6 @@ export class CognitoService {
         emailVerified: attrMap.email_verified === 'true',
         enabled: result.Enabled || false,
         phoneNumberVerified: attrMap.phone_number_verified === 'true',
-        isAdmin: attrMap['custom:role'] === UserRole.ADMIN,
         createdAt: result.UserCreateDate,
         updatedAt: result.UserLastModifiedDate,
       };
@@ -495,7 +460,7 @@ export class CognitoService {
         email: string;
         email_verified: string;
         phone_number_verified: string;
-        name: string;
+        family_name: string;
         given_name: string;
         'custom:role': string;
         sub: string;

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { UserRepository } from 'common/repositories/user.repository';
 import { BaseService } from 'core/services/base.service';
 import { CreateUserDto, UpdateUserDto, UserGetListQueries } from 'modules/user/dto/user.request';
-import { FindOptionsWhere } from 'typeorm';
+import { DeepPartial, FindOptionsWhere } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
 import { generateRandomPassword } from '../../../common/utils/helper';
@@ -99,7 +99,7 @@ export class UserService extends BaseService<User> {
     // Format response
     const users = usersResult.users.map((user) => ({
       id: user.attributes.sub,
-      name: user.attributes.name || '',
+      name: user.attributes.family_name || '',
       givenName: user.attributes.given_name || '',
       email: user.attributes.email || '',
       role: user.attributes['custom:role'] || '',
@@ -253,22 +253,15 @@ export class UserService extends BaseService<User> {
     cognitoUser: any,
     existingUser: User,
     userData: UpdateUserDto,
-  ): Partial<User> {
-    const userDataForDb: Partial<User> = {
+  ): DeepPartial<User> {
+    const userDataForDb: DeepPartial<User> = {
       email: cognitoUser.email,
-      name: cognitoUser.name || existingUser.name,
-      givenName: cognitoUser.givenName || existingUser.givenName,
-      role: (cognitoUser['custom:role'] as UserRole) || existingUser.role,
+      name: userData.name || cognitoUser.name || existingUser.name,
+      givenName: userData.givenName || cognitoUser.givenName || existingUser.givenName,
+      role: userData.role || (cognitoUser['custom:role'] as UserRole) || existingUser.role,
       type: UserType.CMS,
-      enabled: cognitoUser.enabled,
+      enabled: userData.enabled !== undefined ? userData.enabled : cognitoUser.enabled,
     };
-
-    // Handle admin status
-    if (userData.isAdmin !== undefined) {
-      userDataForDb.isAdmin = userData.isAdmin;
-    } else if (userData.role) {
-      userDataForDb.isAdmin = userData.role === UserRole.ADMIN;
-    }
 
     return userDataForDb;
   }
@@ -277,7 +270,12 @@ export class UserService extends BaseService<User> {
    * Checks if the update contains any Cognito-related fields
    */
   private _hasCognitoUpdates(userData: UpdateUserDto): boolean {
-    return !!(userData.email || userData.name || userData.givenName || userData.role);
+    return !!(
+      userData.name ||
+      userData.givenName ||
+      userData.role ||
+      userData.enabled !== undefined
+    );
   }
 
   /**
@@ -300,7 +298,7 @@ export class UserService extends BaseService<User> {
         password: generateRandomPassword(),
         firstName: userData.name,
         lastName: userData.givenName,
-        role: userData.role || UserRole.MEMBER,
+        role: userData.role,
       });
 
       // Extract user sub (user_id) from the response
@@ -318,15 +316,13 @@ export class UserService extends BaseService<User> {
       }
 
       // 2. Then sync to our database
-      const userDataForDb: Partial<User> = {
+      const userDataForDb: DeepPartial<User> = {
         user_id: userId,
         email: userData.email,
         name: userData.name,
         givenName: userData.givenName,
         status: UserStatus.UNCONFIRMED,
-        role: userData.role || UserRole.MEMBER,
-        isAdmin: userData.isAdmin || userData.role === UserRole.ADMIN,
-        enabled: userData.enabled,
+        role: userData.role,
         type: UserType.CMS,
       };
 
@@ -342,35 +338,27 @@ export class UserService extends BaseService<User> {
   }
 
   /**
-   * Updates a user's information in both Cognito and local database
-   * @param user_id - The ID of the user to update
+   * Updates a user's information based on their type (CMS or mobile)
+   * @param userId - The ID of the user to update
    * @param userData - The data to update the user with
    * @returns The updated user object
    */
-  async updateUser(user_id: string, userData: UpdateUserDto): Promise<User> {
+  async updateUser(userId: string, userData: UpdateUserDto) {
     try {
-      // Check if we need to update Cognito
-      if (this._hasCognitoUpdates(userData)) {
-        // Update both Cognito and database
-        await this.updateCmsUserById(user_id, userData);
-      } else {
-        // Only update database fields
-        const existingUser = await this.repository.findOne({ where: { user_id } });
-        if (!existingUser) {
-          throw new Error('User not found');
-        }
+      switch (userData.type) {
+        case UserType.CMS:
+          await this.updateCmsUserById(userId, userData);
+          break;
 
-        const userDataForDb: Partial<User> = {};
-        if (userData.isAdmin !== undefined) {
-          userDataForDb.isAdmin = userData.isAdmin;
-        }
+        case UserType.APP:
+          await this.blockUserById(userId);
+          break;
 
-        if (Object.keys(userDataForDb).length > 0) {
-          await this.repository.update({ user_id }, userDataForDb);
-        }
+        default:
+          throw new Error(`Unsupported user type: ${userData.type}`);
       }
 
-      return this._getUpdatedUser(user_id);
+      return true;
     } catch (error) {
       logger.error('Failed to update user:', error);
       throw new Error(`Failed to update user: ${error.message}`);
@@ -392,8 +380,6 @@ export class UserService extends BaseService<User> {
     try {
       const existingUser = await this.findUserByEmail(cognitoUser.email);
 
-      // Extract role from either role or custom:role
-
       // Prepare user data for database
       const userDataForDb: Partial<User> = {
         email: cognitoUser.email,
@@ -410,7 +396,6 @@ export class UserService extends BaseService<User> {
           typeof cognitoUser.phone_number_verified === 'string'
             ? cognitoUser.phone_number_verified === 'true'
             : !!cognitoUser.phone_number_verified,
-        isAdmin: cognitoUser.role === UserRole.ADMIN,
         type: cognitoUser.type,
       };
 

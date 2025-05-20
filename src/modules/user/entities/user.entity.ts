@@ -66,7 +66,4 @@ export class User extends BaseEntity {
 
   @Column({ type: 'boolean', name: 'phone_number_verified', default: false })
   phoneNumberVerified: boolean;
-
-  @Column({ type: 'boolean', name: 'is_admin', default: false })
-  isAdmin: boolean;
 }
