@@ -31,25 +31,25 @@ export class UserAdminController extends BaseController {
     required: true,
     description: '1: CMS, 2: APP',
   })
-  async getAllUsers(@Query() query: UserGetListQueries) {
+  getAllUsers(@Query() query: UserGetListQueries) {
     return this.service.getAllUsers(query);
   }
 
   @Get('/profile')
   @ApiOperation({ summary: 'Get user profile' })
-  async getProfile(@Query('token') token: string) {
-    return await this.cognitoService.getProfile(token);
+  getProfile(@Query('token') token: string) {
+    return this.cognitoService.getProfile(token);
   }
 
   @Get('/:id')
   @ApiOperation({ summary: 'Get user details by id' })
-  async getUserDetailsById(@Param('id') id: string) {
+  getUserDetailsById(@Param('id') id: string) {
     return this.service.getUserById(id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create user' })
-  async createUser(
+  createUser(
     @Body()
     body: CreateUserDto,
   ) {
@@ -58,13 +58,19 @@ export class UserAdminController extends BaseController {
 
   @Put('/:id')
   @ApiOperation({ summary: 'Update CMS user by id' })
-  async updateCmsUserId(@Param('id') id: string, @Body() body: UpdateUserDto) {
+  updateCmsUserId(@Param('id') id: string, @Body() body: UpdateUserDto) {
     return this.service.updateCmsUserById(id, body);
   }
 
   @Delete('/:id')
   @ApiOperation({ summary: 'Delete user by id' })
-  async deleteUser(@Param('id') id: string) {
+  deleteUser(@Param('id') id: string) {
     return this.service.deleteUserById(id);
+  }
+
+  @Get('/:id/enabled')
+  @ApiOperation({ summary: 'Enable mobile user by id' })
+  blockUser(@Param('id') id: string) {
+    return this.service.blockUserById(id);
   }
 }

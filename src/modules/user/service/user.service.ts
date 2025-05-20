@@ -595,7 +595,7 @@ export class UserService extends BaseService<User> {
 
     await this.delete(userId);
 
-    return false;
+    return true;
   }
 
   async getMobileProfile(user: UserDto) {
@@ -617,5 +617,34 @@ export class UserService extends BaseService<User> {
       phone_number_verified: cognitoUser.phoneNumberVerified,
       type: UserType.APP,
     });
+  }
+
+  async blockUserById(userId: string) {
+    const cognitoUser = await this.cognitoService.getMobileUserByUserId(userId);
+
+    if (!cognitoUser) {
+      throw new Error('User not found');
+    }
+
+    const enabled = await this.cognitoService.enableUser(
+      cognitoUser.email,
+      !cognitoUser.enabled,
+      false,
+    );
+
+    await this.syncUserWithCognitoData({
+      email: cognitoUser.email,
+      name: cognitoUser.name,
+      given_name: cognitoUser.givenName,
+      status: cognitoUser.status,
+      role: cognitoUser.role,
+      sub: cognitoUser.id,
+      email_verified: cognitoUser.emailVerified,
+      phone_number_verified: cognitoUser.phoneNumberVerified,
+      enabled,
+      type: UserType.APP,
+    });
+
+    return true;
   }
 }
