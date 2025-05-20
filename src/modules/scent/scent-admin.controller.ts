@@ -3,11 +3,11 @@ import { ApiOperation } from '@nestjs/swagger';
 
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
-import { AdminRoleGuard } from '../../core/decorator/auth.decorator';
+import { StaffRoleGuard } from '../../core/decorator/auth.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { ScentService } from './scent.service';
 
-@AdminRoleGuard()
+@StaffRoleGuard()
 @ApiController({
   name: 'scents',
   admin: true,

@@ -207,13 +207,13 @@ export class CognitoService {
   }
 
   async updateUser(data: {
-    email: string;
+    userName: string;
     firstName: string;
     lastName: string;
     role: UserRole;
     enabled?: boolean;
   }): Promise<AdminUpdateUserAttributesCommandOutput> {
-    const { email, firstName, lastName, role, enabled } = data;
+    const { userName, firstName, lastName, role, enabled } = data;
     const userAttributes = [
       { Name: 'name', Value: firstName },
       { Name: 'given_name', Value: lastName },
@@ -222,7 +222,7 @@ export class CognitoService {
 
     const params: AdminUpdateUserAttributesCommandInput = {
       UserPoolId: this.awsConfigService.userCmsPoolId,
-      Username: email,
+      Username: userName,
       UserAttributes: userAttributes,
     };
 
@@ -231,31 +231,43 @@ export class CognitoService {
 
     // Handle enabled status separately if provided
     if (isBoolean(enabled)) {
-      await this.enableUser(email, enabled);
+      await this.enableUser({
+        userName,
+        enabled,
+        isCms: true,
+      });
     }
 
     return result;
   }
 
-  async enableUser(email: string, enabled: boolean, isCms = true): Promise<boolean> {
+  async enableUser(data: {
+    userName: string;
+    enabled: boolean;
+    isCms?: boolean;
+  }): Promise<boolean> {
+    const { userName, enabled, isCms } = data;
+
     const enableCommand = enabled
       ? new AdminEnableUserCommand({
           UserPoolId: isCms
             ? this.awsConfigService.userCmsPoolId
             : this.awsConfigService.userMobilePoolId,
-          Username: email,
+          Username: userName,
         })
       : new AdminDisableUserCommand({
           UserPoolId: isCms
             ? this.awsConfigService.userCmsPoolId
             : this.awsConfigService.userMobilePoolId,
-          Username: email,
+          Username: userName,
         });
 
     await this.cognitoClient.send(enableCommand);
-    const user = await this.getUserByEmail(email, isCms);
+    const user = isCms
+      ? await this.getCMSUserByUserId(userName)
+      : await this.getMobileUserByUserId(userName);
 
-    return !user.enabled;
+    return !!user?.enabled;
   }
 
   async deleteUser(email: string): Promise<AdminDeleteUserCommandOutput> {
@@ -341,7 +353,9 @@ export class CognitoService {
     }
   }
 
-  async getCMSUserByUserId(userId: string): Promise<Partial<Omit<User, 'user_id'>> | null> {
+  async getCMSUserByUserId(
+    userId: string,
+  ): Promise<Partial<Omit<User, 'user_id'> & { userName: string }> | null> {
     try {
       const command = new AdminGetUserCommand({
         UserPoolId: this.awsConfigService.userCmsPoolId,
@@ -370,6 +384,7 @@ export class CognitoService {
         email: attrMap.email || '',
         name: attrMap.name || '',
         givenName: attrMap.given_name || '',
+        userName: result.Username,
         status: result.UserStatus as UserStatus,
         role: (attrMap['custom:role'] as UserRole) || ('' as UserRole),
         type: UserType.CMS,
@@ -387,7 +402,9 @@ export class CognitoService {
     }
   }
 
-  async getMobileUserByUserId(userId: string): Promise<Partial<Omit<User, 'user_id'>> | null> {
+  async getMobileUserByUserId(
+    userId: string,
+  ): Promise<Partial<Omit<User, 'user_id'> & { userName: string }> | null> {
     try {
       const command = new AdminGetUserCommand({
         UserPoolId: this.awsConfigService.userMobilePoolId,
@@ -416,6 +433,7 @@ export class CognitoService {
         email: attrMap.email || '',
         name: attrMap.name || '',
         givenName: attrMap.given_name || '',
+        userName: result.Username,
         status: result.UserStatus as UserStatus,
         role: (attrMap['custom:role'] as UserRole) || UserRole.MEMBER,
         type: UserType.APP,
@@ -454,50 +472,6 @@ export class CognitoService {
       logger.error('Failed to fetch user from Cognito:', error);
 
       return null;
-    }
-  }
-
-  async getUserByEmail(email: string, isCms = true) {
-    try {
-      const params: ListUsersCommandInput = {
-        UserPoolId: isCms
-          ? this.awsConfigService.userCmsPoolId
-          : this.awsConfigService.userMobilePoolId,
-        Filter: `email = "${email}"`,
-        Limit: 1,
-      };
-
-      const command = new ListUsersCommand(params);
-      const result: ListUsersResponse = await this.cognitoClient.send(command);
-
-      if (!result.Users || result.Users.length === 0) {
-        return null;
-      }
-
-      const user = result.Users[0];
-      const attributes = (user.Attributes || []).reduce((acc, attr) => {
-        if (attr.Name && attr.Value) {
-          acc[attr.Name] = attr.Value;
-        }
-
-        return acc;
-      }, {} as any);
-
-      return {
-        sub: attributes.sub,
-        username: user.Username || '',
-        email: attributes.email,
-        name: attributes.name || '',
-        given_name: attributes.given_name || '',
-        status: user.UserStatus,
-        enabled: user.Enabled,
-        email_verified: attributes.email_verified === 'true',
-        phone_number_verified: attributes.phone_number_verified === 'true',
-        role: attributes['custom:role'] || '',
-      };
-    } catch (error) {
-      logger.error(`Failed to fetch user by email from Cognito: ${JSON.stringify(error, null, 2)}`);
-      throw new Error('Failed to retrieve user from Cognito');
     }
   }
 

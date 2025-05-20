@@ -10,11 +10,11 @@ import { ApiOperation } from '@nestjs/swagger';
 import { BaseController } from 'core/controllers/base.controller';
 import { ApiController } from 'core/decorator/apiController.decorator';
 import { ApiUploadFile } from 'core/decorator/apiDoc.decorator';
-import { AdminRoleGuard } from 'core/decorator/auth.decorator';
+import { StaffRoleGuard } from 'core/decorator/auth.decorator';
 
 import { ProductService } from './product.service';
 
-@AdminRoleGuard()
+@StaffRoleGuard()
 @ApiController({
   name: 'products',
   admin: true,

@@ -114,22 +114,64 @@ export const transformImageUrls = <T>(
   return data;
 };
 
-export const generateRandomPassword = (length = 12) => {
+interface PasswordFormat {
+  minLength?: number;
+  requireLowercase?: boolean;
+  requireUppercase?: boolean;
+  requireNumbers?: boolean;
+  requireSpecialCharacters?: boolean;
+}
+
+export const generateRandomPassword = (
+  length = 12,
+  passwordFormat: PasswordFormat = {
+    minLength: 8,
+    requireLowercase: true,
+    requireUppercase: true,
+    requireNumbers: true,
+    requireSpecialCharacters: true,
+  },
+) => {
+  // Validate minimum length
+  const actualLength = Math.max(length, passwordFormat.minLength || 8);
+
   const specialChars = '!@#$%^&*()_+=-`~[]\{}|;\':",./<>?';
-  const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercaseLetters = 'abcdefghijklmnopqrstuvwxyz';
+  const uppercaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const numbers = '0123456789';
-  const allChars = specialChars + letters + numbers;
 
   let password = '';
+  let availableChars = '';
 
-  // Ensure at least one of each type
-  password += specialChars[Math.floor(Math.random() * specialChars.length)];
-  password += letters[Math.floor(Math.random() * letters.length)];
-  password += numbers[Math.floor(Math.random() * numbers.length)];
+  // Add required character types based on password format
+  if (passwordFormat.requireSpecialCharacters) {
+    password += specialChars[Math.floor(Math.random() * specialChars.length)];
+    availableChars += specialChars;
+  }
 
-  // Fill the rest of the password with random characters
-  for (let i = password.length; i < length; i++) {
-    password += allChars[Math.floor(Math.random() * allChars.length)];
+  if (passwordFormat.requireLowercase) {
+    password += lowercaseLetters[Math.floor(Math.random() * lowercaseLetters.length)];
+    availableChars += lowercaseLetters;
+  }
+
+  if (passwordFormat.requireUppercase) {
+    password += uppercaseLetters[Math.floor(Math.random() * uppercaseLetters.length)];
+    availableChars += uppercaseLetters;
+  }
+
+  if (passwordFormat.requireNumbers) {
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    availableChars += numbers;
+  }
+
+  // If no specific requirements, use all character types
+  if (availableChars === '') {
+    availableChars = specialChars + lowercaseLetters + uppercaseLetters + numbers;
+  }
+
+  // Fill the rest of the password with random characters from available sets
+  for (let i = password.length; i < actualLength; i++) {
+    password += availableChars[Math.floor(Math.random() * availableChars.length)];
   }
 
   // Shuffle the password to make it more random
@@ -140,6 +182,7 @@ export const generateRandomPassword = (length = 12) => {
 
   return password;
 };
+
 export function formatDeviceName(serialNumber: string): string {
   return `Anemone_${serialNumber}`;
 }
