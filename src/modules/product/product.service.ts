@@ -298,7 +298,7 @@ export class ProductService extends BaseService<Product> {
 
     const permPath = `${serialNumber}.perm`;
     const keyPath = `${serialNumber}.key`;
-    const deviceNamePath = `${serialNumber}.txt`;
+    const deviceNamePath = `deviceid.txt`;
 
     try {
       // Check if zip already exists
