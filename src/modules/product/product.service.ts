@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { parse as csvParse } from 'csv-parse/sync';
 import * as fs from 'fs/promises';
-import { orderBy } from 'lodash';
+import { orderBy, pick, uniq } from 'lodash';
 import * as path from 'path';
 import { In, IsNull } from 'typeorm';
 
@@ -10,6 +10,7 @@ import { DeviceCartridgeRepository } from '../../common/repositories/device-cart
 import { ProductRepository } from '../../common/repositories/product.repository';
 import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
+import { UserRepository } from '../../common/repositories/user.repository';
 import { createFile, downloadFile, transformImageUrls, zipFiles } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { IotService } from '../../core/services/iot-core.service';
@@ -27,6 +28,7 @@ export class ProductService extends BaseService<Product> {
 
   constructor(
     private readonly productRepository: ProductRepository,
+    private readonly userRepository: UserRepository,
     private readonly scentConfigRepository: ScentConfigRepository,
     private readonly productVariantRepository: ProductVariantRepository,
     private readonly deviceCartridgeRepository: DeviceCartridgeRepository,
@@ -102,7 +104,6 @@ export class ProductService extends BaseService<Product> {
 
       if (item.type === ProductType.DEVICE) {
         result['device'] = item?.device || null;
-        result['registeredBy'] = item?.device?.registeredBy || null;
         result['deviceCartridges'] = item?.device?.id
           ? orderBy(deviceCartridgesMap[item.device.id], 'position', 'asc')
           : [];
@@ -115,9 +116,27 @@ export class ProductService extends BaseService<Product> {
       return result;
     });
 
+    const userIds = uniq(transformedItems.map((el) => el?.device?.registeredBy).filter(Boolean));
+    const users = await this.userRepository.findBy({
+      user_id: In(userIds),
+    });
+
+    const items = transformedItems.map((el) => {
+      if (!el?.device?.registeredBy) {
+        return el;
+      }
+
+      const user = users.find((user) => user.user_id == el.device.registeredBy);
+
+      return {
+        ...el,
+        user: pick(user, ['id', 'name', 'givenName', 'email']),
+      };
+    });
+
     return {
       ...data,
-      items: transformedItems,
+      items,
     };
   }
 
@@ -251,8 +270,12 @@ export class ProductService extends BaseService<Product> {
         }
 
         // Include registeredBy field for DEVICE type products
-        if (product.device) {
-          result['registeredBy'] = product.device.registeredBy || null;
+        if (product?.device?.registeredBy) {
+          const user = await this.userRepository.findOne({
+            where: { user_id: product.device.registeredBy },
+          });
+
+          result['user'] = user ? pick(user, ['id', 'name', 'givenName', 'email']) : null;
         }
 
         break;
