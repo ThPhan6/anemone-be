@@ -4,6 +4,7 @@ import * as AWS from 'aws-sdk';
 import * as forge from 'node-forge';
 import { Repository } from 'typeorm';
 
+import { formatThingName } from '../../common/utils/helper';
 import { Product } from '../../modules/device/entities/product.entity';
 import { logger } from '../logger/index.logger';
 
@@ -40,7 +41,7 @@ export class IoTAuthGuard implements CanActivate {
     try {
       // Get the certificates associated with the device
       const thingsData = await this.iotClient
-        .listThingPrincipals({ thingName: `ANEMONE-${deviceId}` })
+        .listThingPrincipals({ thingName: formatThingName(deviceId) })
         .promise();
       const certificateArns = thingsData.principals;
 
