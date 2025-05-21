@@ -91,6 +91,7 @@
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^11.0.9",
     "@trivago/prettier-plugin-sort-imports": "^5.2.0",
+    "@types/archiver": "^6.0.3",
     "@types/async": "^3.2.20",
     "@types/bcrypt": "^5.0.0",
     "@types/csv-parse": "^1.2.5",

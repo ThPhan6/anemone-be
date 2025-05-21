@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
 
+import { formatThingName } from '../../common/utils/helper';
+
 @Injectable()
 export class IotService {
   private iot: AWS.Iot;
@@ -39,7 +41,7 @@ export class IotService {
       const publicKey = certificate.keyPair.PublicKey;
 
       // 2. Create Thing
-      const thingName = `ANEMONE-${deviceId}`; // Generate a unique thing name
+      const thingName = formatThingName(deviceId); // Generate a unique thing name
       const createParams = {
         thingName: thingName,
         attributePayload: {

@@ -1,6 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { parse as csvParse } from 'csv-parse/sync';
+import * as fs from 'fs/promises';
 import { orderBy } from 'lodash';
+import * as path from 'path';
 import { In, IsNull } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -8,7 +10,7 @@ import { DeviceCartridgeRepository } from '../../common/repositories/device-cart
 import { ProductRepository } from '../../common/repositories/product.repository';
 import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
-import { transformImageUrls } from '../../common/utils/helper';
+import { createFile, downloadFile, transformImageUrls, zipFiles } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { IotService } from '../../core/services/iot-core.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
@@ -222,6 +224,7 @@ export class ProductService extends BaseService<Product> {
       case ProductType.DEVICE:
         // For DEVICE type, focus on product variant and fetch certificate if exists
         result['productVariant'] = transformImageUrls(product.productVariant);
+
         if (product.certificateId) {
           const key = this.certificateStorageService.generateCertificateKey(
             product.serialNumber,
@@ -229,13 +232,14 @@ export class ProductService extends BaseService<Product> {
             'cert',
           );
           try {
-            const downloadedCertificate =
-              await this.certificateStorageService.generateCertificateDownloadUrl(key);
+            const zipFileName = await this._processZipDevice(product.serialNumber, key);
+
             const describeCertificate = await this.iotService.describeCertificate(
               product.certificateId,
             );
+
             result['certificate'] = {
-              url: downloadedCertificate,
+              fileName: zipFileName,
               status: describeCertificate.status,
               createdAt: describeCertificate.creationDate,
             };
@@ -262,6 +266,58 @@ export class ProductService extends BaseService<Product> {
     }
 
     return result;
+  }
+
+  private async _processZipDevice(serialNumber: string, key: string) {
+    const zipFolder = path.join(process.cwd(), 'src', 'zips');
+    const zipName = `${serialNumber}.zip`;
+    const zipPath = path.join(zipFolder, zipName);
+
+    const permPath = `${serialNumber}.perm`;
+    const keyPath = `${serialNumber}.key`;
+    const deviceNamePath = `${serialNumber}.txt`;
+
+    try {
+      // Check if zip already exists
+      try {
+        await fs.access(zipPath);
+
+        return zipName; // Return existing zip file path
+      } catch {
+        // Zip doesn't exist, proceed to create it
+      }
+
+      // Download files and create txt
+      const downloadedCertificate =
+        await this.certificateStorageService.generateCertificateDownloadUrl(key);
+      const downloadedPrivateKey =
+        await this.certificateStorageService.generatePrivateKeyDownloadUrl(key);
+
+      await downloadFile(downloadedCertificate, permPath);
+      await downloadFile(downloadedPrivateKey, keyPath);
+      await createFile(deviceNamePath, serialNumber);
+
+      // Zip files
+      const zipFilePath = await zipFiles(
+        [deviceNamePath, permPath, keyPath],
+        `${serialNumber}.zip`,
+      );
+
+      // Clean up temp files
+      await Promise.all([fs.unlink(permPath), fs.unlink(keyPath), fs.unlink(deviceNamePath)]);
+
+      return zipFilePath;
+    } catch (error) {
+      // Optional: try to clean up files if partially created
+      try {
+        await Promise.all([
+          fs.unlink(permPath).catch(() => {}),
+          fs.unlink(keyPath).catch(() => {}),
+          fs.unlink(deviceNamePath).catch(() => {}),
+        ]);
+      } catch {}
+      throw error;
+    }
   }
 
   /**
