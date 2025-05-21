@@ -296,7 +296,7 @@ export class ProductService extends BaseService<Product> {
     const zipName = `${serialNumber}.zip`;
     const zipPath = path.join(zipFolder, zipName);
 
-    const permPath = `${serialNumber}.perm`;
+    const permPath = `${serialNumber}.pem`;
     const keyPath = `${serialNumber}.key`;
     const deviceNamePath = `deviceid.txt`;
 
