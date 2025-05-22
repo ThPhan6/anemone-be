@@ -13,7 +13,7 @@ export class CreateSystemSettingDto {
     description: '1: Questionnaire, 2: Scent Tag, 3: Scent Config',
   })
   @IsEnum(SystemSettingsType)
-  type: SystemSettingsType;
+  _type: SystemSettingsType;
 
   @ApiProperty({
     oneOf: [

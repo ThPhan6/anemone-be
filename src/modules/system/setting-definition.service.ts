@@ -858,8 +858,8 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
     // Upload image if provided
     let imageName = null;
     if (file) {
-      const uploadResult = await this.storageService.uploadImageFile(file);
-      imageName = uploadResult.fileName;
+      await this.storageService.uploadImages(file);
+      imageName = file.originalname;
     }
 
     // Create tag entity
@@ -920,8 +920,8 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
     // Upload new image if provided
     let imageName = existingTag.metadata?.image || null;
     if (file) {
-      const uploadResult = await this.storageService.uploadImage(file);
-      imageName = uploadResult.fileName;
+      await this.storageService.uploadImages(file);
+      imageName = file.originalname;
     }
 
     // Update tag
