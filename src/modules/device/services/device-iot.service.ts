@@ -194,7 +194,16 @@ export class DeviceIotService {
       cartridgeMapByPosition.set(Number(cart.position), cart);
     }
 
-    for (const cartInfo of cartridgesDto.cartridges) {
+    const incomingPositions = new Set<number>(validCartridges.map((c) => c.position));
+
+    // Remove cartridges not present in the incoming list
+    for (const [position, existingCart] of cartridgeMapByPosition.entries()) {
+      if (!incomingPositions.has(position)) {
+        await this.cartridgeRepository.softDelete(existingCart.id);
+      }
+    }
+
+    for (const cartInfo of validCartridges) {
       const existing = cartridgeMapByPosition.get(cartInfo.position);
 
       if (existing) {
