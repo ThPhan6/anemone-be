@@ -1,8 +1,6 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { parse as csvParse } from 'csv-parse/sync';
-import * as fs from 'fs/promises';
 import { orderBy, pick, uniq } from 'lodash';
-import * as path from 'path';
 import { In, IsNull } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -11,7 +9,7 @@ import { ProductRepository } from '../../common/repositories/product.repository'
 import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
 import { UserRepository } from '../../common/repositories/user.repository';
-import { createFile, downloadFile, transformImageUrls, zipFiles } from '../../common/utils/helper';
+import { createZipBuffer, downloadToBuffer, transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { IotService } from '../../core/services/iot-core.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
@@ -256,7 +254,7 @@ export class ProductService extends BaseService<Product> {
               product.certificateId,
               'key',
             );
-            const zipFileName = await this._processZipDevice(
+            const zipBuffer = await this._processZipDevice(
               product.serialNumber,
               certKey,
               privateKey,
@@ -267,7 +265,7 @@ export class ProductService extends BaseService<Product> {
             );
 
             result['certificate'] = {
-              fileName: zipFileName,
+              file: zipBuffer.toString('base64'),
               status: describeCertificate.status,
               createdAt: describeCertificate.creationDate,
             };
@@ -301,50 +299,27 @@ export class ProductService extends BaseService<Product> {
   }
 
   private async _processZipDevice(serialNumber: string, certKey: string, privateKey: string) {
-    const zipFolder = path.join(process.cwd(), 'src', 'zips');
-    const zipName = `${serialNumber}.zip`;
-    const zipPath = path.join(zipFolder, zipName);
-
-    const pemPath = `${serialNumber}.pem`;
-    const keyPath = `${serialNumber}.key`;
-    const deviceNamePath = `deviceid.txt`;
-
     try {
-      // Check if zip already exists
-      try {
-        await fs.access(zipPath);
-
-        return zipName; // Return existing zip file path
-      } catch {
-        // Zip doesn't exist, proceed to create it
-      }
-
-      // Download files and create txt
+      // Download certificate and private key
       const downloadedCertificate =
         await this.certificateStorageService.generateCertificateDownloadUrl(certKey);
       const downloadedPrivateKey =
         await this.certificateStorageService.generatePrivateKeyDownloadUrl(privateKey);
 
-      await downloadFile(downloadedCertificate, pemPath);
-      await downloadFile(downloadedPrivateKey, keyPath);
-      await createFile(deviceNamePath, serialNumber);
+      // Download files into buffers
+      const certBuffer = await downloadToBuffer(downloadedCertificate);
+      const keyBuffer = await downloadToBuffer(downloadedPrivateKey);
+      const deviceIdBuffer = Buffer.from(serialNumber);
 
-      // Zip files
-      const zipFilePath = await zipFiles([deviceNamePath, pemPath, keyPath], zipName);
+      // Create zip buffer in memory
+      const zipBuffer = await createZipBuffer([
+        { name: `${serialNumber}.pem`, data: certBuffer },
+        { name: `${serialNumber}.key`, data: keyBuffer },
+        { name: 'deviceid.txt', data: deviceIdBuffer },
+      ]);
 
-      // Clean up temp files
-      await Promise.all([fs.unlink(pemPath), fs.unlink(keyPath), fs.unlink(deviceNamePath)]);
-
-      return zipFilePath;
+      return zipBuffer;
     } catch (error) {
-      // Optional: try to clean up files if partially created
-      try {
-        await Promise.all([
-          fs.unlink(pemPath).catch(() => {}),
-          fs.unlink(keyPath).catch(() => {}),
-          fs.unlink(deviceNamePath).catch(() => {}),
-        ]);
-      } catch {}
       throw error;
     }
   }

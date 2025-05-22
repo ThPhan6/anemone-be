@@ -6,7 +6,6 @@ import { ProductRepository } from '../../common/repositories/product.repository'
 import { ProductVariantRepository } from '../../common/repositories/product-variant.repository';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
 import { UserRepository } from '../../common/repositories/user.repository';
-import { DownloadService } from '../../core/services/download.service';
 import { IotService } from '../../core/services/iot-core.service';
 import { DeviceCartridge } from '../device/entities/device-cartridge.entity';
 import { Product } from '../device/entities/product.entity';
@@ -27,7 +26,6 @@ import { ProductAdminController } from './product-admin.controller';
     DeviceCartridgeRepository,
     UserRepository,
     IotService,
-    DownloadService,
   ],
 })
 export class ProductModule {}
