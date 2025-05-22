@@ -245,13 +245,22 @@ export class ProductService extends BaseService<Product> {
         result['productVariant'] = transformImageUrls(product.productVariant);
 
         if (product.certificateId) {
-          const key = this.certificateStorageService.generateCertificateKey(
-            product.serialNumber,
-            product.certificateId,
-            'cert',
-          );
           try {
-            const zipFileName = await this._processZipDevice(product.serialNumber, key);
+            const certKey = this.certificateStorageService.generateCertificateKey(
+              product.serialNumber,
+              product.certificateId,
+              'cert',
+            );
+            const privateKey = this.certificateStorageService.generateCertificateKey(
+              product.serialNumber,
+              product.certificateId,
+              'key',
+            );
+            const zipFileName = await this._processZipDevice(
+              product.serialNumber,
+              certKey,
+              privateKey,
+            );
 
             const describeCertificate = await this.iotService.describeCertificate(
               product.certificateId,
@@ -291,12 +300,12 @@ export class ProductService extends BaseService<Product> {
     return result;
   }
 
-  private async _processZipDevice(serialNumber: string, key: string) {
+  private async _processZipDevice(serialNumber: string, certKey: string, privateKey: string) {
     const zipFolder = path.join(process.cwd(), 'src', 'zips');
     const zipName = `${serialNumber}.zip`;
     const zipPath = path.join(zipFolder, zipName);
 
-    const permPath = `${serialNumber}.pem`;
+    const pemPath = `${serialNumber}.pem`;
     const keyPath = `${serialNumber}.key`;
     const deviceNamePath = `deviceid.txt`;
 
@@ -312,29 +321,26 @@ export class ProductService extends BaseService<Product> {
 
       // Download files and create txt
       const downloadedCertificate =
-        await this.certificateStorageService.generateCertificateDownloadUrl(key);
+        await this.certificateStorageService.generateCertificateDownloadUrl(certKey);
       const downloadedPrivateKey =
-        await this.certificateStorageService.generatePrivateKeyDownloadUrl(key);
+        await this.certificateStorageService.generatePrivateKeyDownloadUrl(privateKey);
 
-      await downloadFile(downloadedCertificate, permPath);
+      await downloadFile(downloadedCertificate, pemPath);
       await downloadFile(downloadedPrivateKey, keyPath);
       await createFile(deviceNamePath, serialNumber);
 
       // Zip files
-      const zipFilePath = await zipFiles(
-        [deviceNamePath, permPath, keyPath],
-        `${serialNumber}.zip`,
-      );
+      const zipFilePath = await zipFiles([deviceNamePath, pemPath, keyPath], zipName);
 
       // Clean up temp files
-      await Promise.all([fs.unlink(permPath), fs.unlink(keyPath), fs.unlink(deviceNamePath)]);
+      await Promise.all([fs.unlink(pemPath), fs.unlink(keyPath), fs.unlink(deviceNamePath)]);
 
       return zipFilePath;
     } catch (error) {
       // Optional: try to clean up files if partially created
       try {
         await Promise.all([
-          fs.unlink(permPath).catch(() => {}),
+          fs.unlink(pemPath).catch(() => {}),
           fs.unlink(keyPath).catch(() => {}),
           fs.unlink(deviceNamePath).catch(() => {}),
         ]);
