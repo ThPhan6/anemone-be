@@ -45,7 +45,7 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
 
       case SystemSettingsType.SCENT_CONFIG: {
         if (queries.page && queries.perPage) {
-          return this.scentConfigService.findAll(queries);
+          return this.scentConfigService.findAll(restQueries);
         }
 
         return this.scentConfigService.find();
