@@ -1,9 +1,4 @@
 import * as archiver from 'archiver';
-import * as fs from 'fs';
-import { promises as fsPromises } from 'fs';
-import * as http from 'http';
-import * as https from 'https';
-import * as path from 'path';
 import { FindManyOptions, FindOptionsOrder, Repository } from 'typeorm';
 
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
@@ -198,46 +193,24 @@ export function formatThingName(name: string): string {
 }
 
 /**
- * Ensure that the 'src/zips' folder exists
+ * Create a zip buffer in memory from an array of files
+ * @param files Array of objects containing file data and name
+ * @returns Promise<Buffer> The zip file as a buffer
  */
-export function ensureZipsFolder(): string {
-  const zipsFolderPath = path.join(process.cwd(), 'src', 'zips');
-
-  if (!fs.existsSync(zipsFolderPath)) {
-    fs.mkdirSync(zipsFolderPath, { recursive: true });
-  }
-
-  return zipsFolderPath;
-}
-
-/**
- * Zip the given existing files into a zip stored inside src/zips/
- * @param files Array of file paths (absolute or relative from project root)
- * @param zipName Name of the zip file to create (e.g. '12345.zip')
- * @returns Full absolute path to the created zip file
- */
-export function zipFiles(files: string[], zipName: string): Promise<string> {
+export function createZipBuffer(
+  files: Array<{ name: string; data: Buffer | string }>,
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const zipsFolder = ensureZipsFolder();
-      const zipPath = path.join(zipsFolder, zipName);
-
-      const output = fs.createWriteStream(zipPath);
       const archive = archiver('zip', { zlib: { level: 9 } });
+      const chunks: Buffer[] = [];
 
-      output.on('close', () => {
-        resolve(zipPath);
-      });
-
-      archive.on('error', (err) => {
-        reject(err);
-      });
-
-      archive.pipe(output);
+      archive.on('data', (chunk) => chunks.push(chunk));
+      archive.on('end', () => resolve(Buffer.concat(chunks)));
+      archive.on('error', (err) => reject(err));
 
       files.forEach((file) => {
-        const baseName = path.basename(file);
-        archive.file(file, { name: baseName });
+        archive.append(file.data, { name: file.name });
       });
 
       archive.finalize();
@@ -247,44 +220,11 @@ export function zipFiles(files: string[], zipName: string): Promise<string> {
   });
 }
 
-export async function downloadFile(fileUrl: string, outputPath: string): Promise<void> {
-  const url = new URL(fileUrl);
-  const client = url.protocol === 'https:' ? https : http;
-
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(outputPath);
-    client
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to get '${fileUrl}' (${response.statusCode})`));
-
-          return;
-        }
-
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          resolve();
-        });
-      })
-      .on('error', (err) => {
-        fs.unlinkSync(outputPath); // Cleanup on error
-        reject(err);
-      });
-  });
-}
-
-/**
- * Creates a text file with specified content.
- *
- * @param filePath - The path (and filename) to create.
- * @param content - The content to write inside the file.
- * @returns Promise<void> resolves on success, rejects on error.
- */
-export async function createFile(filePath: string, content: string): Promise<void> {
-  try {
-    await fsPromises.writeFile(filePath, content, 'utf8');
-  } catch (error) {
-    throw error;
+export async function downloadToBuffer(url: string): Promise<Buffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download file from ${url}`);
   }
+
+  return Buffer.from(await response.arrayBuffer());
 }
