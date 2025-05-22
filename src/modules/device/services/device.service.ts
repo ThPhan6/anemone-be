@@ -13,7 +13,7 @@ import {
   Device,
   DeviceProvisioningStatus,
 } from 'modules/device/entities/device.entity';
-import { In, IsNull, Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
 import { Scent } from '../../../common/entities/scent.entity';
@@ -364,31 +364,31 @@ export class DeviceService {
       throw new HttpException(MESSAGE.SCENT_MOBILE.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (commandType === CommandType.PLAY) {
-      const scentConfigIds = JSON.parse(scent.cartridgeInfo).map((cartridge) => cartridge.id);
+    // if (commandType === CommandType.PLAY) {
+    //   const scentConfigIds = JSON.parse(scent.cartridgeInfo).map((cartridge) => cartridge.id);
 
-      const products = await this.productRepository.find({
-        where: { scentConfig: { id: In(scentConfigIds) } },
-      });
+    //   const products = await this.productRepository.find({
+    //     where: { scentConfig: { id: In(scentConfigIds) } },
+    //   });
 
-      const deviceCartridges = await this.deviceCartridgeRepository.find({
-        where: {
-          product: { id: In(products.map((product) => product.id)) },
-          device: { id: device.id },
-        },
-      });
+    //   const deviceCartridges = await this.deviceCartridgeRepository.find({
+    //     where: {
+    //       product: { id: In(products.map((product) => product.id)) },
+    //       device: { id: device.id },
+    //     },
+    //   });
 
-      const hasEmptyCartridge = deviceCartridges.some(
-        (cartridge) => Number(cartridge.percentage) === 0,
-      );
+    //   const hasEmptyCartridge = deviceCartridges.some(
+    //     (cartridge) => Number(cartridge.percentage) === 0,
+    //   );
 
-      if (hasEmptyCartridge) {
-        throw new HttpException(
-          'Some cartridges are empty, so the device will not play',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
+    //   if (hasEmptyCartridge) {
+    //     throw new HttpException(
+    //       'Some cartridges are empty, so the device will not play',
+    //       HttpStatus.BAD_REQUEST,
+    //     );
+    //   }
+    // }
 
     let command = await this.deviceCommandRepository.findOne({
       where: {
