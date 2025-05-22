@@ -3,12 +3,11 @@ import { ScentConfigRepository } from 'common/repositories/scent-config.reposito
 import { BaseService } from 'core/services/base.service';
 import { ApiBaseGetListQueries } from 'core/types/apiQuery.type';
 import { Pagination } from 'core/types/response.type';
-import { FindOptionsWhere } from 'typeorm';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { transformImageUrls } from '../../common/utils/helper';
 import { CreateScentConfigDto } from './dto/create-scent-config.dto';
+import { UpdateScentConfigDto } from './dto/update-scent-config.dto';
 import { ScentConfig } from './entities/scent-config.entity';
 
 @Injectable()
@@ -59,26 +58,20 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     return this.repository.save(newScentConfig);
   }
 
-  async update(
-    criteria: string | number | FindOptionsWhere<ScentConfig>,
-    partialEntity: QueryDeepPartialEntity<ScentConfig>,
-  ) {
-    // If criteria is a string (id), find the entity first to validate it exists
-    if (typeof criteria === 'string') {
-      await this.findById(criteria);
+  async update(id: string, data: UpdateScentConfigDto) {
+    const existingScentConfig = await super.findOne({
+      where: { id },
+    });
+
+    if (!existingScentConfig) {
+      throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.BAD_REQUEST);
     }
 
-    return this.repository.update(criteria, partialEntity);
-  }
-
-  async remove(id: string): Promise<void> {
-    const scentConfig = await this.findById(id);
-
-    if (!scentConfig) {
-      throw new HttpException(MESSAGE.SCENT_CONFIG.CODE_EXISTS, HttpStatus.NOT_FOUND);
+    if (existingScentConfig.code.toLowerCase() === data.code.toLowerCase()) {
+      throw new HttpException(MESSAGE.SCENT_CONFIG.CODE_EXISTS, HttpStatus.BAD_REQUEST);
     }
 
-    await this.repository.softDelete(id);
+    return super.update(id, Object.assign(existingScentConfig, data));
   }
 
   async save(data: ScentConfig) {

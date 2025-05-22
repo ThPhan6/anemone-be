@@ -22,7 +22,7 @@ import { ApiController } from '../../core/decorator/apiController.decorator';
 import { StaffRoleGuard } from '../../core/decorator/auth.decorator';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
 import { CreateSystemSettingDto } from './dto/system-settings.dto';
-import { SystemSettingsService } from './system-settings.service';
+import { SystemSettingsAdminService } from './system-settings-admin.service';
 
 @StaffRoleGuard()
 @ApiController({
@@ -31,7 +31,7 @@ import { SystemSettingsService } from './system-settings.service';
 })
 @ApiTags('Admin - System Settings')
 export class SystemSettingsAdminController extends BaseController {
-  constructor(private readonly systemSettingsService: SystemSettingsService) {
+  constructor(private readonly systemSettingAdminService: SystemSettingsAdminService) {
     super();
   }
 
@@ -45,7 +45,7 @@ export class SystemSettingsAdminController extends BaseController {
     required: true,
   })
   get(@Query() queries: ApiBaseGetListQueries) {
-    return this.systemSettingsService.get(queries);
+    return this.systemSettingAdminService.get(queries);
   }
 
   @Get(':id')
@@ -57,17 +57,15 @@ export class SystemSettingsAdminController extends BaseController {
     type: 'enum',
     required: true,
   })
-  async getById(@Param('id') id: string, @Query() _type: number) {
-    const settings = await this.systemSettingsService.getById(id, _type);
-
-    return settings;
+  getById(@Param('id') id: string, @Query() type: { _type: SystemSettingsType }) {
+    return this.systemSettingAdminService.getById(id, type._type);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create system settings data' })
   @UseInterceptors(FilesInterceptor('files'))
   @ApiConsumes('multipart/form-data')
-  async create(
+  create(
     @Body() body: CreateSystemSettingDto,
     @UploadedFiles(
       new ParseFilePipe({
@@ -80,16 +78,14 @@ export class SystemSettingsAdminController extends BaseController {
     )
     files?: Express.Multer.File[],
   ) {
-    const settings = await this.systemSettingsService.create(body, body.type, files);
-
-    return settings;
+    return this.systemSettingAdminService.createOne(body, files);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update entire system setting data' })
   @UseInterceptors(FilesInterceptor('files'))
   @ApiConsumes('multipart/form-data')
-  async update(
+  update(
     @Param('id') id: string,
     @Body() body: CreateSystemSettingDto,
     @UploadedFiles(
@@ -103,16 +99,12 @@ export class SystemSettingsAdminController extends BaseController {
     )
     files?: Express.Multer.File[],
   ) {
-    const settings = await this.systemSettingsService.update(id, body, body.type, files);
-
-    return settings;
+    return this.systemSettingAdminService.updateOne(id, body, files);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Soft delete system setting data' })
-  async delete(@Param('id') id: string, @Query('_type') _type: number) {
-    await this.systemSettingsService.delete(id, _type);
-
-    return { success: true };
+  delete(@Param('id') id: string, @Query('_type') _type: SystemSettingsType) {
+    return this.systemSettingAdminService.deleteOne(id, _type);
   }
 }
