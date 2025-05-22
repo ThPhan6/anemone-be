@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 import { CommandType } from '../../entities/device-command.entity';
 
@@ -12,4 +12,9 @@ export class CommandDto {
   @ApiProperty({ enum: CommandType, example: CommandType.PLAY })
   @IsEnum(CommandType)
   type: CommandType;
+
+  @ApiProperty({ example: 10 })
+  @IsNumber()
+  @IsOptional()
+  duration?: number;
 }

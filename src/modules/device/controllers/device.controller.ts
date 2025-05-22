@@ -168,6 +168,7 @@ export class DeviceController extends BaseController {
       payload.type,
       status,
       payload.scentId,
+      payload.duration,
     );
 
     return command;

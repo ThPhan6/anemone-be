@@ -34,4 +34,13 @@ export class UserSession extends BaseEntity {
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @Column({ name: 'duration_secs', type: 'numeric', nullable: true })
+  durationSeconds: number;
+
+  @Column({ name: 'start_at', type: 'timestamp', nullable: true })
+  startAt: Date;
+
+  @Column({ name: 'played_secs', type: 'numeric', nullable: true })
+  playedSeconds: number;
 }

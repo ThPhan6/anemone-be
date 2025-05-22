@@ -353,6 +353,7 @@ export class DeviceService {
     commandType: CommandType,
     status: Status,
     scentId: string,
+    duration?: number,
   ) {
     const device = await this.validateDeviceOwnership(deviceId, userId);
 
@@ -416,7 +417,32 @@ export class DeviceService {
       order: { createdAt: 'DESC' },
     });
 
+    const now = new Date();
+
     if (userSession) {
+      // Pause => update playedSeconds, clear startAt
+      if (commandType === CommandType.PAUSE && userSession.startAt) {
+        const elapsed = Math.floor(
+          (now.getTime() - new Date(userSession.startAt).getTime()) / 1000,
+        );
+
+        userSession.playedSeconds = Number(userSession.playedSeconds ?? 0) + elapsed;
+
+        userSession.startAt = null;
+      }
+
+      // Resume play (no new duration) => set new startAt, keep playedSeconds
+      if (commandType === CommandType.PLAY && !duration) {
+        userSession.startAt = now;
+      }
+
+      // Play new scent with duration => reset session
+      if (commandType === CommandType.PLAY && duration) {
+        userSession.durationSeconds = duration;
+        userSession.playedSeconds = 0;
+        userSession.startAt = now;
+      }
+
       userSession.status = status;
       userSession.device = device;
       userSession.scent = scent;
@@ -427,6 +453,9 @@ export class DeviceService {
         userId,
         scent: { id: scent.id },
         status,
+        durationSeconds: duration ?? 0,
+        playedSeconds: 0,
+        startAt: commandType === CommandType.PLAY ? now : null,
       });
 
       await this.userSessionRepository.save(userSession);
