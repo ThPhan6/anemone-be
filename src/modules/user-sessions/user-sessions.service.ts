@@ -48,6 +48,8 @@ export class UserSessionsService {
         : null,
       deviceId: userSession?.device?.id ?? null,
       scentStatus: userSession?.status ?? null,
+      duration: Number(userSession?.durationSeconds) ?? null,
+      playedSeconds: Number(userSession?.playedSeconds) ?? null,
       userSession: userSession ?? null,
     };
   }
