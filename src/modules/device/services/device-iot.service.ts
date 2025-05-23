@@ -112,12 +112,18 @@ export class DeviceIotService {
 
     const cartridgeUptimes = this.calculateCartridgeUptimes(scent, cartridges);
 
+    // Calculate number of cycles left for PLAY command
+    const cycle =
+      command.command.type === CommandType.TEST
+        ? 1
+        : Math.floor(
+            (((userSession.durationSeconds ?? 0) - (userSession.playedSeconds ?? 0)) * 1000) /
+              parseInt(process.env.REPEAT_INTERVAL),
+          );
+
     return {
       interval: parseInt(process.env.REPEAT_INTERVAL),
-      cycle:
-        command.command.type === CommandType.TEST
-          ? 1
-          : (userSession.durationSeconds * 1000) / parseInt(process.env.REPEAT_INTERVAL),
+      cycle,
       cartridges: cartridgeUptimes,
     };
   }
