@@ -91,7 +91,10 @@ export class DeviceIotService {
     await this.commandRepository.update(command.id, { isExecuted: true, deletedAt: new Date() });
 
     // Pause command or no user session => return all uptime = 0
-    if (command.command.type === CommandType.PAUSE || !userSession) {
+    if (
+      command.command.type === CommandType.PAUSE ||
+      (command.command.type !== CommandType.TEST && !userSession)
+    ) {
       return {
         interval: parseInt(process.env.REPEAT_INTERVAL),
         cycle: 0,
