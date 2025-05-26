@@ -2,11 +2,20 @@ import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { IsEnum } from 'class-validator';
 
 import { SystemSettingsType } from '../../../common/enum/system-settings.enum';
-import { CreateScentConfigDto } from '../../scent-config/dto/create-scent-config.dto';
+import {
+  CreateScentConfigDto,
+  UpdateScentConfigDto,
+} from '../../scent-config/dto/scent-config.dto';
 import { QuestionnaireAdminCreateDto } from './questionnaire-admin.dto';
-import { CreateScentTagDto } from './scent-tag.dto';
+import { CreateScentTagDto, UpdateScentTagDto } from './scent-tag.dto';
 
-@ApiExtraModels(CreateScentTagDto, CreateScentConfigDto, QuestionnaireAdminCreateDto)
+@ApiExtraModels(
+  CreateScentTagDto,
+  UpdateScentTagDto,
+  CreateScentConfigDto,
+  UpdateScentConfigDto,
+  QuestionnaireAdminCreateDto,
+)
 export class CreateSystemSettingDto {
   @ApiProperty({
     enum: SystemSettingsType,
@@ -18,7 +27,9 @@ export class CreateSystemSettingDto {
   @ApiProperty({
     oneOf: [
       { $ref: getSchemaPath(CreateScentTagDto) },
+      { $ref: getSchemaPath(UpdateScentTagDto) },
       { $ref: getSchemaPath(CreateScentConfigDto) },
+      { $ref: getSchemaPath(UpdateScentConfigDto) },
       {
         type: 'array',
         items: { $ref: getSchemaPath(QuestionnaireAdminCreateDto) },
@@ -28,5 +39,7 @@ export class CreateSystemSettingDto {
   data:
     | { questionnaires: QuestionnaireAdminCreateDto[] }
     | CreateScentTagDto
-    | CreateScentConfigDto;
+    | UpdateScentTagDto
+    | CreateScentConfigDto
+    | UpdateScentConfigDto;
 }

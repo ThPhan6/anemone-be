@@ -21,7 +21,7 @@ export interface IScenStory {
 
 export interface IScentColor {
   base: string;
-  gradient: { color: string; percent: number }[];
+  gradient: string[];
 }
 
 @Entity('scent_configs')
