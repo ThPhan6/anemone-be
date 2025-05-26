@@ -1,7 +1,9 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { SettingDefinitionRepository } from 'common/repositories/setting-definition.repository';
 import { uniq } from 'lodash';
 import { In } from 'typeorm';
+import { Repository, UpdateResult } from 'typeorm';
 
 import { MESSAGE } from '../../common/constants/message.constant';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
@@ -9,6 +11,7 @@ import { extractImageNameFromS3Url } from '../../common/utils/file';
 import { extractFileName, transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
+import { Product, ProductType } from '../../modules/device/entities/product.entity';
 import { StorageService } from '../../modules/storage/storage.service';
 import { ESystemDefinitionType } from '../../modules/system/entities/setting-definition.entity';
 import { CreateScentConfigDto, DeletedFileDto, UpdateScentConfigDto } from './dto/scent-config.dto';
@@ -22,6 +25,8 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     public readonly repository: ScentConfigRepository,
     private readonly settingDefinitionRepository: SettingDefinitionRepository,
     private readonly storageService: StorageService,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
   ) {
     super(repository);
   }
@@ -462,5 +467,47 @@ export class ScentConfigService extends BaseService<ScentConfig> {
       processedStory: newProcessedStory,
       processedNotes: newProcessedNotes,
     };
+  }
+
+  /**
+   * Check if a scent config is being used by any products
+   * @param scentConfigId The ID of the scent config to check
+   * @returns Promise<boolean> True if the scent config is in use, false otherwise
+   */
+  private async isScentConfigInUse(scentConfigId: string): Promise<boolean> {
+    const productCount = await this.productRepository.count({
+      where: {
+        scentConfig: { id: scentConfigId },
+        type: ProductType.CARTRIDGE,
+      },
+    });
+
+    return productCount > 0;
+  }
+
+  /**
+   * Delete a scent config if it's not in use by any products
+   * @param id The ID of the scent config to delete
+   * @throws HttpException if the scent config is in use or not found
+   * @returns Promise<UpdateResult> The result of the delete operation
+   */
+  async delete(id: string | number): Promise<UpdateResult> {
+    // First check if the scent config exists
+    const scentConfig = await this.findOne({ id });
+    if (!scentConfig) {
+      throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    // Check if the scent config is in use
+    const isInUse = await this.isScentConfigInUse(id.toString());
+    if (isInUse) {
+      throw new HttpException(
+        'Cannot delete scent config as it is being used by one or more products',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // If not in use, proceed with soft delete
+    return super.delete(id);
   }
 }

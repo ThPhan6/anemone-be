@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { orderBy } from 'lodash';
 import { Repository } from 'typeorm';
 
-import { MESSAGE } from '../../common/constants/message.constant';
 import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { SettingDefinitionRepository } from '../../common/repositories/setting-definition.repository';
 import { transformFormDataToJson, transformImageUrls } from '../../common/utils/helper';
@@ -290,14 +289,6 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
   async deleteOne(id: string, type: SystemSettingsType) {
     switch (type) {
       case SystemSettingsType.SCENT_CONFIG:
-        const scentConfig = await this.scentConfigService.findOne({
-          where: { id },
-        });
-
-        if (!scentConfig) {
-          throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
-
         return await this.scentConfigService.delete(id);
 
       case SystemSettingsType.QUESTIONNAIRE:
