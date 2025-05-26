@@ -82,9 +82,16 @@ export class ScentService extends BaseService<Scent> {
       el.cartridgeInfo = el.cartridgeInfo.map((cart) => {
         const scentConfig = scentConfigs.find((scentConfig) => scentConfig.id === cart.id);
 
+        const tagNames = (scentConfig?.tags || [])
+          .map((tagId) => scentTags.find((tag) => tag.id === tagId)?.name)
+          .filter(Boolean); // remove undefined
+
         return {
           ...cart,
-          scentConfig,
+          scentConfig: {
+            ...scentConfig,
+            tags: tagNames,
+          },
         };
       });
 
