@@ -461,4 +461,48 @@ export class StorageService {
       throw err;
     }
   }
+
+  /**
+   * Delete all size variations of an image
+   * @param fileName The base filename without size suffix
+   * @returns Promise<{ deleted: string[] }> Array of deleted file keys
+   */
+  async deleteImages(fileName: string): Promise<{ deleted: string[] }> {
+    try {
+      const imageSizes = Object.values(ImageSizeType);
+      const deletedKeys: string[] = [];
+      const errors: string[] = [];
+
+      // Get the file extension
+      const ext = fileName.split('.').pop();
+      const baseName = fileName.replace(`.${ext}`, '');
+
+      // Delete each size variation
+      await Promise.all(
+        imageSizes.map(async (size) => {
+          const key =
+            size === ImageSizeType.original
+              ? `${this.keyPrefix}/${fileName}`
+              : `${this.keyPrefix}/${baseName}-${size}.${ext}`;
+
+          try {
+            await this.deleteObject({ Key: key });
+            deletedKeys.push(key);
+          } catch (error) {
+            errors.push(`Failed to delete ${key}: ${error.message}`);
+          }
+        }),
+      );
+
+      // Log any errors that occurred
+      if (errors.length > 0) {
+        this.logger.error(`Errors during image deletion: ${errors.join(', ')}`);
+      }
+
+      return { deleted: deletedKeys };
+    } catch (err) {
+      this.logger.error(`Failed to delete images for ${fileName}: ${err.message}`);
+      throw err;
+    }
+  }
 }
