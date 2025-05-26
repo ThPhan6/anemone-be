@@ -120,17 +120,17 @@ export class CreateScentConfigDto {
   story?: ScentStoryDto;
 
   @ApiProperty({
-    description: 'Array of tag IDs from setting_definition table (1-4 tags required if provided)',
+    description: 'Array of tag IDs from setting_definition table (1-3 tags required if provided)',
     type: [String],
     required: false,
     minItems: 1,
-    maxItems: 4,
+    maxItems: 3,
     example: ['tag1', 'tag2'],
   })
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1, { message: 'At least 1 tag is required if tags are provided' })
-  @ArrayMaxSize(4, { message: 'Maximum 4 tags allowed' })
+  @ArrayMaxSize(3, { message: 'Maximum 3 tags allowed' })
   @IsString({ each: true })
   @ValidateIf((o) => o.type === SystemSettingsType.SCENT_CONFIG)
   tags?: string[];

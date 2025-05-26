@@ -245,9 +245,9 @@ export class ScentConfigSeeder extends BaseSeeder {
     // Get array of tag IDs
     const tagIds = scentTags.map((tag) => tag.id);
 
-    // Update records with random tag IDs (2-3 tags per scent)
+    // Update records with random tag IDs (1-3 tags per scent)
     const updatedRecords = records.map((record) => {
-      const numTags = Math.floor(Math.random() * 2) + 2; // Random number between 2-3
+      const numTags = Math.floor(Math.random() * 3) + 1; // Random number between 1-3
       const randomTagIds = getRandomElements(tagIds, numTags);
 
       return {
