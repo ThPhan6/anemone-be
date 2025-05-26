@@ -4,7 +4,18 @@ import {
   EScentNoteType,
   ScentConfig,
 } from '../../modules/scent-config/entities/scent-config.entity';
+import {
+  ESystemDefinitionType,
+  SettingDefinition,
+} from '../../modules/system/entities/setting-definition.entity';
 import { BaseSeeder } from './base.seeder';
+
+// Helper function to get random elements from array
+function getRandomElements<T>(array: T[], count: number): T[] {
+  const shuffled = [...array].sort(() => 0.5 - Math.random());
+
+  return shuffled.slice(0, count);
+}
 
 const records = [
   {
@@ -12,7 +23,7 @@ const records = [
     name: 'solemm',
     title: 'stillness of shadows',
     background: 'scent-S01.png',
-    tags: ['Floral', 'Citrus', 'Woody'],
+    tags: [],
     description:
       'A solemn blend of floral, citrus, and woody notes that creates a meditative atmosphere. Stillness of Shadows opens with bright citrus accents before revealing delicate floral heart notes and settling into a grounding woody base that evokes the quiet contemplation of dappled shadows.',
     story: {
@@ -47,7 +58,7 @@ const records = [
     name: 'Petal Symphony',
     title: 'White Floral Elegance',
     background: 'scent-I01.png',
-    tags: ['Floral', 'White', 'Sandalwood'],
+    tags: [],
     description:
       'An exquisite bouquet celebrating the most precious white flowers in perfumery. Petal Symphony opens with bright citrus notes that give way to an opulent heart of jasmine, rose, and lily of the valley. The composition settles into a creamy base of vanilla and amber, creating a scent that embodies timeless feminine elegance.',
     story: {
@@ -82,7 +93,7 @@ const records = [
     name: 'The Intimate Series',
     title: 'ivory interlude',
     background: 'scent-I01.png',
-    tags: ['Aldehydic', 'Ambery', 'Woody'],
+    tags: [],
     description:
       'An intimate composition that blends aldehydic brightness with warm ambery notes and sophisticated woody accents. Ivory Interlude creates a personal sanctuary of elegance and warmth, with a complexity that unfolds gracefully over time.',
     story: {
@@ -117,7 +128,7 @@ const records = [
     name: 'Orchard Mist',
     title: 'Fresh Fruity Elegance',
     background: 'scent-S01.png',
-    tags: ['Green', 'Fruity', 'Musky'],
+    tags: [],
     description:
       'A modern, sophisticated fragrance that balances juicy fruit notes with clean greens and subtle musk. Orchard Mist opens with vibrant fruit notes that feel dewy and fresh rather than sweet, transitioning to a heart of delicate white flowers that add refinement and complexity. The composition settles into a sophisticated base of clean musk that gives it a contemporary signature.',
     story: {
@@ -152,7 +163,7 @@ const records = [
     name: 'Spice Route',
     title: 'Exotic Woody Warmth',
     background: 'scent-S01.png',
-    tags: ['Spicy', 'Woody', 'Citrus'],
+    tags: [],
     description:
       'A rich and complex fragrance that brings to life the ancient spice routes with warm spices, precious woods, and bright citrus accents. Spice Route opens with vibrant orange and spice notes that immediately transport you to exotic markets, while the heart reveals sophisticated woody facets enhanced by subtle floral touches. The base anchors the composition with deep, earthy notes that evoke rare woods and resins.',
     story: {
@@ -187,7 +198,7 @@ const records = [
     name: 'Mint Meditation',
     title: 'Serene Green Retreat',
     background: 'scent-I01.png',
-    tags: ['Green', 'Mint'],
+    tags: [],
     description:
       'A calming yet refreshing blend that combines the clarity of mint with soothing green tea notes. Mint Meditation opens with a crisp array of mint varieties that feel both energizing and centering, evolving into a serene heart of tea and herbal notes. The composition is grounded in a smooth base of amber and musk that adds warmth and longevity without disturbing its meditative quality.',
     story: {
@@ -222,13 +233,35 @@ const records = [
 export class ScentConfigSeeder extends BaseSeeder {
   protected async execute(dataSource: DataSource): Promise<any> {
     const scentConfigRepository = dataSource.getRepository(ScentConfig);
+    const settingDefinitionRepo = dataSource.getRepository(SettingDefinition);
+
+    // Fetch all scent tags
+    const scentTags = await settingDefinitionRepo.find({
+      where: {
+        type: ESystemDefinitionType.SCENT_TAG,
+      },
+    });
+
+    // Get array of tag IDs
+    const tagIds = scentTags.map((tag) => tag.id);
+
+    // Update records with random tag IDs (2-3 tags per scent)
+    const updatedRecords = records.map((record) => {
+      const numTags = Math.floor(Math.random() * 2) + 2; // Random number between 2-3
+      const randomTagIds = getRandomElements(tagIds, numTags);
+
+      return {
+        ...record,
+        tags: randomTagIds,
+      };
+    });
 
     const existingRecords = await scentConfigRepository.find({
-      where: records.map((record) => ({ code: record.code })),
+      where: updatedRecords.map((record) => ({ code: record.code })),
     });
 
     // Process records in a single loop
-    for (const record of records) {
+    for (const record of updatedRecords) {
       const existingRecord = existingRecords.find((r) => r.code === record.code);
 
       if (existingRecord) {
