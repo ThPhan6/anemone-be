@@ -235,8 +235,8 @@ export class ScentConfigService extends BaseService<ScentConfig> {
       throw new HttpException('Tags are required', HttpStatus.BAD_REQUEST);
     }
 
-    if (tagIds.length > 4) {
-      throw new HttpException('Maximum 4 tags allowed', HttpStatus.BAD_REQUEST);
+    if (tagIds.length > 3) {
+      throw new HttpException('Maximum 3 tags allowed', HttpStatus.BAD_REQUEST);
     }
 
     // Validate that all tags exist and are of type SCENT_TAG
