@@ -188,7 +188,7 @@ export class StorageService {
 
   async uploadImage(file: Express.Multer.File, fileName?: string) {
     try {
-      const ext = extname(file.originalname);
+      const ext = extname(file.originalname) || file.mimetype.split('/')[1] || '.png';
       const fullPathName = fileName ? `${fileName}${ext}` : file.filename || file.originalname;
       const contentType = file.mimetype;
 

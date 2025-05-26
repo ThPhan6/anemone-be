@@ -6,10 +6,10 @@ import { Repository } from 'typeorm';
 import { MESSAGE } from '../../common/constants/message.constant';
 import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { SettingDefinitionRepository } from '../../common/repositories/setting-definition.repository';
-import { transformImageUrls } from '../../common/utils/helper';
+import { transformFormDataToJson, transformImageUrls } from '../../common/utils/helper';
 import { BaseService } from '../../core/services/base.service';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
-import { ScentConfig } from '../scent-config/entities/scent-config.entity';
+import { CreateScentConfigDto, UpdateScentConfigDto } from '../scent-config/dto/scent-config.dto';
 import { ScentConfigService } from '../scent-config/scent-config.service';
 import {
   QuestionnaireAdminCreateDto,
@@ -45,7 +45,7 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
 
       case SystemSettingsType.SCENT_CONFIG: {
         if (queries.page && queries.perPage) {
-          return this.scentConfigService.findAll(restQueries);
+          return this.scentConfigService.getAll(restQueries);
         }
 
         return this.scentConfigService.find();
@@ -65,7 +65,7 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
       case SystemSettingsType.SCENT_TAG:
 
       case SystemSettingsType.SCENT_NOTES: {
-        const item = await super.findOne({ where: { id } });
+        const item = await super.findById(id);
 
         return transformImageUrls(item);
       }
@@ -80,22 +80,15 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
   }
 
   async createOne(data: any, files?: Express.Multer.File[]) {
-    switch (Number(data._type)) {
+    const { _type, ...restData } = data;
+    switch (Number(_type)) {
       case SystemSettingsType.SCENT_CONFIG:
-        const parseData = JSON.parse(data.data);
-        const existingScentConfig = await this.scentConfigService.findOne({
-          where: { code: parseData.code },
-        });
+        const payload = transformFormDataToJson(CreateScentConfigDto, restData);
 
-        if (existingScentConfig) {
-          throw new HttpException(MESSAGE.SCENT_CONFIG.CODE_EXISTS, HttpStatus.BAD_REQUEST);
-        }
+        return this.scentConfigService.createOne(payload, files);
 
-        const newScentConfig = new ScentConfig();
-
-        Object.assign(newScentConfig, parseData);
-
-        return this.scentConfigService.save(newScentConfig);
+      case SystemSettingsType.SCENT_TAG:
+        return this.settingDefinitionService.createScentTag(restData, files[0]);
 
       case SystemSettingsType.QUESTIONNAIRE:
         try {
@@ -171,37 +164,20 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
             HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
-
-      case SystemSettingsType.SCENT_TAG:
-        return this.settingDefinitionService.createScentTag(data, files[0]);
     }
   }
 
   async updateOne(id: string, data: any, files?: Express.Multer.File[]) {
-    switch (Number(data._type)) {
-      // case SystemSettingsType.SCENT_CONFIG:
-      //   // If criteria is a string (id), find the entity first to validate it exists
+    const { _type, ...restData } = data;
+    switch (Number(_type)) {
+      case SystemSettingsType.SCENT_CONFIG:
+        const payload = transformFormDataToJson(UpdateScentConfigDto, restData);
+        const { deletedFiles, ...restPayload } = payload;
 
-      //   const scentConfig = await this.scentConfigService.findOne({
-      //     where: { id },
-      //   });
+        return this.scentConfigService.updateOne(id, restPayload, files, deletedFiles);
 
-      //   if (!scentConfig) {
-      //     throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
-      //   }
-
-      //   const parseData = JSON.parse(data.data);
-
-      //   return this.scentConfigService.update(id, {
-      //     code: parseData.code,
-      //     name: parseData.name,
-      //     title: parseData.title,
-      //     description: parseData.description,
-      //     background: parseData.background,
-      //     story: parseData.story,
-      //     tags: parseData.tags,
-      //     notes: parseData.notes,
-      //   });
+      case SystemSettingsType.SCENT_TAG:
+        return this.settingDefinitionService.updateScentTag(id, restData, files?.[0]);
 
       case SystemSettingsType.QUESTIONNAIRE:
         try {
@@ -308,9 +284,6 @@ export class SystemSettingsAdminService extends BaseService<SettingDefinition> {
             HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
-
-      case SystemSettingsType.SCENT_TAG:
-        return this.settingDefinitionService.updateScentTag(id, data, files?.[0]);
     }
   }
 
