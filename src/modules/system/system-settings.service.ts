@@ -27,7 +27,7 @@ export class SystemSettingsService {
 
     if (Number(_type) === SystemSettingsType.SCENT_CONFIG) {
       if (queries.page && queries.perPage) {
-        return this.scentConfigService.findAll(restQueries);
+        return this.scentConfigService.getAll(restQueries);
       }
 
       return this.scentConfigService.find();
