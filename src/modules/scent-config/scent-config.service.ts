@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SettingDefinitionRepository } from 'common/repositories/setting-definition.repository';
 import { uniq } from 'lodash';
-import { In } from 'typeorm';
+import { FindOneOptions, In } from 'typeorm';
 import { Repository, UpdateResult } from 'typeorm';
 
 import { ImageSizeType } from '../../common/constants/file.constant';
@@ -71,17 +71,21 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     });
   }
 
-  async findOne(where: any): Promise<ScentConfig> {
-    const scentConfig = await this.repository.findOne({ where });
+  async findOne(where: FindOneOptions<ScentConfig>): Promise<ScentConfig> {
+    const scentConfig = await this.repository.findOne(where);
     if (!scentConfig) {
       throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return scentConfig;
+    const tags = (await this.settingDefinitionRepository.find({
+      where: { id: In(scentConfig.tags) },
+    })) as any;
+
+    return transformImageUrls({ ...scentConfig, tags }, ['background', 'image']);
   }
 
   async findById(id: string): Promise<ScentConfig> {
-    const data = await this.findOne({ id });
+    const data = await this.findOne({ where: { id } });
 
     return transformImageUrls(data, ['background', 'image']);
   }
@@ -151,7 +155,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     files?: Express.Multer.File[],
     deletedFiles?: DeletedFileDto[],
   ) {
-    const existingScentConfig = await this.findOne({ id });
+    const existingScentConfig = await super.findOne({ where: { id } });
 
     // Validate code uniqueness if code is being updated
     if (data.code && existingScentConfig.code !== data.code) {
@@ -501,9 +505,9 @@ export class ScentConfigService extends BaseService<ScentConfig> {
    * @throws HttpException if the scent config is in use or not found
    * @returns Promise<UpdateResult> The result of the delete operation
    */
-  async delete(id: string | number): Promise<UpdateResult> {
+  async delete(id: string): Promise<UpdateResult> {
     // First check if the scent config exists
-    const scentConfig = await this.findOne({ id });
+    const scentConfig = await super.findOne({ where: { id } });
     if (!scentConfig) {
       throw new HttpException(MESSAGE.SCENT_CONFIG.NOT_FOUND, HttpStatus.NOT_FOUND);
     }
