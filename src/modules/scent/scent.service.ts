@@ -217,9 +217,7 @@ export class ScentService extends BaseService<Scent> {
 
       cartridgeInfo.push({
         ...scentConfig,
-        tags: categories
-          .filter((category) => scentConfig.tags.includes(category.id))
-          .map((category) => category.name),
+        tags: categories.filter((category) => scentConfig.tags.includes(category.id)),
         intensity: el.intensity,
         position,
       });

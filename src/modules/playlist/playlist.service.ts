@@ -141,7 +141,7 @@ export class PlaylistService {
 
         cartridgeInfo.push({
           ...scentConfig,
-          tags: scentTags.filter((tag) => scentConfig.tags.includes(tag.id)).map((tag) => tag.name),
+          tags: scentTags.filter((tag) => scentConfig.tags.includes(tag.id)),
           intensity: el.intensity,
           position,
         });
@@ -373,9 +373,7 @@ export class PlaylistService {
         tags: categoryTags,
         cartridgeInfo: scentConfigs.map((el) => ({
           ...el,
-          tags: categories
-            .filter((category) => el.tags.includes(category.id))
-            .map((category) => category.name),
+          tags: categories.filter((category) => el.tags.includes(category.id)),
           intensity: cartridgeInfo.find((c) => c.id === el.id)?.intensity,
         })),
         createdBy: userInfo,
