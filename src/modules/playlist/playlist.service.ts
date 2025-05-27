@@ -109,6 +109,10 @@ export class PlaylistService {
 
     const sortedPlaylistScents = sortBy(playlist.playlistScents, 'createdAt', 'ASC');
 
+    const scentTags = await this.settingDefinitionRepository.find({
+      where: { type: ESystemDefinitionType.SCENT_TAG },
+    });
+
     for (const ps of sortedPlaylistScents) {
       const scent = ps.scent;
 
@@ -135,12 +139,13 @@ export class PlaylistService {
 
         const position = Number(cartridge?.position);
 
-        cartridgeInfo.push({ ...scentConfig, intensity: el.intensity, position });
+        cartridgeInfo.push({
+          ...scentConfig,
+          tags: scentTags.filter((tag) => scentConfig.tags.includes(tag.id)).map((tag) => tag.name),
+          intensity: el.intensity,
+          position,
+        });
       }
-
-      const scentTags = await this.settingDefinitionRepository.find({
-        where: { type: ESystemDefinitionType.SCENT_TAG },
-      });
 
       const tags = scentTags
         .filter((tag) => JSON.parse(scent.tags).includes(tag.id))
@@ -368,6 +373,9 @@ export class PlaylistService {
         tags: categoryTags,
         cartridgeInfo: scentConfigs.map((el) => ({
           ...el,
+          tags: categories
+            .filter((category) => el.tags.includes(category.id))
+            .map((category) => category.name),
           intensity: cartridgeInfo.find((c) => c.id === el.id)?.intensity,
         })),
         createdBy: userInfo,
