@@ -5,6 +5,7 @@ import { uniq } from 'lodash';
 import { In } from 'typeorm';
 import { Repository, UpdateResult } from 'typeorm';
 
+import { ImageSizeType } from '../../common/constants/file.constant';
 import { MESSAGE } from '../../common/constants/message.constant';
 import { ScentConfigRepository } from '../../common/repositories/scent-config.repository';
 import { extractImageNameFromS3Url } from '../../common/utils/file';
@@ -120,16 +121,10 @@ export class ScentConfigService extends BaseService<ScentConfig> {
       });
 
       // Upload background
-      const backgroundUrl = await this._handleFileUpload({
-        ...backgroundFile,
-        originalname: extractFileName(backgroundFile.originalname).name,
-      });
+      const backgroundUrl = await this._handleFileUpload(backgroundFile, 'background');
 
       // Process story with image
-      const processedStory = await this._processStory(data.story, {
-        ...storyImageFile,
-        originalname: extractFileName(storyImageFile.originalname).name,
-      });
+      const processedStory = await this._processStory(data.story, storyImageFile);
 
       // Process notes with images
       const processedNotes = await this._processNotes(data.notes, noteImageFiles);
@@ -252,17 +247,34 @@ export class ScentConfigService extends BaseService<ScentConfig> {
     }
   }
 
-  private async _handleFileUpload(file: Express.Multer.File): Promise<string> {
+  /**
+   * Handle file upload based on type
+   * @param file The file to upload
+   * @param type The type of upload (background uses multiple sizes, others use single)
+   * @returns Promise<string> The filename of the uploaded file
+   */
+  private async _handleFileUpload(
+    file: Express.Multer.File,
+    type: 'background' | 'story' | 'note' = 'story',
+  ): Promise<string> {
     if (!file) {
       return null;
     }
 
     try {
-      const uploadedImage = await this.storageService.uploadImage(file);
+      if (type === 'background') {
+        // Background uses uploadImages for multiple sizes
+        const uploadedImage = await this.storageService.uploadImages(file);
 
-      return uploadedImage.fileName;
+        return uploadedImage[ImageSizeType.original].fileName;
+      } else {
+        // Story and notes use uploadImage for single file
+        const uploadedImage = await this.storageService.uploadImage(file);
+
+        return uploadedImage.fileName;
+      }
     } catch (error) {
-      this.logger.error(`Failed to upload file: ${error.message}`);
+      this.logger.error(`Failed to upload ${type} file: ${error.message}`);
       throw new HttpException('Failed to upload file', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -293,7 +305,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
           originalname: name,
         };
 
-        const imageUrl = await this._handleFileUpload(fileWithNewName);
+        const imageUrl = await this._handleFileUpload(fileWithNewName, 'note');
 
         return {
           ...note,
@@ -310,7 +322,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
       return null;
     }
 
-    const imageUrl = await this._handleFileUpload(storyImage);
+    const imageUrl = await this._handleFileUpload(storyImage, 'story');
 
     return {
       ...story,
@@ -336,22 +348,30 @@ export class ScentConfigService extends BaseService<ScentConfig> {
       const { key, image } = deletedFile;
 
       try {
-        // Extract filepath and filename from the URL
+        // Extract filename from the URL
         const imageInfo = extractImageNameFromS3Url(image);
-        // If it's already a string (just filename), use it directly
-        const s3Key =
-          typeof imageInfo === 'string' ? imageInfo : `${imageInfo.filepath}/${imageInfo.filename}`;
+        const fileName = typeof imageInfo === 'string' ? imageInfo : imageInfo.filename;
 
-        // Try to delete from S3 but don't wait for it
-        this.storageService.deleteObject({ Key: s3Key }).catch((error) => {
-          this.logger.error(
-            `Failed to delete file from S3 ${s3Key} (key: ${key}): ${error.message}`,
-          );
-        });
+        // Handle deletion based on image type
+        if (key === 'background') {
+          // Background uses uploadImages, so delete all size variations
+          await this.storageService.deleteImages(fileName).catch((error) => {
+            this.logger.error(
+              `Failed to delete background image variations for ${fileName}: ${error.message}`,
+            );
+          });
+        } else {
+          // Story and notes use uploadImage, so just delete single file
+          const s3Key =
+            typeof imageInfo === 'string'
+              ? imageInfo
+              : `${imageInfo.filepath}/${imageInfo.filename}`;
+          await this.storageService.deleteObject({ Key: s3Key }).catch((error) => {
+            this.logger.error(`Failed to delete file ${s3Key} (key: ${key}): ${error.message}`);
+          });
+        }
       } catch (error) {
-        this.logger.error(
-          `Error initiating S3 deletion for ${image} (key: ${key}): ${error.message}`,
-        );
+        this.logger.error(`Error processing deletion for ${image} (key: ${key}): ${error.message}`);
       }
 
       // Update database regardless of S3 deletion success
@@ -415,18 +435,12 @@ export class ScentConfigService extends BaseService<ScentConfig> {
 
     // Upload background if provided
     if (backgroundFile) {
-      newBackgroundUrl = await this._handleFileUpload({
-        ...backgroundFile,
-        originalname: extractFileName(backgroundFile.originalname).name,
-      });
+      newBackgroundUrl = await this._handleFileUpload(backgroundFile, 'background');
     }
 
     // Process story with image if provided
     if (storyImageFile) {
-      const storyImageUrl = await this._handleFileUpload({
-        ...storyImageFile,
-        originalname: extractFileName(storyImageFile.originalname).name,
-      });
+      const storyImageUrl = await this._handleFileUpload(storyImageFile, 'story');
       newProcessedStory = {
         ...newProcessedStory,
         image: storyImageUrl,
@@ -447,11 +461,7 @@ export class ScentConfigService extends BaseService<ScentConfig> {
             return note;
           }
 
-          const { name } = extractFileName(noteImage.originalname);
-          const imageUrl = await this._handleFileUpload({
-            ...noteImage,
-            originalname: name,
-          });
+          const imageUrl = await this._handleFileUpload(noteImage, 'note');
 
           return {
             ...note,
