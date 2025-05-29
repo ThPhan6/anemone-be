@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { runSeeder, SeederOptions } from 'typeorm-extension';
 
+import { CountrySeeder } from './country.seeder';
 import { ProductVariantSeeder } from './product-variant.seeder';
 import { PublicScentSeeder } from './public-scent.seeder';
 import { QuestionnaireSeeder } from './questionnaire.seeder';
@@ -19,6 +20,7 @@ async function runSeeders() {
       ScentTagSeeder,
       PublicScentSeeder,
       ProductVariantSeeder,
+      CountrySeeder,
     ],
   };
 

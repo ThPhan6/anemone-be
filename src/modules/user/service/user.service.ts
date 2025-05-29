@@ -1,13 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { UserRepository } from 'common/repositories/user.repository';
 import { BaseService } from 'core/services/base.service';
-import { CreateUserDto, UpdateUserDto, UserGetListQueries } from 'modules/user/dto/user.request';
-import { DeepPartial, FindOptionsWhere } from 'typeorm';
+import {
+  CreateUserDto,
+  UpdateProfileDto,
+  UpdateUserDto,
+  UserGetListQueries,
+} from 'modules/user/dto/user.request';
+import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 
 import { MESSAGE } from '../../../common/constants/message.constant';
+import { Country } from '../../../common/entities/country.entity';
+import { convertURLToS3Readable } from '../../../common/utils/file';
 import { generateRandomPassword } from '../../../common/utils/helper';
 import { logger } from '../../../core/logger/index.logger';
 import { CognitoService } from '../../auth/cognito.service';
+import { StorageService } from '../../storage/storage.service';
 import { UserDto } from '../dto/user.dto';
 import { User, UserRole, UserStatus, UserType } from '../entities/user.entity';
 
@@ -16,6 +25,9 @@ export class UserService extends BaseService<User> {
   constructor(
     private readonly repo: UserRepository,
     private readonly cognitoService: CognitoService,
+    @InjectRepository(Country)
+    private readonly countryRepository: Repository<Country>,
+    private storageService: StorageService,
   ) {
     super(repo);
   }
@@ -408,7 +420,10 @@ export class UserService extends BaseService<User> {
         // Update existing user
         await this.repository.update({ user_id: existingUser.user_id }, userDataForDb);
 
-        return this.repository.findOne({ where: { user_id: existingUser.user_id } });
+        return this.repository.findOne({
+          where: { user_id: existingUser.user_id },
+          relations: ['country'],
+        });
       } else {
         // Create new user - we need to ensure required fields are present
         if (!userDataForDb.user_id) {
@@ -455,7 +470,7 @@ export class UserService extends BaseService<User> {
       throw new Error('User not found');
     }
 
-    return await this.syncUserWithCognitoData({
+    const result = await this.syncUserWithCognitoData({
       email: cognitoUser.email,
       name: cognitoUser.name,
       given_name: cognitoUser.givenName,
@@ -467,6 +482,16 @@ export class UserService extends BaseService<User> {
       phone_number_verified: cognitoUser.phoneNumberVerified,
       type: UserType.APP,
     });
+
+    return {
+      firstName: result.givenName,
+      lastName: result.name,
+      avatar: result.avatar ? convertURLToS3Readable(result.avatar) : null,
+      yearOfBirth: Number(result.yearOfBirth),
+      countryId: result.country ? result.country.id : null,
+      gender: result.gender,
+      email: result.email,
+    };
   }
 
   async blockUserById(userId: string) {
@@ -496,5 +521,73 @@ export class UserService extends BaseService<User> {
     });
 
     return true;
+  }
+
+  async updateMobileProfile(userId: string, body: UpdateProfileDto, avatar: Express.Multer.File) {
+    const user = await this.repository.findOne({ where: { user_id: userId, type: UserType.APP } });
+
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (body.yearOfBirth !== undefined) {
+      const currentYear = new Date().getFullYear();
+
+      if (isNaN(body.yearOfBirth) || body.yearOfBirth >= currentYear) {
+        throw new HttpException(
+          'Year of birth must be a valid year less than current year',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      user.yearOfBirth = body.yearOfBirth;
+    }
+
+    if (body.countryId) {
+      const country = await this.countryRepository.findOne({
+        where: { id: body.countryId },
+      });
+
+      if (!country) {
+        throw new HttpException('Country not found', HttpStatus.BAD_REQUEST);
+      }
+
+      user.country = country;
+    }
+
+    if (avatar) {
+      const fileName = `avatars/${Date.now()}`;
+      const uploadedAvatar = await this.storageService.uploadImage(avatar, fileName);
+      user.avatar = uploadedAvatar.fileName;
+    }
+
+    const updatedUserBody = {
+      ...user,
+      givenName: body.firstName ? body.firstName : user.givenName,
+      name: body.lastName ? body.lastName : user.name,
+      gender: body.gender ? body.gender : user.gender,
+    };
+
+    //update db
+    const updatedUser = await this.repository.update({ user_id: userId }, updatedUserBody);
+
+    const cognitoAttributes: Record<string, string> = {};
+
+    if (body.lastName) {
+      cognitoAttributes['family_name'] = body.lastName;
+    }
+
+    if (body.firstName) {
+      cognitoAttributes['given_name'] = body.firstName;
+    }
+
+    if (avatar) {
+      cognitoAttributes['picture'] = convertURLToS3Readable(user.avatar);
+    }
+
+    //sync with cognito
+    await this.cognitoService.updateUserAttributes(userId, cognitoAttributes);
+
+    return updatedUser;
   }
 }

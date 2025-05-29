@@ -5,6 +5,7 @@ import { UserRepository } from 'common/repositories/user.repository';
 import { AuthModule } from 'modules/auth/auth.module';
 import { UserService } from 'modules/user/service/user.service';
 
+import { Country } from '../../common/entities/country.entity';
 import { Family } from '../../common/entities/family.entity';
 import { FamilyMember } from '../../common/entities/family-member.entity';
 import { Space } from '../../common/entities/space.entity';
@@ -17,7 +18,15 @@ import { UserAdminController } from './user-admin.controller';
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    TypeOrmModule.forFeature([User, UserSetting, UserSession, Family, FamilyMember, Space]),
+    TypeOrmModule.forFeature([
+      User,
+      UserSetting,
+      UserSession,
+      Family,
+      FamilyMember,
+      Space,
+      Country,
+    ]),
 
     // Auth
     forwardRef(() => AuthModule),

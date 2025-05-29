@@ -1,5 +1,7 @@
 import { BaseEntity } from 'common/entities/base.entity';
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+
+import { Country } from '../../../common/entities/country.entity';
 
 export enum UserStatus {
   CONFIRMED = 'CONFIRMED', // User has completed confirmation and can sign in.
@@ -21,6 +23,12 @@ export enum UserRole {
 export enum UserType {
   CMS = 1,
   APP = 2,
+}
+
+export enum GenderType {
+  MALE = 'Male',
+  FEMALE = 'Female',
+  OTHERS = 'Others',
 }
 
 @Entity('users')
@@ -66,4 +74,17 @@ export class User extends BaseEntity {
 
   @Column({ type: 'boolean', name: 'phone_number_verified', default: false })
   phoneNumberVerified: boolean;
+
+  @Column({ type: 'enum', nullable: true, enum: GenderType })
+  gender: GenderType;
+
+  @Column({ type: 'numeric', nullable: true, name: 'year_of_birth' })
+  yearOfBirth: number;
+
+  @Column({ type: 'varchar', nullable: true })
+  avatar: string;
+
+  @ManyToOne(() => Country, { nullable: true })
+  @JoinColumn({ name: 'country_id' })
+  country?: Country;
 }

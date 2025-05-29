@@ -6,6 +6,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AlbumModule } from './album/album.module';
 import { AuthModule } from './auth/auth.module';
+import { CountryModule } from './country/country.module';
 import { DatabaseModule } from './database.module';
 import { DeviceModule } from './device/device.module';
 import { MockModule } from './mock/mock.module';
@@ -43,6 +44,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     UserFavoritesModule,
     UserSessionsModule,
     UnifiedSearchModule,
+    CountryModule,
     MulterModule.register({
       dest: './uploads',
     }),
