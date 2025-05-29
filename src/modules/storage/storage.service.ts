@@ -13,6 +13,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createReadStream, ReadStream } from 'fs';
+import * as fs from 'fs/promises';
 import { extname } from 'path';
 import * as sharp from 'sharp';
 import { Readable } from 'stream';
@@ -192,31 +193,34 @@ export class StorageService {
       const fullPathName = fileName ? `${fileName}${ext}` : file.filename || file.originalname;
       const contentType = file.mimetype;
 
-      const calls = [];
+      let fileBuffer: Buffer | ReadStream;
 
-      // Check if file is a buffer or has a path
+      // Prioritize buffer if available (in-memory upload)
       if (file.buffer) {
-        // Handle file with buffer (memory upload)
-        calls.push(this.uploadFile(file.buffer, `${fullPathName}`, 'public-read', contentType));
+        fileBuffer = file.buffer;
       } else if (file.path) {
-        // Handle file with path (disk upload)
-        calls.push(
-          this.uploadFile(
-            createReadStream(file.path),
-            `${fullPathName}`,
-            'public-read',
-            contentType,
-          ),
-        );
+        // If not, read from path (disk upload)
+        fileBuffer = createReadStream(file.path);
       } else {
-        throw new Error('File has neither buffer nor path');
+        throw new Error('File has neither buffer nor path. Cannot upload image.');
       }
 
-      const [pathToOrigin, pathToConverted] = await Promise.all(calls);
+      // Use the refactored uploadFile for both buffer and stream
+      const pathToOrigin = await this.uploadFile(
+        fileBuffer,
+        `${fullPathName}`,
+        'public-read',
+        contentType,
+      );
+
+      // Note: pathToConverted logic from original was removed as it implied a conversion
+      // that wasn't explicitly defined or handled in this method.
+      // If you need a converted version here, you'd perform sharp processing on fileBuffer
+      // before calling uploadFile a second time.
 
       return {
         origin: pathToOrigin,
-        converted: pathToConverted,
+        converted: pathToOrigin, // Placeholder, adjust if you have a conversion step
         fileName: fullPathName,
       };
     } catch (error) {
@@ -225,10 +229,20 @@ export class StorageService {
         MessageCode.badRequest,
         error.message || 'Upload image failed.',
       );
+    } finally {
+      // Clean up the locally saved file by Multer if it was saved to disk
+      if (file.path) {
+        try {
+          await fs.unlink(file.path);
+          this.logger.log(`Deleted temporary file: ${file.path}`);
+        } catch (unlinkError) {
+          this.logger.error(`Error deleting temporary file ${file.path}: ${unlinkError.message}`);
+        }
+      }
     }
   }
 
-  async uploadImages(file: Express.Multer.File /* _prefix?: StoreUploadPrefix */): Promise<
+  async uploadImages(file: Express.Multer.File): Promise<
     Record<
       ImageSizeType,
       {
@@ -243,25 +257,40 @@ export class StorageService {
       const contentType = file.mimetype;
       const fileName = file.originalname.replace(ext, '');
 
+      this.logger.debug('Processing file for multiple sizes:', file);
+
+      let originalFileBuffer: Buffer;
+      // Determine if the file is in memory (buffer) or on disk (path)
+      if (file.buffer) {
+        originalFileBuffer = file.buffer;
+      } else if (file.path) {
+        // If file is on disk, read it into a buffer
+        originalFileBuffer = await fs.readFile(file.path);
+      } else {
+        throw new Error(
+          'File has neither buffer nor path. Cannot process image for multiple sizes.',
+        );
+      }
+
       // Define image size variations to generate
       const sizeVariations = [
-        { name: 'original', size: null },
-        { name: 'large', size: ImageSize.large },
-        { name: 'medium', size: ImageSize.medium },
-        { name: 'small', size: ImageSize.small },
-        { name: 'thumbnail', size: ImageSize.thumbnail },
+        { name: ImageSizeType.original, size: null },
+        { name: ImageSizeType.large, size: ImageSize.large },
+        { name: ImageSizeType.medium, size: ImageSize.medium },
+        { name: ImageSizeType.small, size: ImageSize.small },
+        { name: ImageSizeType.thumbnail, size: ImageSize.thumbnail },
       ];
 
       // Process each size variation
       const uploadPromises = sizeVariations.map(async (variation) => {
         let processedBuffer: Buffer;
+        let finalContentType: string = contentType; // Default to original content type
 
         // For original, just use the original buffer
         if (!variation.size) {
-          processedBuffer = file.buffer;
+          processedBuffer = originalFileBuffer;
         } else {
           try {
-            // Use Sharp directly instead of the utility functions
             const resizeOptions = {
               width: variation.size,
               height: undefined,
@@ -269,54 +298,62 @@ export class StorageService {
               fit: ImageFit.cover,
             };
 
-            // For other sizes, resize the image
             switch (contentType) {
               case ImageContentType.webp:
-                processedBuffer = await sharp(file.buffer)
+                processedBuffer = await sharp(originalFileBuffer)
                   .resize(resizeOptions)
                   .webp({ quality: ImageQuality.high })
                   .toBuffer();
                 break;
 
               case ImageContentType.png:
-                processedBuffer = await sharp(file.buffer)
+                processedBuffer = await sharp(originalFileBuffer)
                   .resize(resizeOptions)
                   .png({ quality: ImageQuality.high })
                   .toBuffer();
                 break;
 
-              default:
-                // For JPEG and other formats
-                processedBuffer = await sharp(file.buffer)
+              case ImageContentType.jpeg: // Explicitly handle JPEG
+
+              case ImageContentType.jpg:
+                processedBuffer = await sharp(originalFileBuffer)
                   .resize(resizeOptions)
                   .jpeg({ quality: ImageQuality.high })
                   .toBuffer();
+                break;
+
+              default:
+                // For other formats (GIF, TIFF, etc.), just resize and output to buffer.
+                // Sharp will try to maintain the original format if supported.
+                processedBuffer = await sharp(originalFileBuffer).resize(resizeOptions).toBuffer();
             }
+            finalContentType = contentType; // Always retain original content type
           } catch (resizeError) {
             this.logger.error(`Failed to resize image (${variation.name}): ${resizeError.message}`);
-            // If resizing fails, use original buffer as fallback
-            processedBuffer = file.buffer;
+            // If resizing fails, use original buffer as fallback and original content type
+            processedBuffer = originalFileBuffer;
+            finalContentType = contentType;
           }
         }
 
-        // Create a size-specific filename
+        // Create a size-specific filename, retaining the original extension
         const sizeFileName =
-          variation.name === 'original'
-            ? `${fileName}${ext}`
-            : `${fileName}-${variation.name}${ext}`;
+          variation.name === ImageSizeType.original
+            ? `${fileName}${ext}` // Original retains original extension
+            : `${fileName}-${variation.name}${ext}`; // Resized also retain original extension
 
-        // Upload the resized image
-        const path = await this.uploadFile(
-          processedBuffer,
+        // Upload the resized image using the refactored uploadFile
+        const uploadedKey = await this.uploadFile(
+          processedBuffer, // Always a Buffer here
           sizeFileName,
           'public-read',
-          contentType,
+          finalContentType,
         );
 
         return {
           size: variation.name,
-          path,
-          url: `${this.configService.get('AWS_PUBLIC_URL')}/${path}`,
+          fileKey: uploadedKey,
+          url: `${this.configService.get('AWS_PUBLIC_URL')}/${uploadedKey}`,
         };
       });
 
@@ -324,29 +361,41 @@ export class StorageService {
       const results = await Promise.all(uploadPromises);
 
       // Format the result as an object with size names as keys
-      const formattedResults = results.reduce((acc, result) => {
-        if (result && result.size) {
-          acc[result.size] = {
-            fileKey: result.path,
-            url: result.url,
-            fileName:
-              result.size === 'original' ? `${fileName}${ext}` : `${fileName}-${result.size}${ext}`,
-          };
-        }
+      const formattedResults = results.reduce(
+        (acc, result) => {
+          if (result && result.size) {
+            acc[result.size] = {
+              fileKey: result.fileKey,
+              url: result.url,
+              fileName:
+                result.size === ImageSizeType.original
+                  ? `${fileName}${ext}`
+                  : `${fileName}-${result.size}${ext}`, // Ensure filename matches uploaded extension
+            };
+          }
 
-        return acc;
-      }, {});
+          return acc;
+        },
+        {} as Record<ImageSizeType, { fileKey: string; url: string; fileName: string }>,
+      );
 
-      return formattedResults as Record<
-        ImageSizeType,
-        { fileKey: string; url: string; fileName: string }
-      >;
+      return formattedResults;
     } catch (error) {
       this.logger.error(`Failed to upload images: ${error.message}`);
       throw new ApiBadRequestException(
         MessageCode.badRequest,
         error.message || 'Upload images failed',
       );
+    } finally {
+      // Clean up the locally saved file by Multer if it was saved to disk
+      if (file.path) {
+        try {
+          await fs.unlink(file.path);
+          this.logger.log(`Deleted temporary file: ${file.path}`);
+        } catch (unlinkError) {
+          this.logger.error(`Error deleting temporary file ${file.path}: ${unlinkError.message}`);
+        }
+      }
     }
   }
 
@@ -356,18 +405,18 @@ export class StorageService {
     ACL?: ObjectCannedACL,
     contentType?: string,
     prefix = this.keyPrefix,
-    maxRetries = 0,
-    retryDelayMs = 1000,
   ) {
     const newKey = `${prefix}/${key}`;
     let attempt = 0;
+    const maxRetries = 3; // You can adjust this
+    const retryDelayMs = 1000; // You can adjust this
 
     while (attempt <= maxRetries) {
       try {
         const putInput: PutObjectCommandInput = {
           Bucket: this.bucket,
           Key: newKey,
-          Body: data as any,
+          Body: data as any, // Body can be Buffer, Readable, string, etc.
           ContentType: contentType,
         };
         if (ACL) {
@@ -448,7 +497,11 @@ export class StorageService {
         }),
       );
 
-      if (result.$metadata.httpStatusCode !== HttpStatus.NO_CONTENT) {
+      // S3 returns 204 No Content for successful deletions
+      if (
+        result.$metadata.httpStatusCode !== HttpStatus.NO_CONTENT &&
+        result.$metadata.httpStatusCode !== HttpStatus.OK
+      ) {
         throw new HttpException(
           'Failed to delete object from S3',
           result.$metadata.httpStatusCode ?? HttpStatus.INTERNAL_SERVER_ERROR,
@@ -458,6 +511,14 @@ export class StorageService {
       return { Key };
     } catch (err) {
       this.logger.error(`Failed to delete object ${Key}: ${err.message}`);
+      // If the object doesn't exist, S3 might return 404, which is fine for a delete operation.
+      // You might want to check for specific error codes like 'NotFound' to avoid throwing.
+      if (err.name === 'NotFound') {
+        this.logger.warn(`Object ${Key} not found during deletion attempt.`);
+
+        return { Key, status: 'not-found' }; // Indicate it wasn't found
+      }
+
       throw err;
     }
   }
@@ -474,16 +535,20 @@ export class StorageService {
       const errors: string[] = [];
 
       // Get the file extension
-      const ext = fileName.split('.').pop();
-      const baseName = fileName.replace(`.${ext}`, '');
+      const ext = extname(fileName); // Use extname directly
+      const baseName = fileName.replace(ext, '');
 
       // Delete each size variation
       await Promise.all(
         imageSizes.map(async (size) => {
-          const key =
-            size === ImageSizeType.original
-              ? `${this.keyPrefix}/${fileName}`
-              : `${this.keyPrefix}/${baseName}-${size}.${ext}`;
+          // Construct key based on how they are saved in uploadImages
+          let key: string;
+          if (size === ImageSizeType.original) {
+            key = `${this.keyPrefix}/${fileName}`;
+          } else {
+            // Resized images are saved with original extension
+            key = `${this.keyPrefix}/${baseName}-${size}${ext}`;
+          }
 
           try {
             await this.deleteObject({ Key: key });

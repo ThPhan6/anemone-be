@@ -6,7 +6,10 @@ import {
   CreateScentConfigDto,
   UpdateScentConfigDto,
 } from '../../scent-config/dto/scent-config.dto';
-import { QuestionnaireAdminCreateDto } from './questionnaire-admin.dto';
+import {
+  QuestionnaireAdminCreateDto,
+  QuestionnaireAdminUpdateDto,
+} from './questionnaire-admin.dto';
 import { CreateScentTagDto, UpdateScentTagDto } from './scent-tag.dto';
 
 @ApiExtraModels(
@@ -15,6 +18,7 @@ import { CreateScentTagDto, UpdateScentTagDto } from './scent-tag.dto';
   CreateScentConfigDto,
   UpdateScentConfigDto,
   QuestionnaireAdminCreateDto,
+  QuestionnaireAdminUpdateDto,
 )
 export class CreateSystemSettingDto {
   @ApiProperty({
@@ -30,14 +34,13 @@ export class CreateSystemSettingDto {
       { $ref: getSchemaPath(UpdateScentTagDto) },
       { $ref: getSchemaPath(CreateScentConfigDto) },
       { $ref: getSchemaPath(UpdateScentConfigDto) },
-      {
-        type: 'array',
-        items: { $ref: getSchemaPath(QuestionnaireAdminCreateDto) },
-      },
+      { $ref: getSchemaPath(QuestionnaireAdminCreateDto) },
+      { $ref: getSchemaPath(QuestionnaireAdminUpdateDto) },
     ],
   })
   data:
-    | { questionnaires: QuestionnaireAdminCreateDto[] }
+    | QuestionnaireAdminCreateDto
+    | QuestionnaireAdminUpdateDto
     | CreateScentTagDto
     | UpdateScentTagDto
     | CreateScentConfigDto

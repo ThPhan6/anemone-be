@@ -1,6 +1,10 @@
+import {
+  DescribeCertificateCommand,
+  IoTClient,
+  ListThingPrincipalsCommand,
+} from '@aws-sdk/client-iot';
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as AWS from 'aws-sdk';
 import * as forge from 'node-forge';
 import { Repository } from 'typeorm';
 
@@ -10,20 +14,20 @@ import { logger } from '../logger/index.logger';
 
 @Injectable()
 export class IoTAuthGuard implements CanActivate {
-  private iotClient: AWS.Iot;
+  private iotClient: IoTClient;
 
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
   ) {
     // Initialize AWS IoT client
-    this.iotClient = new AWS.Iot({
+    this.iotClient = new IoTClient({
       region: process.env.AWS_REGION,
-      credentials: new AWS.Credentials({
+      credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      }),
-    }); // Use your region
+      },
+    });
   }
 
   // Compute the SHA-1 fingerprint of a certificate
@@ -40,9 +44,9 @@ export class IoTAuthGuard implements CanActivate {
   async findCertificateId(clientFingerprint: string, deviceId: string) {
     try {
       // Get the certificates associated with the device
-      const thingsData = await this.iotClient
-        .listThingPrincipals({ thingName: formatThingName(deviceId) })
-        .promise();
+      const thingsData = await this.iotClient.send(
+        new ListThingPrincipalsCommand({ thingName: formatThingName(deviceId) }),
+      );
       const certificateArns = thingsData.principals;
 
       if (!certificateArns || certificateArns.length === 0) {
@@ -53,9 +57,9 @@ export class IoTAuthGuard implements CanActivate {
       // Check each certificate associated with the device
       for (const arn of certificateArns) {
         const certId = arn.split('/')[1];
-        const describeResponse = await this.iotClient
-          .describeCertificate({ certificateId: certId })
-          .promise();
+        const describeResponse = await this.iotClient.send(
+          new DescribeCertificateCommand({ certificateId: certId }),
+        );
         const awsCertPem = describeResponse.certificateDescription.certificatePem;
 
         // Compute the fingerprint of the AWS certificate

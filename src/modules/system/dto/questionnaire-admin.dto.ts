@@ -33,6 +33,16 @@ export class QuestionMetadataDto {
   @IsNumber()
   @IsPositive()
   max: number;
+
+  @ApiProperty({
+    description: 'URL of the question image, or null to remove',
+    required: false,
+    nullable: true, // Allows explicit null
+  })
+  @IsString()
+  @IsOptional()
+  // @ValidateIf((o) => o.image !== null) // Optional: add if you need validation for string format when not null
+  image?: string | null; // This allows 'image' to be present as a string or null
 }
 
 // DTO for answer metadata
@@ -47,8 +57,16 @@ export class AnswerMetadataDto {
   type: QuestionnaireAnswerType;
 }
 
-// DTO for answer items
+// DTO for answer items (used for creation, id is optional)
 export class QuestionnaireAnswerItemDto {
+  @ApiProperty({
+    description: 'ID of the answer (optional for creation, required for update)',
+    required: false, // Optional for creation
+  })
+  @IsString()
+  @IsOptional() // Make it optional for creation scenarios
+  id?: string; // Add the id property here
+
   @ApiProperty({
     description: 'Answer value text (required for TAG type)',
     required: true,
@@ -67,6 +85,17 @@ export class QuestionnaireAnswerItemDto {
   @ValidateNested()
   @Type(() => AnswerMetadataDto)
   metadata: AnswerMetadataDto;
+}
+
+// DTO for answer items when updating (id is required)
+export class QuestionnaireAnswerUpdateItemDto extends QuestionnaireAnswerItemDto {
+  @ApiProperty({
+    description: 'ID of the answer (required for update)',
+    required: true, // Required for update
+  })
+  @IsString()
+  @IsNotEmpty() // Ensure it's not an empty string
+  id: string; // Override to make it required
 }
 
 // DTO for creating a questionnaire
@@ -88,9 +117,9 @@ export class QuestionnaireAdminCreateDto {
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
-  @Type(() => QuestionnaireAnswerItemDto)
+  @Type(() => QuestionnaireAnswerItemDto) // Uses the base DTO where ID is optional
   @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
-  settingDefinition: QuestionnaireAnswerItemDto[];
+  values: QuestionnaireAnswerItemDto[];
 }
 
 // DTO for updating a questionnaire
@@ -124,7 +153,7 @@ export class QuestionnaireAdminUpdateDto {
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => QuestionnaireAnswerItemDto)
+  @Type(() => QuestionnaireAnswerUpdateItemDto) // Uses the new DTO where ID is required
   @ValidateIf((o) => o.type === SystemSettingsType.QUESTIONNAIRE)
-  settingDefinition?: QuestionnaireAnswerItemDto[];
+  values?: QuestionnaireAnswerUpdateItemDto[]; // Updated type to use the new DTO
 }

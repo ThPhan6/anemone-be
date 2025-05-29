@@ -1,27 +1,23 @@
 import {
   Body,
   Delete,
-  FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
   Param,
-  ParseFilePipe,
   Post,
   Put,
   Query,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-import { MAX_SIZE_UPLOAD_IMAGE } from '../../common/constants/file.constant';
 import { SystemSettingsType } from '../../common/enum/system-settings.enum';
 import { BaseController } from '../../core/controllers/base.controller';
 import { ApiController } from '../../core/decorator/apiController.decorator';
 import { StaffRoleGuard } from '../../core/decorator/auth.decorator';
+import { ParseJsonPipe } from '../../core/pipes/parse-json.pipe';
 import { ApiBaseGetListQueries } from '../../core/types/apiQuery.type';
-import { CreateSystemSettingDto } from './dto/system-settings.dto';
 import { SystemSettingsAdminService } from './system-settings-admin.service';
 
 @StaffRoleGuard()
@@ -63,43 +59,37 @@ export class SystemSettingsAdminController extends BaseController {
 
   @Post()
   @ApiOperation({ summary: 'Create system settings data' })
-  @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(
+    AnyFilesInterceptor({
+      dest: './dist/uploads',
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   create(
-    @Body() body: CreateSystemSettingDto,
-    @UploadedFiles(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
-        ],
-        fileIsRequired: false,
-      }),
-    )
+    @Query('_type') _type: SystemSettingsType,
+    @Body(new ParseJsonPipe(['data'])) body: { data?: any },
+    @UploadedFiles()
     files?: Express.Multer.File[],
   ) {
-    return this.systemSettingAdminService.createOne(body, files);
+    return this.systemSettingAdminService.createOne(_type, body, files);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update entire system setting data' })
-  @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(
+    AnyFilesInterceptor({
+      dest: './dist/uploads',
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   update(
     @Param('id') id: string,
-    @Body() body: CreateSystemSettingDto,
-    @UploadedFiles(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_SIZE_UPLOAD_IMAGE }),
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
-        ],
-        fileIsRequired: false,
-      }),
-    )
-    files?: Express.Multer.File[],
+    @Query('_type') _type: SystemSettingsType,
+    @Body(new ParseJsonPipe(['data'])) body: { data?: any },
+    @UploadedFiles()
+    files: Express.Multer.File[],
   ) {
-    return this.systemSettingAdminService.updateOne(id, body, files);
+    return this.systemSettingAdminService.updateOne(id, _type, body, files);
   }
 
   @Delete(':id')

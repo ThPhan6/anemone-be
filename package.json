@@ -50,7 +50,6 @@
     "@sentry/nestjs": "^9.9.0",
     "@sentry/profiling-node": "^9.9.0",
     "@types/sharp": "^0.32.0",
-    "aws-sdk": "^2.1692.0",
     "bcrypt": "^5.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
