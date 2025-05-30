@@ -1,12 +1,21 @@
+import {
+  AttachPrincipalPolicyCommand,
+  AttachThingPrincipalCommand,
+  CreateKeysAndCertificateCommand,
+  CreatePolicyCommand,
+  CreateThingCommand,
+  DescribeCertificateCommand,
+  GetPolicyCommand,
+  IoTClient,
+} from '@aws-sdk/client-iot';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as AWS from 'aws-sdk';
 
 import { formatThingName } from '../../common/utils/helper';
 
 @Injectable()
 export class IotService {
-  private iot: AWS.Iot;
+  private iot: IoTClient;
   private readonly ioTPolicyResource: string;
   private readonly ioTPolicyName: string;
   private readonly environment: string;
@@ -16,7 +25,13 @@ export class IotService {
     const accessKeyId = configService.get('AWS_ACCESS_KEY_ID');
     const secretAccessKey = configService.get('AWS_SECRET_ACCESS_KEY');
     const region = configService.get('AWS_REGION');
-    this.iot = new AWS.Iot({ region, accessKeyId, secretAccessKey });
+    this.iot = new IoTClient({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
     this.ioTPolicyResource = configService.get('AWS_IOT_POLICY_RESOURCE') || '*';
     this.ioTPolicyName = configService.get('AWS_IOT_DEFAULT_POLICY') || 'Anemone-Policy';
     this.environment = configService.get('NODE_ENV') || 'development';
@@ -33,7 +48,9 @@ export class IotService {
   }> {
     try {
       // 1. Create Certificate
-      const certificate = await this.iot.createKeysAndCertificate({ setAsActive: true }).promise();
+      const certificate = await this.iot.send(
+        new CreateKeysAndCertificateCommand({ setAsActive: true }),
+      );
       const certificateId = certificate.certificateId;
       const certificateArn = certificate.certificateArn;
       const certificatePem = certificate.certificatePem;
@@ -53,7 +70,7 @@ export class IotService {
         },
       };
 
-      await this.iot.createThing(createParams).promise();
+      await this.iot.send(new CreateThingCommand(createParams));
 
       // 3. Attach Principal to Certificate (Thing)
       const attachParams = {
@@ -61,14 +78,14 @@ export class IotService {
         thingName: thingName,
       };
 
-      await this.iot
-        .attachPrincipalPolicy({
+      await this.iot.send(
+        new AttachPrincipalPolicyCommand({
           policyName: await this.getOrCreateIotPolicy(),
           principal: certificateArn,
-        })
-        .promise();
+        }),
+      );
 
-      await this.iot.attachThingPrincipal(attachParams).promise();
+      await this.iot.send(new AttachThingPrincipalCommand(attachParams));
 
       return { thingName, certificateArn, certificatePem, privateKey, publicKey, certificateId };
     } catch (error) {
@@ -80,11 +97,11 @@ export class IotService {
 
   async describeCertificate(certificateId: string) {
     try {
-      const response = await this.iot
-        .describeCertificate({
+      const response = await this.iot.send(
+        new DescribeCertificateCommand({
           certificateId,
-        })
-        .promise();
+        }),
+      );
 
       return response.certificateDescription;
     } catch (error) {
@@ -123,7 +140,7 @@ export class IotService {
 
   private async getOrCreateIotPolicy(): Promise<string> {
     try {
-      await this.iot.getPolicy({ policyName: this.ioTPolicyName }).promise();
+      await this.iot.send(new GetPolicyCommand({ policyName: this.ioTPolicyName }));
 
       return this.ioTPolicyName; // Policy exists, return its name
     } catch (error) {
@@ -148,7 +165,7 @@ export class IotService {
         };
 
         try {
-          await this.iot.createPolicy(createPolicyParams).promise();
+          await this.iot.send(new CreatePolicyCommand(createPolicyParams));
           // eslint-disable-next-line no-console
           console.log(`Policy "${this.ioTPolicyName}" created successfully.`);
 

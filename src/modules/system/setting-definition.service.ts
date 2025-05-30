@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isNil, omit, orderBy } from 'lodash';
-import { DataSource, In, Not, Repository } from 'typeorm';
+import { DataSource, In, Not, QueryRunner, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { MESSAGE } from '../../common/constants/message.constant';
@@ -19,7 +19,7 @@ import {
 } from './dto/questionnaire-admin.dto';
 import { CreateScentTagDto, UpdateScentTagDto } from './dto/scent-tag.dto';
 import { ESystemDefinitionType, SettingDefinition } from './entities/setting-definition.entity';
-import { QuestionnaireAnswerType, SettingValue } from './entities/setting-value.entity';
+import { SettingValue } from './entities/setting-value.entity';
 import { base64ToFile, isBase64Image } from './utils/image.utils';
 
 @Injectable()
@@ -148,524 +148,6 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
   }
 
   /**
-   * Creates a new questionnaire with answers
-   */
-  async createQuestionnaire(
-    data: QuestionnaireAdminCreateDto,
-    files?: Express.Multer.File[],
-  ): Promise<boolean> {
-    try {
-      // Validate the data - extra validation beyond DTO validation
-      if (!data.settingDefinition || data.settingDefinition.length === 0) {
-        throw new HttpException(
-          'Questionnaire must have at least one answer option',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // Ensure we have an index in the metadata
-      if (isNil(data.metadata?.index)) {
-        throw new HttpException('Question index is required', HttpStatus.BAD_REQUEST);
-      }
-
-      const newQuestionIndex = data.metadata.index;
-      this.logger.log(
-        `Processing questionnaire: ${data.name} with ${data.settingDefinition.length} answers at index ${newQuestionIndex}`,
-      );
-
-      // First, upload all images to get their URLs
-      const uploadedImages: { [key: string]: string } = {};
-
-      if (files && files.length > 0) {
-        // Process and upload all files
-        for (const file of files) {
-          try {
-            // Upload the file and get the URL
-            const imageUrl = await this.uploadQuestionFile(file);
-
-            // Store the URL with the original filename as key for lookup
-            uploadedImages[file.originalname] = imageUrl;
-
-            // Add debug logging
-            this.logger.log(
-              `Successfully uploaded and mapped image: ${file.originalname} → ${imageUrl}`,
-            );
-          } catch (error) {
-            this.logger.error(`Error uploading file ${file.originalname}: ${error.message}`);
-            // Continue with other files even if one fails
-          }
-        }
-
-        // Log all uploaded images for debugging
-        this.logger.log(`Total uploaded images: ${Object.keys(uploadedImages).length}`);
-        this.logger.log(`Uploaded image map: ${JSON.stringify(uploadedImages)}`);
-      }
-
-      // Create the setting definition (question) transaction
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
-      try {
-        // Before creating a new question at the specified index, reindex existing questions
-        await this.reindexQuestions(newQuestionIndex, queryRunner);
-
-        // Get question image URL if any was provided for the question
-        // We'll need to determine which file (if any) is intended for the question itself
-        const questionImageUrl = null; // Will be set if a question image is found
-
-        // Create question metadata with image URL
-        const questionMetadata = {
-          ...data.metadata,
-          image: questionImageUrl,
-        };
-
-        // Create question entity
-        const question = queryRunner.manager.create(SettingDefinition, {
-          name: data.name,
-          type: ESystemDefinitionType.QUESTIONNAIRE,
-          metadata: questionMetadata,
-        });
-
-        const savedQuestion = await queryRunner.manager.save(question);
-        this.logger.log(`Created question: ${savedQuestion.id} at index ${newQuestionIndex}`);
-
-        // Process and create the answers (SettingValues)
-        const answerEntities: SettingValue[] = [];
-
-        // First create a map of answer index to uploaded image URL
-        const answerIndexToImageMap: { [index: number]: string } = {};
-
-        // Parse and populate the map for all uploaded files
-        if (files && files.length > 0) {
-          for (const file of files) {
-            const answerIndex = this.extractAnswerIndexFromFilename(file.originalname);
-            if (answerIndex !== null) {
-              answerIndexToImageMap[answerIndex] = uploadedImages[file.originalname];
-              this.logger.log(`Mapped file ${file.originalname} to answer index ${answerIndex}`);
-            }
-          }
-
-          this.logger.log(
-            `Answer index to image mapping: ${JSON.stringify(answerIndexToImageMap)}`,
-          );
-        }
-
-        for (let i = 0; i < data.settingDefinition.length; i++) {
-          const answerData = data.settingDefinition[i];
-
-          // Find an uploaded image for this answer if available
-          let answerImageUrl = null;
-
-          // First check if we have a direct match by index
-          if (answerIndexToImageMap[i] !== undefined) {
-            answerImageUrl = answerIndexToImageMap[i];
-            this.logger.log(`Found matching image for answer ${i} (${answerData.value}) by index`);
-          }
-          // Fallback logic for when no match by index is found
-          else if (
-            files &&
-            files.length > 0 &&
-            answerData.metadata.type === QuestionnaireAnswerType.IMAGE_CARD
-          ) {
-            const imageCardAnswers = data.settingDefinition.filter(
-              (a) => a.metadata.type === QuestionnaireAnswerType.IMAGE_CARD,
-            );
-
-            // If there's only one file and one IMAGE_CARD answer with no index matches
-            if (
-              files.length === 1 &&
-              imageCardAnswers.length === 1 &&
-              Object.keys(answerIndexToImageMap).length === 0
-            ) {
-              answerImageUrl = uploadedImages[files[0].originalname];
-              this.logger.log(
-                `Single file/answer scenario: using file for answer ${i} (${answerData.value})`,
-              );
-            }
-          }
-
-          if (answerImageUrl) {
-            this.logger.log(
-              `Assigned image URL for answer ${i} (${answerData.value}): ${answerImageUrl}`,
-            );
-          } else if (answerData.metadata.type === QuestionnaireAnswerType.IMAGE_CARD) {
-            this.logger.warn(`No image URL found for IMAGE_CARD answer ${i} (${answerData.value})`);
-          }
-
-          // For IMAGE_CARD type, ensure we have an image
-          if (answerData.metadata.type === QuestionnaireAnswerType.IMAGE_CARD && !answerImageUrl) {
-            this.logger.warn(`No image found for IMAGE_CARD answer ${i}`);
-            // Continue without throwing an error - this allows processing to complete
-          }
-
-          // Create answer metadata with image URL
-          const answer = queryRunner.manager.create(SettingValue, {
-            value: answerData.value,
-            metadata: {
-              ...answerData.metadata,
-              image: answerImageUrl,
-            },
-            settingDefinition: savedQuestion,
-          });
-
-          answerEntities.push(answer);
-        }
-
-        // Save all answer entities
-        await queryRunner.manager.save(answerEntities);
-        this.logger.log(`Created ${answerEntities.length} answer options`);
-
-        // Commit transaction
-        await queryRunner.commitTransaction();
-
-        return true;
-      } catch (error) {
-        // Rollback transaction on error
-        await queryRunner.rollbackTransaction();
-        this.logger.error(`Transaction failed: ${error.message}`);
-        throw error;
-      } finally {
-        // Release query runner
-        await queryRunner.release();
-      }
-    } catch (error) {
-      this.logger.error(`Failed to create questionnaire: ${error.message}`);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      throw new HttpException(
-        error.message || 'Failed to create questionnaire',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Upload a question or answer file and return the URL
-   * Handles both regular files and base64 encoded images
-   */
-  private async uploadQuestionFile(file: Express.Multer.File | string): Promise<string> {
-    try {
-      // Check if the file is a base64 string
-      if (typeof file === 'string' && isBase64Image(file)) {
-        // Process base64 image
-        const fileName = `questionnaire-${uuid()}`;
-        const convertedFile = base64ToFile(file, fileName);
-
-        if (!convertedFile) {
-          throw new Error('Failed to convert base64 to file');
-        }
-
-        // Upload the converted file and get its URL
-        const uploadResult = await this.storageService.uploadImages(convertedFile);
-
-        // Make sure we return the full URL, not just the fileName
-        this.logger.log(
-          `Base64 image uploaded, returning URL: ${uploadResult['original'].fileName}`,
-        );
-
-        return uploadResult['original'].fileName;
-      }
-      // Regular file upload
-      else if (typeof file !== 'string') {
-        const uploadResult = await this.storageService.uploadImages(file);
-
-        // Make sure we return the full URL, not just the fileName
-        this.logger.log(`File uploaded, returning URL: ${uploadResult['original'].fileName}`);
-
-        return uploadResult['original'].fileName;
-      }
-      // If the string is not a base64 image, it might be an existing URL
-      else {
-        return file;
-      }
-    } catch (error) {
-      this.logger.error(`Error uploading file: ${error.message}`);
-      throw new HttpException('Failed to upload image', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * Extracts the filename from a given URL
-   */
-  private extractFileNameFromUrl(url: string): string | null {
-    try {
-      if (!url) {
-        return null;
-      }
-
-      // Extract the last part of the URL path which typically contains the filename
-      const parts = url.split('/');
-
-      return parts[parts.length - 1] || null;
-    } catch (error) {
-      this.logger.error(`Error extracting filename from URL: ${error.message}`);
-
-      return null;
-    }
-  }
-
-  /**
-   * Extract answer index from filename with pattern: answer_${optionIndex}_${randomHash}.${fileExt}
-   */
-  private extractAnswerIndexFromFilename(filename: string): number | null {
-    try {
-      if (!filename) {
-        return null;
-      }
-
-      // Match pattern like "answer_2_abc123.png" to extract the index "2"
-      const matches = filename.match(/answer_(\d+)_[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/);
-
-      if (matches && matches[1]) {
-        // Convert matched index string to number
-        const index = parseInt(matches[1], 10);
-        this.logger.log(`Extracted index ${index} from filename ${filename}`);
-
-        return index;
-      }
-
-      this.logger.warn(`Could not extract index from filename ${filename}`);
-
-      return null;
-    } catch (error) {
-      this.logger.error(
-        `Error extracting answer index from filename ${filename}: ${error.message}`,
-      );
-
-      return null;
-    }
-  }
-
-  /**
-   * Updates an existing questionnaire and its answers
-   */
-  async updateQuestionnaire(
-    data: QuestionnaireAdminUpdateDto,
-    files?: Express.Multer.File[],
-  ): Promise<boolean> {
-    try {
-      // 1. Find the question with its values (answers)
-      const question = await this.settingDefinitionRepository.findOne({
-        where: { id: data.id },
-        relations: ['values'],
-      });
-
-      if (!question) {
-        throw new HttpException('Questionnaire not found', HttpStatus.NOT_FOUND);
-      }
-
-      this.logger.log(
-        `Updating questionnaire ${data.id}: ${data.name} with ${data.settingDefinition?.length || 0} answers`,
-      );
-
-      // Create a map of existing answer values to their metadata (including image URLs)
-      const existingAnswerImageMap = new Map<string, string>();
-      // Also track the filenames of existing images
-      const existingImageFilenameMap = new Map<string, string>();
-
-      if (question.values && question.values.length > 0) {
-        question.values.forEach((answer) => {
-          if (answer.metadata?.image) {
-            existingAnswerImageMap.set(answer.value, answer.metadata.image);
-            // Extract the filename from the URL
-            const imageUrl = answer.metadata.image;
-            const fileName = this.extractFileNameFromUrl(imageUrl);
-            if (fileName) {
-              existingImageFilenameMap.set(fileName, imageUrl);
-            }
-
-            this.logger.log(
-              `Existing image for answer "${answer.value}": ${answer.metadata.image} (filename: ${fileName || 'unknown'})`,
-            );
-          }
-        });
-      }
-
-      // Ensure we have an index in the metadata if provided
-      const newQuestionIndex = data.metadata?.index;
-      const currentQuestionIndex = question.metadata?.index || 0;
-
-      // Check if index is changing
-      let indexChanged = false;
-      if (newQuestionIndex !== undefined && newQuestionIndex !== currentQuestionIndex) {
-        indexChanged = true;
-        this.logger.log(
-          `Question index changing from ${currentQuestionIndex} to ${newQuestionIndex}`,
-        );
-      }
-
-      // Extract existing question image URL if available
-      const existingQuestionImageUrl = question.metadata?.image || null;
-      this.logger.log(`Existing question image URL: ${existingQuestionImageUrl || 'none'}`);
-
-      // Upload all images to get their URLs
-      const uploadedImages: { [key: string]: string } = {};
-
-      if (files && files.length > 0) {
-        // Upload all files first and store their URLs
-        for (const file of files) {
-          try {
-            // Check if this file already exists based on filename
-            const existingUrl = existingImageFilenameMap.get(file.originalname);
-
-            if (existingUrl) {
-              // If file with this name already exists, reuse the URL instead of uploading
-              this.logger.log(
-                `File ${file.originalname} already exists, reusing existing URL: ${existingUrl}`,
-              );
-              uploadedImages[file.originalname] = existingUrl;
-            } else {
-              // Otherwise, upload the new file
-              const imageUrl = await this.uploadQuestionFile(file);
-
-              // Store the URL with the original filename as key for lookup
-              uploadedImages[file.originalname] = imageUrl;
-              this.logger.log(`Uploaded new image for ${file.originalname}: ${imageUrl}`);
-            }
-          } catch (error) {
-            this.logger.error(`Error uploading file ${file.originalname}: ${error.message}`);
-            // Continue with other files even if one fails
-          }
-        }
-      }
-
-      // Start transaction for updating the question and answers
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
-      try {
-        // If the index is changing, reindex other questions accordingly
-        if (indexChanged && newQuestionIndex !== undefined) {
-          await this.reindexQuestions(newQuestionIndex, queryRunner, question.id);
-        }
-
-        // Update question entity
-        if (data.name) {
-          question.name = data.name;
-        }
-
-        if (data.type) {
-          question.type = data.type;
-        }
-
-        // Update question metadata with new data
-        question.metadata = {
-          ...question.metadata,
-          ...data.metadata,
-        };
-
-        const savedQuestion = await queryRunner.manager.save(question);
-        this.logger.log(`Updated question: ${savedQuestion.id}`);
-
-        // If answers are provided, update them
-        if (data.settingDefinition && data.settingDefinition.length > 0) {
-          // Delete existing answers
-          if (question.values && question.values.length > 0) {
-            await queryRunner.manager.remove(question.values);
-          }
-
-          // Process and create new answers
-          const answerEntities: SettingValue[] = [];
-
-          // First create a map of answer index to uploaded image URL
-          const answerIndexToImageMap: { [index: number]: string } = {};
-
-          // Parse and populate the map for all uploaded files
-          if (files && files.length > 0) {
-            for (const file of files) {
-              const answerIndex = this.extractAnswerIndexFromFilename(file.originalname);
-              if (answerIndex !== null) {
-                answerIndexToImageMap[answerIndex] = uploadedImages[file.originalname];
-                this.logger.log(`Mapped file ${file.originalname} to answer index ${answerIndex}`);
-              }
-            }
-
-            this.logger.log(
-              `Answer index to image mapping: ${JSON.stringify(answerIndexToImageMap)}`,
-            );
-          }
-
-          // Second pass: Create all answer entities with proper image URLs
-          for (let i = 0; i < data.settingDefinition.length; i++) {
-            const answerData = data.settingDefinition[i];
-            let answerImageUrl = null;
-
-            // First check if we have a direct match by index
-            if (answerIndexToImageMap[i] !== undefined) {
-              answerImageUrl = answerIndexToImageMap[i];
-              this.logger.log(
-                `Found matching image for answer ${i} (${answerData.value}) by index`,
-              );
-            }
-            // Otherwise look for an existing image for this answer value
-            else if (existingAnswerImageMap.has(answerData.value)) {
-              answerImageUrl = existingAnswerImageMap.get(answerData.value);
-              this.logger.log(
-                `Preserving existing image for answer "${answerData.value}": ${answerImageUrl}`,
-              );
-            }
-            // Fallback to the old assignment strategy if no index match and no existing image
-            else if (
-              files &&
-              files.length === 1 &&
-              answerData.metadata.type === QuestionnaireAnswerType.IMAGE_CARD &&
-              Object.keys(answerIndexToImageMap).length === 0
-            ) {
-              // If there's only one file and no specific indices were found
-              answerImageUrl = uploadedImages[files[0].originalname];
-              this.logger.log(
-                `Using only available file for answer "${answerData.value}": ${answerImageUrl}`,
-              );
-            }
-
-            // Create answer entity
-            const answer = queryRunner.manager.create(SettingValue, {
-              value: answerData.value,
-              metadata: {
-                ...answerData.metadata,
-                image: answerImageUrl,
-              },
-              settingDefinition: savedQuestion,
-            });
-
-            answerEntities.push(answer);
-          }
-
-          // Save all answer entities
-          await queryRunner.manager.save(answerEntities);
-        }
-
-        // Commit transaction
-        await queryRunner.commitTransaction();
-
-        return true;
-      } catch (error) {
-        // Rollback transaction on error
-        await queryRunner.rollbackTransaction();
-        this.logger.error(`Transaction failed: ${error.message}`);
-        throw error;
-      } finally {
-        // Release query runner
-        await queryRunner.release();
-      }
-    } catch (error) {
-      this.logger.error(`Failed to update questionnaire: ${error.message}`);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      throw new HttpException(
-        error.message || 'Failed to update questionnaire',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
    * Deletes a questionnaire and its answers
    */
   async deleteQuestionnaire(id: string): Promise<void> {
@@ -766,76 +248,6 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
         error.message || 'Failed to delete questionnaire',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
-    }
-  }
-
-  /**
-   * Reindex questions after inserting or updating a question at a specific index
-   * @param newQuestionIndex The index where the new/updated question will be placed
-   * @param queryRunner The transaction query runner
-   * @param excludeQuestionId Optional ID to exclude from reindexing (used in update scenario)
-   */
-  private async reindexQuestions(
-    newQuestionIndex: number,
-    queryRunner: any,
-    excludeQuestionId?: string,
-  ): Promise<void> {
-    try {
-      this.logger.log(`Reindexing questions after index ${newQuestionIndex}`);
-
-      // Get all questionnaire questions - we'll sort them in memory
-      const questions = await queryRunner.manager.find(SettingDefinition, {
-        where: {
-          type: ESystemDefinitionType.QUESTIONNAIRE,
-        },
-      });
-
-      // Sort the questions by their index in memory
-      const sortedQuestions = questions.sort((a, b) => {
-        const indexA = a.metadata?.index || 0;
-        const indexB = b.metadata?.index || 0;
-
-        return indexA - indexB;
-      });
-
-      // Filter out the excluded question ID if provided
-      const filteredQuestions = excludeQuestionId
-        ? sortedQuestions.filter((q) => q.id !== excludeQuestionId)
-        : sortedQuestions;
-
-      this.logger.log(`Found ${filteredQuestions.length} questions to check for reindexing`);
-
-      // Track which questions need to be updated
-      const questionsToUpdate = [];
-
-      // Iterate through questions and update indices as needed
-      for (const question of filteredQuestions) {
-        const currentIndex = question.metadata?.index || 0;
-
-        // If the current question index is >= the new question index, increment it
-        if (currentIndex >= newQuestionIndex) {
-          const newIndex = currentIndex + 1;
-          this.logger.log(`Reindexing question ${question.id} from ${currentIndex} to ${newIndex}`);
-
-          // Make sure metadata object exists
-          if (!question.metadata) {
-            question.metadata = {};
-          }
-
-          // Update the metadata with the new index
-          question.metadata.index = newIndex;
-
-          questionsToUpdate.push(question);
-        }
-      }
-
-      // Save all questions that need updating
-      if (questionsToUpdate.length > 0) {
-        await queryRunner.manager.save(questionsToUpdate);
-      }
-    } catch (error) {
-      this.logger.error(`Error reindexing questions: ${error.message}`);
-      throw error; // Let the calling function handle the error
     }
   }
 
@@ -992,5 +404,761 @@ export class SettingDefinitionService extends BaseService<SettingDefinition> {
     }
 
     return transformImageUrls(settingDefinition);
+  }
+
+  /**
+   * Creates a new questionnaire with answers
+   */
+  async createQuestionnaire(
+    data: QuestionnaireAdminCreateDto,
+    files?: Express.Multer.File[],
+  ): Promise<boolean> {
+    this.logger.log(`Creating questionnaire: ${data.name}`);
+    this.logger.debug(`Questionnaire data: ${JSON.stringify(data, null, 2)}`);
+    this.logger.debug(`Files received: ${files ? files.length : 0} files`);
+
+    // 1. Initial validation
+    this._validateCreateQuestionnaireData(data);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 2. Handle main question image upload
+      const questionImageUrl = await this._handleCreateQuestionImageUpload(files);
+
+      // 3. Handle file uploads for answers and create maps
+      const { uploadedImages, answerIndexToImageMap } = await this._uploadFilesAndMapUrls(
+        files,
+        new Map<string, string>(), // No existing images for new creation
+      );
+
+      // 4. Create question entity and reindex
+      const savedQuestion = await this._createQuestion(data, queryRunner, questionImageUrl);
+
+      // 5. Create answer entities
+      await this._createAnswers(
+        data.values,
+        savedQuestion,
+        queryRunner,
+        uploadedImages,
+        answerIndexToImageMap,
+      );
+
+      await queryRunner.commitTransaction();
+      this.logger.log(`Questionnaire with ID: ${savedQuestion.id} created successfully.`);
+
+      return true;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(
+        `Transaction failed for questionnaire creation: ${error.message}`,
+        error.stack,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        error.message || 'Failed to create questionnaire',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Updates a questionnaire (question definition and its answers).
+   * Orchestrates the update process by calling smaller, focused methods.
+   *
+   * @param data The DTO containing update information for the questionnaire.
+   * @param files Optional array of files to be uploaded for answers.
+   * @returns A boolean indicating if the update was successful.
+   * @throws HttpException if the questionnaire is not found or an error occurs during update.
+   */
+  async updateQuestionnaire(
+    data: QuestionnaireAdminUpdateDto,
+    files?: Express.Multer.File[],
+  ): Promise<boolean> {
+    this.logger.log(`Updating questionnaire with ID: ${data.id}`);
+    this.logger.debug(`Questionnaire data: ${JSON.stringify(data, null, 2)}`);
+    this.logger.debug(`Files received: ${files ? files.length : 0} files`);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Find the question with its values (answers)
+      const question = await this.settingDefinitionRepository.findOne({
+        where: { id: data.id },
+        relations: ['values'],
+      });
+
+      if (!question) {
+        throw new HttpException('Questionnaire not found', HttpStatus.NOT_FOUND);
+      }
+
+      // 2. Prepare existing image maps for reuse and deletion tracking
+      const existingAnswerImageMap = new Map<string, string>(); // answer.value -> image URL
+      const existingImageFilenameMap = new Map<string, string>(); // filename -> image URL (for reuse)
+
+      if (question.values && question.values.length > 0) {
+        question.values.forEach((answer) => {
+          if (answer.metadata?.image) {
+            existingAnswerImageMap.set(answer.value, answer.metadata.image);
+            const fileName = this._extractFileNameFromUrl(answer.metadata.image);
+            if (fileName) {
+              existingImageFilenameMap.set(fileName, answer.metadata.image);
+            }
+          }
+        });
+      }
+
+      // 3. Determine if question index is changing
+      const newQuestionIndex = data.metadata?.index;
+      const currentQuestionIndex = question.metadata?.index || 0;
+      const indexChanged =
+        newQuestionIndex !== undefined && newQuestionIndex !== currentQuestionIndex;
+
+      // 4. Handle question update (including reindexing and main image upload)
+      const savedQuestion = await this._handleQuestionUpdate(
+        data,
+        question,
+        queryRunner,
+        indexChanged,
+        newQuestionIndex,
+        files, // Pass files to _handleQuestionUpdate
+      );
+
+      // 5. Handle file uploads and create maps for new/updated images (for answers)
+      const { uploadedImages, answerIndexToImageMap } = await this._uploadFilesAndMapUrls(
+        files,
+        existingImageFilenameMap,
+      );
+
+      // 6. Handle answer updates (delete old, create new with proper image URLs)
+      if (data.values) {
+        // Only proceed if new answer values are provided in the DTO
+        await this._handleAnswerUpdate(
+          data.values,
+          savedQuestion,
+          queryRunner,
+          uploadedImages,
+          answerIndexToImageMap,
+          existingAnswerImageMap,
+          question.values, // Pass existing answers for diffing
+        );
+      }
+
+      await queryRunner.commitTransaction();
+      this.logger.log(`Questionnaire with ID: ${data.id} updated successfully.`);
+
+      return true;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(
+        `Transaction failed for questionnaire update: ${error.message}`,
+        error.stack,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        error.message || 'Failed to update questionnaire',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Handles the update of the main question (SettingDefinition) entity.
+   * Includes logic for reindexing other questions if the index changes,
+   * and handling the main question image upload.
+   *
+   * @param data The DTO containing update information.
+   * @param question The existing SettingDefinition entity.
+   * @param queryRunner The TypeORM QueryRunner for transaction management.
+   * @param indexChanged A boolean indicating if the question's index has changed.
+   * @param newQuestionIndex The new index for the question, if applicable.
+   * @param files Optional array of files for potential main image upload.
+   * @returns The saved SettingDefinition entity.
+   * @throws HttpException if the main question image upload fails.
+   */
+  private async _handleQuestionUpdate(
+    data: QuestionnaireAdminUpdateDto,
+    question: SettingDefinition,
+    queryRunner: QueryRunner,
+    indexChanged: boolean,
+    newQuestionIndex: number | undefined,
+    files?: Express.Multer.File[],
+  ): Promise<SettingDefinition> {
+    // If the index is changing, reindex other questions accordingly
+    if (indexChanged && newQuestionIndex !== undefined) {
+      this.logger.debug(
+        `Reindexing questions due to index change for question ID: ${question.id} to new index: ${newQuestionIndex}`,
+      );
+      await this._reindexQuestions(newQuestionIndex, queryRunner, question.id);
+    }
+
+    // Ensure metadata object exists before merging or direct assignment
+    if (!question.metadata) {
+      this.logger.debug(
+        `Initializing question.metadata as empty object for question ID: ${question.id}`,
+      );
+      question.metadata = {};
+    }
+
+    // --- DEBUGGING LOGS START ---
+    this.logger.debug(
+      `[DEBUG] Question metadata BEFORE merge: ${JSON.stringify(question.metadata)}`,
+    );
+    this.logger.debug(`[DEBUG] Data metadata for merge: ${JSON.stringify(data.metadata)}`);
+    // --- DEBUGGING LOGS END ---
+
+    // Update question entity properties
+    if (data.name) {
+      question.name = data.name;
+    }
+
+    if (data.type) {
+      question.type = data.type;
+    }
+
+    // Handle main question image upload if 'mainImage' file is provided
+    let mainImageUploadedUrl: string | null = null;
+    if (files && files.length > 0) {
+      const mainImageFile = files.find((file) => file.fieldname === 'mainImage');
+      if (mainImageFile) {
+        try {
+          mainImageUploadedUrl = await this._uploadQuestionFile(mainImageFile);
+          this.logger.debug(`Main question image uploaded: ${mainImageUploadedUrl}`);
+        } catch (uploadError) {
+          this.logger.error(
+            `Failed to upload main question image: ${mainImageFile.originalname}: ${uploadError.message}`,
+          );
+          throw new HttpException(
+            `Failed to upload main question image ${mainImageFile.originalname}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+    }
+
+    // Merge metadata from DTO
+    question.metadata = {
+      ...question.metadata,
+      ...data.metadata,
+    };
+
+    // --- DEBUGGING LOGS START ---
+    this.logger.debug(
+      `[DEBUG] Question metadata AFTER merge (before image handling): ${JSON.stringify(question.metadata)}`,
+    );
+    // --- DEBUGGING LOGS END ---
+
+    // Prioritize newly uploaded main image.
+    // If data.metadata.image is explicitly null (requires DTO update), remove the image.
+    if (mainImageUploadedUrl !== null) {
+      question.metadata.image = mainImageUploadedUrl;
+    } else if (data.metadata?.image === null) {
+      question.metadata.image = null;
+    }
+    // If data.metadata.image is undefined and no new main image, it retains its existing value
+    // from the spread of `...question.metadata` above.
+
+    // --- DEBUGGING LOGS START ---
+    this.logger.debug(
+      `[DEBUG] Question metadata FINAL state before save: ${JSON.stringify(question.metadata)}`,
+    );
+    // --- DEBUGGING LOGS END ---
+
+    const savedQuestion = await queryRunner.manager.save(question);
+    this.logger.debug(`Question definition saved: ${savedQuestion.id}`);
+
+    return savedQuestion;
+  }
+
+  /**
+   * Uploads provided files and creates maps for their URLs.
+   * Reuses existing URLs if a file with the same name was already present.
+   *
+   * @param files Optional array of files to upload.
+   * @param existingImageFilenameMap Map of existing filenames to their URLs for reuse.
+   * @returns An object containing `uploadedImages` (filename -> URL) and `answerIndexToImageMap` (index -> URL).
+   * @throws HttpException if a critical file upload fails.
+   */
+  private async _uploadFilesAndMapUrls(
+    files: Express.Multer.File[] | undefined,
+    existingImageFilenameMap: Map<string, string>,
+  ): Promise<{
+    uploadedImages: { [key: string]: string };
+    answerIndexToImageMap: { [index: number]: string };
+  }> {
+    const uploadedImages: { [key: string]: string } = {};
+    const answerIndexToImageMap: { [index: number]: string } = {};
+
+    if (files && files.length > 0) {
+      for (const file of files) {
+        // Skip 'mainImage' as it's handled separately for the question itself
+        if (file.fieldname === 'mainImage') {
+          continue;
+        }
+
+        try {
+          const existingUrl = existingImageFilenameMap.get(file.originalname);
+          let imageUrl: string;
+
+          if (existingUrl) {
+            // If file with this name already exists, reuse the URL
+            imageUrl = existingUrl;
+            this.logger.debug(`Reusing URL for existing file: ${file.originalname}`);
+          } else {
+            // Otherwise, upload the new file
+            imageUrl = await this._uploadQuestionFile(file);
+            this.logger.debug(`Uploaded new file: ${file.originalname}, URL: ${imageUrl}`);
+          }
+
+          // Store the URL with the original filename as key
+          uploadedImages[file.originalname] = imageUrl;
+
+          // Extract answer index from filename and map it to the URL
+          const answerIndex = this._extractAnswerIndexFromFilename(file.originalname);
+          if (answerIndex !== null) {
+            answerIndexToImageMap[answerIndex] = uploadedImages[file.originalname];
+          }
+        } catch (error) {
+          this.logger.error(`Error uploading file ${file.originalname}: ${error.message}`);
+          // If file upload is critical, re-throw to trigger transaction rollback
+          throw new HttpException(
+            `Failed to upload image ${file.originalname}: ${error.message}`,
+            HttpStatus.BAD_REQUEST, // Or INTERNAL_SERVER_ERROR
+          );
+        }
+      }
+    }
+
+    return { uploadedImages, answerIndexToImageMap };
+  }
+
+  /**
+   * Handles the update of answers (SettingValue) for a questionnaire.
+   * Implements a "diff and update" strategy to preserve existing answer IDs.
+   *
+   * @param newAnswerData Array of new answer data from the DTO.
+   * @param savedQuestion The parent SettingDefinition entity (the question).
+   * @param queryRunner The TypeORM QueryRunner for transaction management.
+   * @param uploadedImages Map of uploaded filenames to their URLs.
+   * @param answerIndexToImageMap Map of answer indices to their image URLs.
+   * @param existingAnswerImageMap Map of existing answer values to their image URLs.
+   * @param currentQuestionAnswers The answers currently associated with the question from the database.
+   */
+  private async _handleAnswerUpdate(
+    newAnswerData: QuestionnaireAdminUpdateDto['values'],
+    savedQuestion: SettingDefinition,
+    queryRunner: QueryRunner,
+    uploadedImages: { [key: string]: string },
+    answerIndexToImageMap: { [index: number]: string },
+    existingAnswerImageMap: Map<string, string>,
+    currentQuestionAnswers: SettingValue[], // Added parameter for existing answers
+  ): Promise<void> {
+    const answersToUpdate: SettingValue[] = [];
+    const answersToCreate: SettingValue[] = [];
+    const answersToDelete: SettingValue[] = [];
+
+    // Create a map of existing answers by their ID for efficient lookup
+    const existingAnswersMap = new Map<string, SettingValue>();
+    currentQuestionAnswers.forEach((answer) => {
+      if (answer.id) {
+        existingAnswersMap.set(answer.id, answer);
+      }
+    });
+
+    for (let i = 0; i < newAnswerData.length; i++) {
+      const answerData = newAnswerData[i];
+      let answerImageUrl: string | null = null;
+
+      // Determine image URL for the current answer
+      // Priority 1: New file uploaded specifically for this answer's index
+      if (answerIndexToImageMap[i] !== undefined) {
+        answerImageUrl = answerIndexToImageMap[i];
+        this.logger.debug(`Assigned image by index for answer ${i}: ${answerImageUrl}`);
+      } else {
+        // Priority 2: Existing image URL associated with this answer's value
+        // This handles cases where an answer value is updated but its image remains the same,
+        // or if the answer value itself is unchanged and its image was previously uploaded.
+        if (existingAnswerImageMap.has(answerData.value)) {
+          answerImageUrl = existingAnswerImageMap.get(answerData.value);
+          this.logger.debug(
+            `Assigned existing image by value for answer ${answerData.value}: ${answerImageUrl}`,
+          );
+        }
+      }
+
+      if (answerData.id && existingAnswersMap.has(answerData.id)) {
+        // This is an existing answer that needs to be updated
+        const existingAnswer = existingAnswersMap.get(answerData.id);
+        existingAnswer.value = answerData.value; // Update the value
+        existingAnswer.metadata = {
+          ...existingAnswer.metadata, // Keep existing metadata fields not provided in DTO
+          ...answerData.metadata,
+          image: answerImageUrl, // Apply new or existing image URL
+        };
+        answersToUpdate.push(existingAnswer);
+        existingAnswersMap.delete(answerData.id); // Remove from map to track remaining for deletion
+        this.logger.debug(
+          `[DEBUG] Prepared to UPDATE answer ID: ${answerData.id}, new value: ${answerData.value}`,
+        );
+      } else {
+        // This is a new answer that needs to be created
+        const newAnswer = queryRunner.manager.create(SettingValue, {
+          value: answerData.value,
+          metadata: {
+            ...answerData.metadata,
+            image: answerImageUrl,
+          },
+          settingDefinition: savedQuestion,
+        });
+        answersToCreate.push(newAnswer);
+        this.logger.debug(`[DEBUG] Prepared to CREATE new answer with value: ${answerData.value}`);
+      }
+    }
+
+    // Any answers remaining in existingAnswersMap were not in the newAnswerData, so they should be deleted
+    existingAnswersMap.forEach((answer) => {
+      answersToDelete.push(answer);
+      this.logger.debug(
+        `[DEBUG] Prepared to DELETE answer ID: ${answer.id}, value: ${answer.value}`,
+      );
+    });
+
+    // Execute database operations
+    if (answersToUpdate.length > 0) {
+      await queryRunner.manager.save(answersToUpdate);
+      this.logger.log(`Updated ${answersToUpdate.length} answer entities.`);
+    }
+
+    if (answersToCreate.length > 0) {
+      await queryRunner.manager.save(answersToCreate);
+      this.logger.log(`Created ${answersToCreate.length} new answer entities.`);
+    }
+
+    if (answersToDelete.length > 0) {
+      await queryRunner.manager.remove(answersToDelete);
+      this.logger.log(`Removed ${answersToDelete.length} answer entities.`);
+    }
+  }
+
+  /**
+   * Upload a question or answer file and return the URL
+   * Handles both regular files and base64 encoded images
+   */
+  private async _uploadQuestionFile(file: Express.Multer.File | string): Promise<string> {
+    try {
+      // Check if the file is a base64 string
+      if (typeof file === 'string' && isBase64Image(file)) {
+        // Process base64 image
+        const fileName = `questionnaire-${uuid()}`;
+        const convertedFile = base64ToFile(file, fileName);
+
+        if (!convertedFile) {
+          throw new Error('Failed to convert base64 to file');
+        }
+
+        // Upload the converted file and get its URL
+        const uploadResult = await this.storageService.uploadImages(convertedFile);
+
+        // Make sure we return the full URL, not just the fileName
+        this.logger.log(
+          `Base64 image uploaded, returning URL: ${uploadResult['original'].fileName}`,
+        );
+
+        return uploadResult['original'].fileName;
+      }
+      // Regular file upload
+      else if (typeof file !== 'string') {
+        const uploadResult = await this.storageService.uploadImages(file);
+
+        // Make sure we return the full URL, not just the fileName
+        this.logger.log(`File uploaded, returning URL: ${uploadResult['original'].fileName}`);
+
+        return uploadResult['original'].fileName;
+      }
+      // If the string is not a base64 image, it might be an existing URL
+      else {
+        return file;
+      }
+    } catch (error) {
+      this.logger.error(`Error uploading file: ${error.message}`);
+      throw new HttpException('Failed to upload image', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Extracts the filename from a given URL
+   */
+  private _extractFileNameFromUrl(url: string): string | null {
+    try {
+      if (!url) {
+        return null;
+      }
+
+      // Extract the last part of the URL path which typically contains the filename
+      const parts = url.split('/');
+
+      return parts[parts.length - 1] || null;
+    } catch (error) {
+      this.logger.error(`Error extracting filename from URL: ${error.message}`);
+
+      return null;
+    }
+  }
+
+  /**
+   * Extract answer index from filename with pattern: option_${optionIndex}_${randomHash}.${fileExt}
+   * Previously: answer_${optionIndex}_${randomHash}.${fileExt}
+   */
+  private _extractAnswerIndexFromFilename(filename: string): number | null {
+    try {
+      if (!filename) {
+        return null;
+      }
+
+      // Updated to match pattern like "option_2_abc123.png" to extract the index "2"
+      const matches = filename.match(/option_(\d+)_[a-zA-Z0-9-]+\.[a-zA-Z0-9]+$/);
+
+      if (matches && matches[1]) {
+        // Convert matched index string to number
+        const index = parseInt(matches[1], 10);
+        this.logger.log(`Extracted index ${index} from filename ${filename}`);
+
+        return index;
+      }
+
+      this.logger.warn(`Could not extract index from filename ${filename}`);
+
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Error extracting answer index from filename ${filename}: ${error.message}`,
+      );
+
+      return null;
+    }
+  }
+
+  /**
+   * Reindex questions after inserting or updating a question at a specific index
+   * @param newQuestionIndex The index where the new/updated question will be placed
+   * @param queryRunner The transaction query runner
+   * @param excludeQuestionId Optional ID to exclude from reindexing (used in update scenario)
+   */
+  private async _reindexQuestions(
+    newQuestionIndex: number,
+    queryRunner: QueryRunner,
+    excludeQuestionId?: string,
+  ): Promise<void> {
+    try {
+      this.logger.log(`Reindexing questions after index ${newQuestionIndex}`);
+
+      // Get all questionnaire questions - we'll sort them in memory
+      const questions = await queryRunner.manager.find(SettingDefinition, {
+        where: {
+          type: ESystemDefinitionType.QUESTIONNAIRE,
+        },
+      });
+
+      // Sort the questions by their index in memory
+      const sortedQuestions = questions.sort((a, b) => {
+        const indexA = a.metadata?.index || 0;
+        const indexB = b.metadata?.index || 0;
+
+        return indexA - indexB;
+      });
+
+      // Filter out the excluded question ID if provided
+      const filteredQuestions = excludeQuestionId
+        ? sortedQuestions.filter((q) => q.id !== excludeQuestionId)
+        : sortedQuestions;
+
+      this.logger.log(`Found ${filteredQuestions.length} questions to check for reindexing`);
+
+      // Track which questions need to be updated
+      const questionsToUpdate = [];
+
+      // Iterate through questions and update indices as needed
+      for (const question of filteredQuestions) {
+        const currentIndex = question.metadata?.index || 0;
+
+        // If the current question index is >= the new question index, increment it
+        if (currentIndex >= newQuestionIndex) {
+          const newIndex = currentIndex + 1;
+          this.logger.log(`Reindexing question ${question.id} from ${currentIndex} to ${newIndex}`);
+
+          // Make sure metadata object exists
+          if (!question.metadata) {
+            question.metadata = {};
+          }
+
+          // Update the metadata with the new index
+          question.metadata.index = newIndex;
+
+          questionsToUpdate.push(question);
+        }
+      }
+
+      // Save all questions that need updating
+      if (questionsToUpdate.length > 0) {
+        await queryRunner.manager.save(questionsToUpdate);
+      }
+    } catch (error) {
+      this.logger.error(`Error reindexing questions: ${error.message}`);
+      throw error; // Let the calling function handle the error
+    }
+  }
+
+  /**
+   * Validates the input data for creating a new questionnaire.
+   * @param data The DTO for creating a questionnaire.
+   * @throws HttpException if validation fails.
+   */
+  private _validateCreateQuestionnaireData(data: QuestionnaireAdminCreateDto): void {
+    if (!data.values || data.values.length === 0) {
+      throw new HttpException(
+        'Questionnaire must have at least one answer option',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (isNil(data.metadata?.index)) {
+      throw new HttpException('Question index is required', HttpStatus.BAD_REQUEST);
+    }
+
+    this.logger.log(
+      `Validated questionnaire data: ${data.name} with ${data.values.length} answers at index ${data.metadata.index}`,
+    );
+  }
+
+  /**
+   * Handles the upload of the main question image.
+   * @param files Optional array of files uploaded with the request.
+   * @returns The URL of the uploaded main image, or null if no main image is provided.
+   * @throws HttpException if the main image upload fails.
+   */
+  private async _handleCreateQuestionImageUpload(
+    files?: Express.Multer.File[],
+  ): Promise<string | null> {
+    if (files && files.length > 0) {
+      const mainImageFile = files.find((file) => file.fieldname === 'mainImage');
+      if (mainImageFile) {
+        try {
+          const imageUrl = await this._uploadQuestionFile(mainImageFile);
+          this.logger.debug(`Main question image uploaded: ${imageUrl}`);
+
+          return imageUrl;
+        } catch (uploadError) {
+          this.logger.error(
+            `Failed to upload main question image: ${mainImageFile.originalname}: ${uploadError.message}`,
+          );
+          throw new HttpException(
+            `Failed to upload main question image ${mainImageFile.originalname}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Creates and saves the main question entity.
+   * @param data The DTO for creating a questionnaire.
+   * @param queryRunner The TypeORM QueryRunner for transaction management.
+   * @param questionImageUrl The URL of the main question image, if any.
+   * @returns The saved SettingDefinition entity.
+   * @throws Error if question creation fails.
+   */
+  private async _createQuestion(
+    data: QuestionnaireAdminCreateDto,
+    queryRunner: QueryRunner,
+    questionImageUrl: string | null,
+  ): Promise<SettingDefinition> {
+    const newQuestionIndex = data.metadata.index;
+
+    // Before creating a new question at the specified index, reindex existing questions
+    await this._reindexQuestions(newQuestionIndex, queryRunner);
+
+    // Create question metadata with image URL
+    const questionMetadata = {
+      ...data.metadata,
+      image: questionImageUrl,
+    };
+
+    // Create question entity
+    const question = queryRunner.manager.create(SettingDefinition, {
+      name: data.name,
+      type: ESystemDefinitionType.QUESTIONNAIRE,
+      metadata: questionMetadata,
+    });
+
+    const savedQuestion = await queryRunner.manager.save(question);
+    this.logger.log(`Created question: ${savedQuestion.id} at index ${newQuestionIndex}`);
+
+    return savedQuestion;
+  }
+
+  /**
+   * Creates and saves the answer entities for a questionnaire.
+   * @param dataValues Array of answer data from the DTO.
+   * @param savedQuestion The parent SettingDefinition entity (the question).
+   * @param queryRunner The TypeORM QueryRunner for transaction management.
+   * @param uploadedImages Map of uploaded filenames to their URLs.
+   * @param answerIndexToImageMap Map of answer indices to their image URLs.
+   */
+  private async _createAnswers(
+    dataValues: QuestionnaireAdminCreateDto['values'],
+    savedQuestion: SettingDefinition,
+    queryRunner: QueryRunner,
+    uploadedImages: { [key: string]: string },
+    answerIndexToImageMap: { [index: number]: string },
+  ): Promise<void> {
+    const answerEntities: SettingValue[] = [];
+
+    for (let i = 0; i < dataValues.length; i++) {
+      const answerData = dataValues[i];
+      let answerImageUrl: string | null = null;
+
+      // Priority for image assignment for answers:
+      // 1. New file uploaded specifically for this answer's index (e.g., option_0_uuid.png for answer at index 0)
+      if (answerIndexToImageMap[i] !== undefined) {
+        answerImageUrl = answerIndexToImageMap[i];
+        this.logger.debug(`Assigned image by index for answer ${i}: ${answerImageUrl}`);
+      }
+      // No fallback to existing images for *creation* as there are no existing answers yet.
+      // The previous "single file fallback" logic is removed for clarity and consistency.
+
+      // Create answer entity
+      const answer = queryRunner.manager.create(SettingValue, {
+        value: answerData.value,
+        metadata: {
+          ...answerData.metadata,
+          image: answerImageUrl,
+        },
+        settingDefinition: savedQuestion,
+      });
+      answerEntities.push(answer);
+    }
+
+    // Save all new answer entities
+    if (answerEntities.length > 0) {
+      await queryRunner.manager.save(answerEntities);
+      this.logger.log(`Created ${answerEntities.length} answer options`);
+    }
   }
 }
