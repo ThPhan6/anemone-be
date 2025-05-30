@@ -489,6 +489,7 @@ export class UserService extends BaseService<User> {
       avatar: result.avatar ? convertURLToS3Readable(result.avatar) : null,
       yearOfBirth: Number(result.yearOfBirth),
       countryId: result.country ? result.country.id : null,
+      countryName: result.country ? result.country.name : null,
       gender: result.gender,
       email: result.email,
     };
