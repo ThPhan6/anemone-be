@@ -21,7 +21,7 @@ export class CountrySeeder extends BaseSeeder {
         id,
         name,
         code: iso2,
-        chore: rest,
+        extra_data: rest,
       };
     });
 

@@ -12,5 +12,5 @@ export class Country {
   code: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  chore: Record<string, any>;
+  extra_data: Record<string, any>;
 }

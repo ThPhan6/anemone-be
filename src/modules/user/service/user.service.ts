@@ -556,7 +556,12 @@ export class UserService extends BaseService<User> {
     }
 
     if (avatar) {
-      const fileName = `avatars/${Date.now()}`;
+      //delete old avatar
+      if (user.avatar) {
+        await this.storageService.deleteImages(user.avatar);
+      }
+
+      const fileName = `${userId}/avatars/${Date.now()}`;
       const uploadedAvatar = await this.storageService.uploadImage(avatar, fileName);
       user.avatar = uploadedAvatar.fileName;
     }

@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Migration1748502433722 implements MigrationInterface {
-  name = 'Migration1748502433722';
+export class Migration1748572351675 implements MigrationInterface {
+  name = 'Migration1748572351675';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "countries" ("id" integer NOT NULL, "name" character varying NOT NULL, "code" character varying NOT NULL, "chore" jsonb, CONSTRAINT "PK_b2d7006793e8697ab3ae2deff18" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "countries" ("id" integer NOT NULL, "name" character varying NOT NULL, "code" character varying NOT NULL, "extra_data" jsonb, CONSTRAINT "PK_b2d7006793e8697ab3ae2deff18" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."users_gender_enum" AS ENUM('Male', 'Female', 'Others')`,
