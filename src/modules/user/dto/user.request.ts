@@ -4,15 +4,17 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   ValidateIf,
 } from 'class-validator';
 import { ExposeApi, ExposeApiOptional } from 'core/decorator/property.decorator';
 
 import { CheckAny } from '../../../core/decorator/validators/checkAny.decorator';
 import { ApiBaseGetListQueries } from '../../../core/types/apiQuery.type';
-import { UserRole, UserType } from '../entities/user.entity';
+import { GenderType, UserRole, UserType } from '../entities/user.entity';
 
 export class UserGetListQueries extends ApiBaseGetListQueries {
   @ExposeApi()
@@ -104,4 +106,38 @@ export class UpdateUserDto {
     example: UserType.CMS,
   })
   type: UserType;
+}
+
+export class UpdateProfileDto {
+  @ApiProperty({ example: 'First name' })
+  @IsString({ message: 'First name must be a string' })
+  @IsOptional()
+  @MaxLength(50, { message: 'First name must be less than 50 characters' })
+  firstName?: string;
+
+  @ApiProperty({ example: 'Last name' })
+  @IsString({ message: 'Last name must be a string' })
+  @IsOptional()
+  @MaxLength(50, { message: 'Last name must be less than 50 characters' })
+  lastName?: string;
+
+  @ApiProperty({ example: 2000 })
+  @IsNumber({}, { message: 'Year of birth must be a number' })
+  @IsOptional()
+  yearOfBirth?: number;
+
+  @ApiProperty({ example: 'Male' })
+  @IsEnum(GenderType, { message: 'Gender must be a valid gender' })
+  @IsOptional()
+  gender?: GenderType;
+
+  @ApiProperty({ example: 199 })
+  @IsNumber({}, { message: 'Country must be a number' })
+  @IsOptional()
+  countryId?: number;
+
+  @ApiProperty({ example: 'Avatar.png' })
+  @IsString({ message: 'Avatar must be a string' })
+  @IsOptional()
+  avatar?: string;
 }

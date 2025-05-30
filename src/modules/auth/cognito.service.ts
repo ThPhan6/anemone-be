@@ -408,6 +408,7 @@ export class CognitoService {
         phoneNumberVerified: attrMap.phone_number_verified === 'true',
         createdAt: result.UserCreateDate,
         updatedAt: result.UserLastModifiedDate,
+        avatar: attrMap.picture || '',
       };
     } catch (error) {
       logger.error('Failed to fetch user from Cognito:', error);
@@ -522,6 +523,23 @@ export class CognitoService {
       };
     } catch (error) {
       throw new Error('Failed to retrieve users from Cognito');
+    }
+  }
+
+  async updateUserAttributes(username: string, attributes: Record<string, string>): Promise<void> {
+    const userAttributes = Object.entries(attributes).map(([Name, Value]) => ({ Name, Value }));
+
+    const command = new AdminUpdateUserAttributesCommand({
+      UserPoolId: this.awsConfigService.userMobilePoolId,
+      Username: username,
+      UserAttributes: userAttributes,
+    });
+
+    try {
+      await this.cognitoClient.send(command);
+    } catch (error) {
+      logger.error('Failed to update user attributes:', error);
+      throw error;
     }
   }
 }
